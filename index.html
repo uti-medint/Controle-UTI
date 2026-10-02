@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Passômetro – UTI IOG</title>
+<style>
+:root{
+  --bg:#f2f5f4; --panel:#ffffff; --ink:#1b2a29; --muted:#5f716f; --line:#d4dcda;
+  --accent:#0f6b5e; --accent-soft:#e1f0ed; --atb:#a8470a; --atb-soft:#fbeadd;
+  --danger:#b3261e; --focus:#1a73e8;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:1.4}
+button{font:inherit;cursor:pointer}
+input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+#app{display:flex;flex-direction:column;height:100vh}
+header.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:10px 20px;background:var(--panel);border-bottom:1px solid var(--line)}
+header.top h1{font-size:20px;margin:0;font-weight:700;letter-spacing:-.01em}
+.field-inline{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:14px}
+.field-inline input{border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:#fff}
+.field-inline input.unit{width:110px;font-weight:600;color:var(--ink)}
+.spacer{flex:1}
+.saved{font-size:13px;color:var(--muted)}
+.btn{border:1px solid var(--line);background:#fff;border-radius:6px;padding:7px 12px;color:var(--ink)}
+.btn:hover{background:#f0f4f3}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:#0b574c}
+.btn.danger{color:var(--danger)}
+.btn.small{padding:3px 8px;font-size:13px}
+
+main{flex:1;display:flex;min-height:0}
+nav.beds{width:250px;flex:none;overflow-y:auto;border-right:1px solid var(--line);background:var(--panel);padding:8px}
+nav.beds .group{font-size:13px;color:var(--muted);padding:10px 8px 4px;font-weight:600}
+.bed-btn{display:block;width:100%;text-align:left;border:1px solid transparent;background:none;border-radius:8px;padding:7px 10px;margin-bottom:2px}
+.bed-btn:hover{background:#eef3f2}
+.bed-btn.active{background:var(--accent-soft);border-color:#b7d8d2}
+.bed-btn .l1{display:flex;justify-content:space-between;gap:8px;font-weight:600}
+.bed-btn .l1 small{font-weight:500;color:var(--muted)}
+.bed-btn .l2{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bed-btn.empty .l1{color:#8a9a98;font-weight:500}
+.bed-btn.inactive{opacity:.55}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:6px}
+.dot.atb{background:var(--atb)}
+
+section.editor{flex:1;overflow-y:auto;padding:20px 28px 60px}
+.editor-inner{max-width:980px;margin:0 auto}
+.bed-title{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.bed-title h2{margin:0;font-size:24px;letter-spacing:-.01em}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:14px}
+.card h3{margin:0 0 10px;font-size:16px}
+.grid4{display:grid;grid-template-columns:2fr 0.7fr 1.1fr 1.6fr;gap:12px}
+@media(max-width:900px){.grid4{grid-template-columns:1fr 1fr}nav.beds{width:190px}}
+label.lbl{display:block;font-size:13px;color:var(--muted);margin-bottom:3px}
+input.txt{width:100%;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:#fff;min-height:38px}
+
+/* picker */
+.picker{position:relative;border:1px solid var(--line);border-radius:8px;background:#fff;padding:5px 6px;display:flex;flex-wrap:wrap;gap:5px;align-items:center;min-height:40px;cursor:text}
+.picker:focus-within{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.picker input{flex:1;min-width:140px;border:none;outline:none;padding:4px;background:transparent}
+.chip{display:inline-flex;align-items:center;gap:4px;background:var(--accent-soft);color:#0a4a41;border-radius:14px;padding:3px 4px 3px 10px;font-size:14px}
+.chip button{border:none;background:none;color:inherit;font-size:16px;line-height:1;padding:0 5px;border-radius:50%}
+.chip button:hover{background:rgba(0,0,0,.1)}
+.dd{position:absolute;left:-1px;right:-1px;top:calc(100% + 4px);z-index:20;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(20,40,38,.16);max-height:260px;overflow-y:auto;padding:4px}
+.dd[hidden]{display:none}
+.dd .opt{padding:7px 10px;border-radius:6px;cursor:pointer}
+.dd .opt.on,.dd .opt:hover{background:var(--accent-soft)}
+.dd .opt.new{color:var(--accent);font-weight:600;border-top:1px solid var(--line);border-radius:0 0 6px 6px}
+.dd .none{padding:8px 10px;color:var(--muted);font-size:14px}
+
+/* devices */
+.devs{display:flex;flex-wrap:wrap;gap:8px}
+.tog{border:1.5px solid var(--line);background:#fff;border-radius:8px;padding:8px 16px;font-weight:600;color:var(--muted)}
+.tog:hover{border-color:#9bb8b3}
+.tog.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.dev-sites{margin-top:12px;display:grid;gap:10px}
+.dev-sites .row{display:grid;grid-template-columns:70px 150px 210px 1fr;gap:10px;align-items:center}
+.dev-badge{font-weight:600;color:var(--muted);font-size:14px}
+.dev-badge.warn{color:#fff;background:var(--danger);border-radius:14px;padding:3px 10px;justify-self:start}
+.alert-banner{background:#fdecea;border:1px solid #f1b8b3;color:var(--danger);padding:10px 14px;border-radius:8px;margin-bottom:14px;font-weight:600}
+.dot.alert{background:var(--danger)}
+.rowbox{display:grid;gap:10px;align-items:end;padding:10px;border:1px solid var(--line);background:#f8fbfa;border-radius:8px;margin-bottom:8px}
+.img-row{grid-template-columns:1.3fr 140px 2fr 34px}
+.cul-row{grid-template-columns:140px 1.2fr 1.3fr 1.8fr 34px}
+@media(max-width:900px){.rowbox.img-row,.rowbox.cul-row{grid-template-columns:1fr 1fr}.dev-sites .row{grid-template-columns:1fr 1fr}}
+.resp-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.resp-row .picker{flex:1;min-width:260px}
+.dev-sites .row b{color:var(--accent)}
+
+/* antibióticos */
+.atb-row{display:grid;grid-template-columns:2fr 1fr 1fr 90px 34px;gap:10px;align-items:end;padding:10px;border:1px solid #efd5c0;background:#fff9f4;border-radius:8px;margin-bottom:8px}
+.atb-row .picker{border-color:#e6cdb8}
+.atb-row input[type=date]{width:100%;border:1px solid #e6cdb8;border-radius:6px;padding:7px 8px;background:#fff;min-height:40px}
+.atb-day{font-weight:700;color:var(--atb);text-align:center;padding-bottom:9px}
+.x-btn{border:none;background:none;color:var(--muted);font-size:22px;border-radius:6px;height:36px}
+.x-btn:hover{background:#f6e3d3;color:var(--danger)}
+@media(max-width:900px){.atb-row{grid-template-columns:1fr 1fr}}
+.toggle-row{display:flex;align-items:center;gap:8px}
+.toggle-row input{width:18px;height:18px}
+
+/* modal */
+.overlay{position:fixed;inset:0;background:rgba(15,30,28,.45);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:#fff;border-radius:12px;width:min(760px,100%);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line)}
+.modal header h3{margin:0;font-size:18px}
+.modal .body{padding:16px 18px;overflow-y:auto}
+.list-item{display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid #eef2f1}
+.list-item input{flex:1;border:1px solid transparent;border-radius:6px;padding:6px 8px;background:transparent}
+.list-item input:hover{border-color:var(--line)}
+.list-item input:focus{border-color:var(--accent);background:#fff}
+.hint{color:var(--muted);font-size:13px;margin:0 0 10px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1b2a29;color:#fff;padding:10px 18px;border-radius:8px;z-index:200;font-size:14px}
+
+.saved.bad{color:var(--danger);font-weight:600}
+.net-banner{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#fff6e5;border-bottom:1px solid #f0cf8a;color:#6b4300;padding:8px 20px;font-weight:600}
+.net-banner[hidden]{display:none}
+/* impressão */
+#printArea{display:none}
+@media print{
+  @page{size:A4 landscape;margin:8mm}
+  body{background:#fff}
+  #app,.overlay,.toast{display:none!important}
+  #printArea{display:block}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <h1>Passômetro</h1>
+    <div class="field-inline"><label for="hUnit">Unidade</label><input id="hUnit" class="unit" type="text"></div>
+    <div class="field-inline"><label for="hData">Data do passômetro</label><input id="hData" type="date"></div>
+    <div class="spacer"></div>
+    <span class="saved" id="savedMsg"></span>
+    <span class="saved" id="userInfo"></span>
+    <button class="btn" id="bSair" hidden>Sair</button>
+    <button class="btn" id="bLists">Gerenciar listas</button>
+    <button class="btn" id="bHist">Histórico</button>
+    <button class="btn" id="bLogo">Logo</button>
+    <button class="btn" id="bBackup">Backup</button>
+    <button class="btn" id="bNovo">Novo plantão</button>
+    <button class="btn" id="bPrint">Imprimir</button>
+    <button class="btn primary" id="bWord">Gerar Word</button>
+  </header>
+  <div id="netBanner" class="net-banner" hidden></div>
+  <main>
+    <nav class="beds" id="nav"></nav>
+    <section class="editor"><div class="editor-inner" id="editor"></div></section>
+  </main>
+</div>
+<div id="printArea"></div>
+
+<script>
+window.fbReady=window.fbReady||new Promise(function(r){window.__fbResolve=r;});
+setTimeout(function(){ if(window.__fbResolve) window.__fbResolve(null); },12000);
+</script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getFirestore, collection, doc, onSnapshot, runTransaction, deleteDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCCiY25Gue_LO9FtDS3d0HSng6j0q-DmDY",
+  authDomain: "controle-uti-8a9b6.firebaseapp.com",
+  projectId: "controle-uti-8a9b6",
+  storageBucket: "controle-uti-8a9b6.firebasestorage.app",
+  messagingSenderId: "1066408363792",
+  appId: "1:1066408363792:web:9fe5a805305c5bf2524795"
+};
+
+try{
+  const app=initializeApp(firebaseConfig), auth=getAuth(app), db=getFirestore(app);
+  const parse=d=>{ try{ return JSON.parse(d.json); }catch(e){ return null; } };
+  window.FB={
+    signIn:(e,p)=>signInWithEmailAndPassword(auth,e,p),
+    signOut:()=>signOut(auth),
+    resetPassword:e=>sendPasswordResetEmail(auth,e),
+    onAuth:cb=>onAuthStateChanged(auth,cb),
+    listen:(onBatch,onErr)=>onSnapshot(collection(db,"parts"),snap=>{
+      onBatch(snap.docChanges().map(ch=>{ const d=ch.doc.data(); return {type:ch.type,part:ch.doc.id,v:d.v,value:parse(d),by:d.by,cid:d.cid}; }));
+    },onErr),
+    put:(part,base,value,by,cid)=>runTransaction(db,async tx=>{
+      const ref=doc(db,"parts",part), snap=await tx.get(ref);
+      const cur=snap.exists()?snap.data():null, cv=cur?cur.v:0;
+      if(cv!==(base||0)) return {conflict:true,current:cur?{v:cur.v,value:parse(cur),by:cur.by}:null};
+      tx.set(ref,{v:cv+1,json:JSON.stringify(value),by:by||"",cid:cid||"",ts:Date.now()});
+      return {v:cv+1};
+    }),
+    remove:part=>deleteDoc(doc(db,"parts",part))
+  };
+  window.__fbResolve(window.FB);
+}catch(e){ console.error(e); window.__fbResolve(null); }
+</script>
+<script>
+"use strict";
+/* ============ Dados padrão ============ */
+const STORE_KEY = "passometro_uti_iog_v1";
+const LIST_NAMES = {
+  problemas:"Problemas / diagnósticos", atb:"Antibióticos", imagem:"Exames de imagem",
+  pend:"Pendências", condutas:"Condutas", plano:"Planos de saúde",
+  sCVC:"Sítios de CVC", sCDL:"Sítios de CDL", sDreno:"Sítios de dreno",
+  achado:"Achados de imagem", sCultura:"Sítios de cultura", germe:"Germes identificados", perfil:"Perfis de antibiograma", medico:"Médicos / residentes"
+};
+const DEFAULT_LISTS = {
+  problemas:["Sepse","Choque séptico","Pneumonia associada à ventilação","Insuficiência respiratória aguda","SDRA","Lesão renal aguda","Pré-eclâmpsia grave","Eclâmpsia","Síndrome HELLP","Hemorragia pós-parto","Atonia uterina","Acretismo placentário","Histerectomia puerperal","Choque hemorrágico","Coagulopatia","Anemia","Distúrbio hidroeletrolítico","Diabetes descompensado","Cardiopatia","Insuficiência cardíaca","Edema agudo de pulmão","Tromboembolismo pulmonar","Crise convulsiva","Encefalopatia","Pós-parada cardiorrespiratória","Corioamnionite","Endometrite","Infecção de sítio cirúrgico","Pós-operatório de cesariana","Pós-operatório de laparotomia","Neoplasia ginecológica"],
+  atb:["Ampicilina","Ampicilina + Sulbactam","Amoxicilina + Clavulanato","Amicacina","Azitromicina","Cefazolina","Cefepime","Ceftazidima","Ceftazidima + Avibactam","Ceftriaxona","Ciprofloxacino","Clindamicina","Ertapenem","Fluconazol","Gentamicina","Imipenem","Levofloxacino","Linezolida","Meropenem","Metronidazol","Micafungina","Oxacilina","Penicilina cristalina","Piperacilina + Tazobactam","Polimixina B","Sulfametoxazol + Trimetoprima","Teicoplanina","Tigeciclina","Vancomicina"],
+  imagem:["RX de tórax","USG abdominal","USG obstétrica","USG transvaginal","USG à beira leito (POCUS)","TC de crânio","TC de tórax","TC de abdome","TC de pelve","Angiotomografia de tórax","RM de crânio","Ecocardiograma","Doppler venoso de MMII"],
+  pend:["Aguardando cultura","Aguardando resultado de exame","Aguardando vaga em enfermaria","Coletar exames da manhã","Solicitar hemocomponentes","Avaliação da cardiologia","Avaliação da nefrologia","Avaliação da fisioterapia","Avaliação da nutrição","Avaliação da cirurgia","Troca de acesso venoso","Alta da UTI"],
+  condutas:["Manter antibiótico","Escalonar antibiótico","Descalonar antibiótico","Desmame de ventilação","Extubar","Desmame de droga vasoativa","Desmame de sedação","Iniciar dieta","Progredir dieta","Hidratação","Reposição de eletrólitos","Transfusão","Profilaxia de TEV","Fisioterapia motora e respiratória","Solicitar exames de controle","Ajustar insulina","Avaliar alta da UTI"],
+  plano:["SUS","Particular","Unimed","Bradesco Saúde","Amil","SulAmérica","Golden Cross","Prevent Senior","NotreDame Intermédica"],
+  sCVC:["Jugular D","Jugular E","Subclávia D","Subclávia E","Femoral D","Femoral E"],
+  sCDL:["Jugular D","Jugular E","Subclávia D","Subclávia E","Femoral D","Femoral E"],
+  sDreno:["Tórax D","Tórax E","Mediastino","Abdominal","Pélvico","Subfascial","Subcutâneo","Kehr"],
+  achado:["Sem alterações","Derrame pleural","Consolidação","Infiltrado intersticial bilateral","Atelectasia","Pneumotórax","Edema pulmonar","Líquido livre em cavidade","Coleção pélvica","Restos placentários","Hematoma","Sem coleções","Hemorragia intracraniana","Isquemia cerebral","Trombose venosa profunda","Função ventricular reduzida"],
+  sCultura:["Hemocultura","Urocultura","Aspirado traqueal","Lavado broncoalveolar","Ponta de cateter","Secreção de ferida operatória","Líquido ascítico","Líquido pleural","Líquor","Swab retal","Secreção vaginal"],
+  germe:["Escherichia coli","Klebsiella pneumoniae","Pseudomonas aeruginosa","Acinetobacter baumannii","Enterobacter cloacae","Proteus mirabilis","Serratia marcescens","Stenotrophomonas maltophilia","Staphylococcus aureus","Staphylococcus coagulase negativo","Enterococcus faecalis","Enterococcus faecium","Streptococcus agalactiae","Candida albicans","Candida não-albicans"],
+  perfil:["Pan-sensível","MSSA","MRSA","ESBL","AmpC","KPC","Carbapenemase (resistente a carbapenêmicos)","Pseudomonas resistente a carbapenêmicos","VRE","Multirresistente (MDR)","Extensivamente resistente (XDR)","Sensível a carbapenêmicos","Sensível a polimixina"],
+  medico:[]
+};
+const DEVS=[["svd","SVD"],["sne","SNE"],["tot","TOT"],["tqt","TQT"],["cvc","CVC"],["cdl","CDL"],["dreno","Dreno"]];
+const SITED={cvc:"sCVC",cdl:"sCDL",dreno:"sDreno"};
+const ALERT_DIAS=15;
+const N_FIXOS = 17, N_EXTRAS = 4;
+
+function newBed(id, extra){
+  return {id, extra, ativo:!extra, local:"", nome:"", idade:"", admissao:"", plano:"",
+    problemas:[], disp:{svd:false,sne:false,tot:false,tqt:false,
+      cvc:{on:false,sitios:[]}, cdl:{on:false,sitios:[]}, dreno:{on:false,sitios:[]}},
+    atb:[], culturas:[], imagem:[], pend:[], condutas:[], dd:{}, resp:"", upd:null};
+}
+function devOn(b,k){ const v=b.disp[k]; return (v&&typeof v==='object')?!!v.on:!!v; }
+function setDevOn(b,k,val){ if(typeof b.disp[k]==='object') b.disp[k].on=val; else b.disp[k]=val; }
+function devAlerts(b,ref){ return DEVS.filter(([k])=>devOn(b,k)).map(([k,l])=>({k,l,d:daysSince((b.dd||{})[k],ref)})).filter(x=>x.d>ALERT_DIAS); }
+function fixBed(b){
+  const base=newBed(b.id||'x',!!b.extra);
+  b.disp=Object.assign(base.disp,b.disp||{});
+  b.dd=b.dd||{}; b.culturas=Array.isArray(b.culturas)?b.culturas:[]; b.resp=b.resp||''; b.upd=b.upd||null;
+  b.imagem=(b.imagem||[]).map(x=>typeof x==='string'?{nome:x,data:'',achado:''}:x);
+  return b;
+}
+function todayISO(){ const d=new Date(); return new Date(d-d.getTimezoneOffset()*60000).toISOString().slice(0,10); }
+function freshState(){
+  const beds=[]; for(let i=1;i<=N_FIXOS;i++) beds.push(newBed("L"+i,false));
+  for(let i=1;i<=N_EXTRAS;i++) beds.push(newBed("E"+i,true));
+  return {unit:"UTI IOG", data:todayISO(), beds, lists:JSON.parse(JSON.stringify(DEFAULT_LISTS)), archive:[]};
+}
+
+/* ============ Estado e armazenamento ============ */
+let S, selected="L1";
+function normalizeState(s){
+  const f=freshState();
+  s=s||f;
+  s.unit=s.unit||f.unit; s.data=s.data||f.data; s.archive=s.archive||[];
+  s.lists=s.lists||{};
+  for(const k in DEFAULT_LISTS) if(!Array.isArray(s.lists[k])) s.lists[k]=DEFAULT_LISTS[k].slice();
+  const byId={}; (s.beds||[]).forEach(b=>byId[b.id]=b);
+  s.beds=f.beds.map(b=>fixBed(Object.assign(b,byId[b.id]||{})));
+  s.archive.forEach(a=>{ a.beds=(a.beds||[]).map(fixBed); });
+  return s;
+}
+function load(){
+  try{ const raw=localStorage.getItem(STORE_KEY); S=normalizeState(raw?JSON.parse(raw):null); }
+  catch(e){ S=normalizeState(null); }
+}
+let saveTimer;
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{
+    if(NET){ try{ localStorage.setItem("passometro_ultimoResp",S.ultimoResp||""); }catch(e){} pushDirty(); return; }
+    try{
+      localStorage.setItem(STORE_KEY, JSON.stringify(S));
+      const t=new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+      $("#savedMsg").textContent="Salvo às "+t;
+    }catch(e){ $("#savedMsg").textContent="Não foi possível salvar neste navegador"; }
+  },NET?900:150);
+}
+
+/* ============ Utilitários ============ */
+const $=(s,r=document)=>r.querySelector(s);
+const norm=s=>String(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim();
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function el(tag,attrs,...kids){
+  const e=document.createElement(tag);
+  for(const k in (attrs||{})){
+    if(k==="class") e.className=attrs[k]; else if(k.startsWith("on")) e.addEventListener(k.slice(2),attrs[k]);
+    else if(k==="html") e.innerHTML=attrs[k]; else e.setAttribute(k,attrs[k]);
+  }
+  kids.flat().forEach(c=>{ if(c!=null) e.append(c.nodeType?c:document.createTextNode(c)); });
+  return e;
+}
+function toast(msg){ const t=el("div",{class:"toast"},msg); document.body.append(t); setTimeout(()=>t.remove(),2600); }
+function fmtDate(iso,withYear){ if(!iso) return ""; const [y,m,d]=iso.split("-"); return withYear?`${d}/${m}/${y}`:`${d}/${m}`; }
+function daysSince(iso,ref){
+  if(!iso||!ref) return null;
+  return Math.round((new Date(ref+"T00:00:00")-new Date(iso+"T00:00:00"))/86400000)+1;
+}
+function dayCount(iso){ return daysSince(iso,S.data||todayISO()); }
+function updText(b){
+  return b.upd ? "Última alteração neste leito: "+new Date(b.upd).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}) : "Nenhuma alteração registrada neste leito.";
+}
+function addToList(key,name){
+  name=name.replace(/\s+/g," ").trim(); if(!name) return null;
+  const L=S.lists[key]; const hit=L.find(x=>norm(x)===norm(name));
+  if(hit) return hit;
+  L.push(name); L.sort((a,b)=>a.localeCompare(b,"pt-BR",{sensitivity:"base"})); save();
+  return name;
+}
+
+/* ============ Seletor com lista que aprende ============ */
+/* opts: {key, get(), set(arr|str), single, placeholder} */
+function picker(opts){
+  const host=el("div",{class:"picker"});
+  const chips=el("span",{style:"display:contents"});
+  const input=el("input",{type:"text",placeholder:opts.placeholder||"Clique para escolher ou digitar",autocomplete:"off"});
+  const dd=el("div",{class:"dd",hidden:""});
+  host.append(chips,input,dd);
+  let active=-1, shown=[];
+  const selectedList=()=> opts.single ? (opts.get()?[opts.get()]:[]) : opts.get();
+
+  function renderChips(){
+    chips.innerHTML="";
+    if(opts.single){ if(document.activeElement!==input) input.value=opts.get()||""; return; }
+    opts.get().forEach((v,i)=>{
+      chips.append(el("span",{class:"chip"},v,el("button",{type:"button","aria-label":"Remover "+v,
+        onmousedown:e=>e.preventDefault(),
+        onclick:e=>{ e.stopPropagation(); const a=opts.get().slice(); a.splice(i,1); opts.set(a); renderChips(); renderDD(); }},"×")));
+    });
+  }
+  function renderDD(){
+    const q=input.value; const nq=norm(q);
+    const taken=opts.single?[]:opts.get().map(norm);
+    shown=S.lists[opts.key].filter(x=>!taken.includes(norm(x)) && (!nq||norm(x).includes(nq)));
+    dd.innerHTML="";
+    shown.forEach((x,i)=>dd.append(el("div",{class:"opt"+(i===active?" on":""),
+      onmousedown:e=>{e.preventDefault(); pick(x);}},x)));
+    const exact=S.lists[opts.key].some(x=>norm(x)===nq);
+    if(nq && !exact) dd.append(el("div",{class:"opt new",onmousedown:e=>{e.preventDefault(); pick(q,true);}},
+      `Adicionar "${q.trim()}" à lista`));
+    if(!shown.length && !(nq&&!exact)) dd.append(el("div",{class:"none"},"Nenhum item disponível"));
+    dd.hidden=false;
+  }
+  function pick(v){
+    const name=addToList(opts.key,v); if(!name) return;
+    if(opts.single){ opts.set(name); input.value=name; dd.hidden=true; input.blur(); }
+    else{ const a=opts.get().slice(); if(!a.some(x=>norm(x)===norm(name))) a.push(name); opts.set(a);
+      input.value=""; active=-1; renderChips(); renderDD(); input.focus(); }
+    afterChange();
+  }
+  host.addEventListener("click",()=>input.focus());
+  input.addEventListener("focus",()=>{ active=-1; if(opts.single) input.select(); renderDD(); });
+  input.addEventListener("input",()=>{ active=-1; renderDD(); });
+  input.addEventListener("blur",()=>{
+    dd.hidden=true;
+    if(opts.single){ // texto digitado sem confirmar: aceita como novo item
+      const v=input.value.trim();
+      if(!v){ if(opts.get()){ opts.set(""); afterChange(); } }
+      else if(norm(v)!==norm(opts.get()||"")){ const n=addToList(opts.key,v); opts.set(n); input.value=n; afterChange(); }
+    }
+  });
+  input.addEventListener("keydown",e=>{
+    if(e.key==="ArrowDown"){ e.preventDefault(); active=Math.min(active+1,shown.length-1); renderDD(); }
+    else if(e.key==="ArrowUp"){ e.preventDefault(); active=Math.max(active-1,0); renderDD(); }
+    else if(e.key==="Enter"){ e.preventDefault();
+      if(active>=0&&shown[active]) pick(shown[active]);
+      else if(input.value.trim()) pick(input.value);
+    }
+    else if(e.key==="Escape"){ dd.hidden=true; input.blur(); }
+    else if(e.key==="Backspace" && !input.value && !opts.single){ const a=opts.get().slice(); if(a.length){a.pop(); opts.set(a); renderChips(); renderDD(); afterChange();} }
+  });
+  renderChips();
+  return host;
+}
+function afterChange(){
+  const b=S.beds.find(x=>x.id===selected);
+  if(b){ b.upd=Date.now(); const u=document.getElementById("updInfo"); if(u) u.textContent=updText(b); }
+  save(); renderNav();
+}
+
+/* ============ Navegação lateral ============ */
+function bedLabel(b){ return b.extra ? `Extra ${b.id.slice(1)}` : `Leito ${b.id.slice(1).padStart(2,"0")}`; }
+function renderNav(){
+  const nav=$("#nav"); nav.innerHTML="";
+  const mk=b=>{
+    const has=b.nome||b.problemas.length||b.atb.length;
+    const devs=["svd","sne","tot","tqt"].filter(k=>b.disp[k]).length+["cvc","cdl","dreno"].filter(k=>b.disp[k].on).length;
+    const inactive=b.extra&&!b.ativo;
+    const btn=el("button",{class:"bed-btn"+(b.id===selected?" active":"")+(!has?" empty":"")+(inactive?" inactive":""),
+      onclick:()=>{selected=b.id; renderNav(); renderEditor(); }},
+      el("div",{class:"l1"},bedLabel(b)+(b.extra&&b.local?" · "+b.local:""),
+        el("small",{}, devAlerts(b,S.data).length?el("span",{class:"dot alert",title:"Dispositivo com mais de 15 dias"}):"", b.atb.length?el("span",{class:"dot atb",title:"Antibiótico"}):"", devs?devs+" disp.":"")),
+      el("div",{class:"l2"}, inactive?"Não utilizado":(b.nome||"Vago")+(b.idade?` · ${b.idade}a`:"")));
+    return btn;
+  };
+  nav.append(el("div",{class:"group"},"Leitos fixos"));
+  S.beds.filter(b=>!b.extra).forEach(b=>nav.append(mk(b)));
+  nav.append(el("div",{class:"group"},"Leitos extras"));
+  S.beds.filter(b=>b.extra).forEach(b=>nav.append(mk(b)));
+}
+
+/* ============ Editor do leito ============ */
+function renderEditor(){
+  const b=S.beds.find(x=>x.id===selected); const ed=$("#editor"); ed.innerHTML="";
+  // título
+  const title=el("div",{class:"bed-title"},el("h2",{},bedLabel(b)));
+  if(b.extra){
+    title.append(
+      el("label",{class:"toggle-row"},
+        el("input",{type:"checkbox",...(b.ativo?{checked:""}:{}),onchange:e=>{b.ativo=e.target.checked; afterChange(); renderEditor();}}),
+        "Leito extra em uso"),
+      el("input",{class:"txt",style:"max-width:320px",type:"text",placeholder:"Localização real (ex.: Sala de recuperação)",value:b.local,
+        oninput:e=>{b.local=e.target.value; afterChange();}}));
+  }
+  title.append(el("span",{class:"spacer",style:"flex:1"}),
+    (bedHasPatient(b)&&!(b.extra&&!b.ativo))?el("button",{class:"btn small",type:"button",onclick:()=>transferModal(b)},"Transferir de leito"):null,
+    el("button",{class:"btn small danger",onclick:()=>{
+      if(confirm(`Limpar todos os dados do ${bedLabel(b)}? (alta ou transferência do paciente)`)){
+        const nb=newBed(b.id,b.extra); nb.ativo=b.ativo; nb.local=b.local; Object.assign(b,nb); afterChange(); renderEditor(); }
+    }},"Limpar leito"));
+  ed.append(title);
+  if(b.extra&&!b.ativo){ ed.append(el("div",{class:"card"},el("p",{class:"hint",style:"margin:0"},"Marque “Leito extra em uso” para preencher este leito.")));return; }
+
+  const alertBox=el("div"); ed.append(alertBox);
+  function renderAlert(){
+    alertBox.innerHTML=""; const al=devAlerts(b,S.data);
+    if(al.length) alertBox.append(el("div",{class:"alert-banner"},"⚠ Dispositivo(s) com mais de "+ALERT_DIAS+" dias: "+al.map(x=>`${x.l} (D${x.d})`).join(", ")+". Avaliar necessidade ou troca."));
+  }
+  renderAlert();
+  // identificação
+  const f=(label,input)=>el("div",{},el("label",{class:"lbl"},label),input);
+  ed.append(el("div",{class:"card"},el("h3",{},"Identificação"),el("div",{class:"grid4"},
+    f("Nome",el("input",{class:"txt",type:"text",value:b.nome,oninput:e=>{b.nome=e.target.value;afterChange();}})),
+    f("Idade",el("input",{class:"txt",type:"text",inputmode:"numeric",value:b.idade,oninput:e=>{b.idade=e.target.value;afterChange();}})),
+    f("Admissão",el("input",{class:"txt",type:"date",value:b.admissao,oninput:e=>{b.admissao=e.target.value;afterChange();}})),
+    f("Plano de saúde",picker({key:"plano",single:true,placeholder:"Escolher plano",get:()=>b.plano,set:v=>b.plano=v}))
+  )));
+
+  const listCard=(title,key,prop,ph)=>el("div",{class:"card"},el("h3",{},title),
+    picker({key,placeholder:ph,get:()=>b[prop],set:v=>b[prop]=v}));
+  ed.append(listCard("Lista de problemas","problemas","problemas","Clique para ver os diagnósticos ou digite um novo"));
+
+  // dispositivos
+  const devCard=el("div",{class:"card"}); ed.append(devCard);
+  function renderDevs(){
+    devCard.innerHTML=""; devCard.append(el("h3",{},"Dispositivos invasivos"));
+    const wrap=el("div",{class:"devs"});
+    DEVS.forEach(([k,l])=>wrap.append(el("button",{type:"button",class:"tog"+(devOn(b,k)?" on":""),"aria-pressed":devOn(b,k),
+      onclick:()=>{ setDevOn(b,k,!devOn(b,k)); if(!devOn(b,k)) delete b.dd[k]; afterChange(); renderDevs(); renderAlert(); }},l)));
+    devCard.append(wrap);
+    const on=DEVS.filter(([k])=>devOn(b,k));
+    if(on.length){
+      const g=el("div",{class:"dev-sites"});
+      on.forEach(([k,l])=>{
+        const badge=el("span",{class:"dev-badge"});
+        const upd=()=>{
+          const d=daysSince(b.dd[k],S.data);
+          badge.className="dev-badge"+(d>ALERT_DIAS?" warn":"");
+          badge.textContent=!b.dd[k]?"Sem data (opcional)":(d<1?"Data posterior ao plantão":(d>ALERT_DIAS?"⚠ D"+d+" · mais de "+ALERT_DIAS+" dias":"D"+d));
+        };
+        upd();
+        g.append(el("div",{class:"row"},el("b",{},l),
+          el("input",{class:"txt",type:"date","aria-label":"Data de inserção de "+l,value:b.dd[k]||"",oninput:e=>{b.dd[k]=e.target.value;upd();afterChange();renderAlert();}}),
+          badge,
+          SITED[k]?picker({key:SITED[k],placeholder:"Sítio (clique para escolher)",get:()=>b.disp[k].sitios,set:v=>b.disp[k].sitios=v}):el("span")));
+      });
+      devCard.append(g);
+      devCard.append(el("p",{class:"hint",style:"margin:10px 0 0"},"A data de inserção é opcional. Quando informada, o dia da inserção conta como D1 e o alerta aparece acima de "+ALERT_DIAS+" dias."));
+    }
+  }
+  renderDevs();
+
+  // antibióticos
+  const atbCard=el("div",{class:"card"}); ed.append(atbCard);
+  function renderAtb(){
+    atbCard.innerHTML=""; atbCard.append(el("h3",{},"Antibióticos"));
+    if(!b.atb.length) atbCard.append(el("p",{class:"hint"},"Nenhum antibiótico em uso."));
+    b.atb.forEach((a,i)=>{
+      const day=el("div",{class:"atb-day"});
+      const upd=()=>{const d=dayCount(a.ini); day.textContent=(a.nome&&d&&d>0)?"D"+d:"";};
+      upd();
+      atbCard.append(el("div",{class:"atb-row"},
+        el("div",{},el("label",{class:"lbl"},"Antibiótico"),picker({key:"atb",single:true,placeholder:"Escolher antibiótico",get:()=>a.nome,set:v=>{a.nome=v;upd();}})),
+        el("div",{},el("label",{class:"lbl"},"Início"),el("input",{type:"date",value:a.ini||"",oninput:e=>{a.ini=e.target.value;upd();afterChange();}})),
+        el("div",{},el("label",{class:"lbl"},"Término previsto"),el("input",{type:"date",value:a.fim||"",oninput:e=>{a.fim=e.target.value;afterChange();}})),
+        day,
+        el("button",{class:"x-btn",type:"button","aria-label":"Remover antibiótico",onclick:()=>{b.atb.splice(i,1);afterChange();renderAtb();}},"×")));
+    });
+    atbCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.atb.push({nome:"",ini:S.data,fim:""});afterChange();renderAtb();}},"+ Adicionar antibiótico"));
+  }
+  renderAtb();
+
+
+  // culturas
+  const culCard=el("div",{class:"card"}); ed.append(culCard);
+  function renderCul(){
+    culCard.innerHTML=""; culCard.append(el("h3",{},"Culturas"));
+    if(!b.culturas.length) culCard.append(el("p",{class:"hint"},"Nenhuma cultura registrada."));
+    b.culturas.forEach((c,i)=>{
+      culCard.append(el("div",{class:"rowbox cul-row"},
+        el("div",{},el("label",{class:"lbl"},"Data da cultura"),el("input",{class:"txt",type:"date",value:c.data||"",oninput:e=>{c.data=e.target.value;afterChange();}})),
+        el("div",{},el("label",{class:"lbl"},"Sítio"),picker({key:"sCultura",single:true,placeholder:"Escolher sítio",get:()=>c.sitio,set:v=>c.sitio=v})),
+        el("div",{},el("label",{class:"lbl"},"Germe identificado"),picker({key:"germe",single:true,placeholder:"Aguardando resultado",get:()=>c.germe,set:v=>c.germe=v})),
+        el("div",{},el("label",{class:"lbl"},"Perfil de antibiograma"),picker({key:"perfil",placeholder:"Escolher perfil ou digitar",get:()=>c.perfil,set:v=>c.perfil=v})),
+        el("button",{class:"x-btn",type:"button","aria-label":"Remover cultura",onclick:()=>{b.culturas.splice(i,1);afterChange();renderCul();}},"×")));
+    });
+    culCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.culturas.push({data:S.data,sitio:"",germe:"",perfil:[]});afterChange();renderCul();}},"+ Adicionar cultura"));
+  }
+  renderCul();
+
+  // exames de imagem
+  const imgCard=el("div",{class:"card"}); ed.append(imgCard);
+  function renderImg(){
+    imgCard.innerHTML=""; imgCard.append(el("h3",{},"Exames de imagem"));
+    if(!b.imagem.length) imgCard.append(el("p",{class:"hint"},"Nenhum exame de imagem registrado."));
+    b.imagem.forEach((x,i)=>{
+      imgCard.append(el("div",{class:"rowbox img-row"},
+        el("div",{},el("label",{class:"lbl"},"Exame"),picker({key:"imagem",single:true,placeholder:"Escolher exame",get:()=>x.nome,set:v=>x.nome=v})),
+        el("div",{},el("label",{class:"lbl"},"Data"),el("input",{class:"txt",type:"date",value:x.data||"",oninput:e=>{x.data=e.target.value;afterChange();}})),
+        el("div",{},el("label",{class:"lbl"},"Principal achado"),picker({key:"achado",single:true,placeholder:"Escolher ou digitar o achado",get:()=>x.achado,set:v=>x.achado=v})),
+        el("button",{class:"x-btn",type:"button","aria-label":"Remover exame",onclick:()=>{b.imagem.splice(i,1);afterChange();renderImg();}},"×")));
+    });
+    imgCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.imagem.push({nome:"",data:S.data,achado:""});afterChange();renderImg();}},"+ Adicionar exame"));
+  }
+  renderImg();
+  ed.append(listCard("Pendências","pend","pend","Clique para ver as pendências ou digite uma nova"));
+  ed.append(listCard("Condutas","condutas","condutas","Clique para ver as condutas ou digite uma nova"));
+
+  // registro da alteração
+  const respRow=el("div",{class:"resp-row"},
+    picker({key:"medico",single:true,placeholder:"Escolher ou digitar o nome",get:()=>b.resp,set:v=>{b.resp=v; if(v) S.ultimoResp=v;}}));
+  if(S.ultimoResp && !b.resp) respRow.append(el("button",{class:"btn small",type:"button",onclick:()=>{b.resp=S.ultimoResp;afterChange();renderEditor();}},"Usar "+S.ultimoResp));
+  ed.append(el("div",{class:"card"},el("h3",{},"Registro da alteração"),
+    el("label",{class:"lbl"},"Médico / Residente que atualizou este leito"),respRow,
+    el("p",{class:"hint",id:"updInfo",style:"margin:8px 0 0"},updText(b))));
+}
+
+/* ============ Documento do passômetro (impressão e Word) ============ */
+const DOC_CSS=`
+.pt{font-family:Calibri,Arial,sans-serif;color:#000}
+.pt h1{font-size:14pt;margin:0 0 4pt}
+.pt .sub{font-size:10pt;margin:0 0 6pt}
+.pt table{width:100%;border-collapse:collapse;table-layout:fixed}
+.pt th{background:#d9e6e3;border:1px solid #444;font-size:7.5pt;padding:3pt;text-align:left}
+.pt td{border:1px solid #444;font-size:7.5pt;padding:3pt;vertical-align:top;word-wrap:break-word}
+.pt tr{page-break-inside:avoid}
+.pt thead{display:table-header-group}
+.pt .vago td{color:#666}
+.pt .b{font-weight:bold}
+.pt .atb{margin:0 0 2pt}
+`;
+function docBody(st,logoSrc){
+  const ref=st.data; logoSrc=logoSrc||st.logo;
+  const dev=b=>{
+    const dd=b.dd||{}; const out=[];
+    DEVS.forEach(([k,l])=>{
+      if(!devOn(b,k)) return;
+      const sit=(SITED[k]&&b.disp[k].sitios&&b.disp[k].sitios.length)?" ("+b.disp[k].sitios.join(", ")+")":"";
+      const d=daysSince(dd[k],ref);
+      const tail=dd[k]?` – ${fmtDate(dd[k])}, D${d}`:"";
+      const txt=esc(l+sit+tail);
+      out.push(d>ALERT_DIAS?`<b style="color:#b00000">⚠ ${txt}</b>`:txt);
+    });
+    return out.join("<br>");
+  };
+  const atb=b=>b.atb.filter(a=>a.nome).map(a=>{
+    const d=daysSince(a.ini,ref);
+    const per=a.ini||a.fim?` (${fmtDate(a.ini)||"?"} a ${fmtDate(a.fim)||"?"}${d>0?", D"+d:""})`:"";
+    return `<div class="atb"><b>${esc(a.nome)}</b>${esc(per)}</div>`;
+  }).join("");
+  const cul=b=>(b.culturas||[]).filter(c=>c.sitio||c.germe).map(c=>
+    `<div class="atb">${c.data?fmtDate(c.data)+" ":""}<b>${esc(c.sitio||"Cultura")}</b>: ${c.germe?esc(c.germe):"<i>aguardando</i>"}${(c.perfil&&c.perfil.length)?" – "+esc(c.perfil.join(", ")):""}</div>`).join("");
+  const img=b=>(b.imagem||[]).map(x=>typeof x==="string"?{nome:x}:x).filter(x=>x.nome).map(x=>
+    `<div class="atb"><b>${esc(x.nome)}</b>${x.data?" ("+fmtDate(x.data)+")":""}${x.achado?": "+esc(x.achado):""}</div>`).join("");
+  const list=a=>a.map(esc).join("; ");
+  const reg=b=>(b.resp||b.upd)?`${esc(b.resp)||"—"}${b.upd?"<br>"+new Date(b.upd).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):""}`:"";
+  const rows=st.beds.filter(b=>!b.extra||b.ativo).map(b=>{
+    const lab=b.extra?`Extra ${b.id.slice(1)}${b.local?"<br>"+esc(b.local):""}`:b.id.slice(1).padStart(2,"0");
+    const has=b.nome||b.problemas.length||b.atb.length||(b.culturas||[]).length||b.imagem.length||b.pend.length||b.condutas.length||dev(b);
+    if(!has) return `<tr class="vago"><td class="b">${lab}</td><td colspan="9">Vago</td></tr>`;
+    const id=`<span class="b">${esc(b.nome)||"—"}</span>${b.idade?"<br>"+esc(b.idade)+" anos":""}${b.admissao?"<br>Adm.: "+fmtDate(b.admissao,true):""}${b.plano?"<br>"+esc(b.plano):""}`;
+    return `<tr><td class="b">${lab}</td><td>${id}</td><td>${list(b.problemas)}</td><td>${dev(b)}</td><td>${atb(b)}</td><td>${cul(b)}</td><td>${img(b)}</td><td>${list(b.pend)}</td><td>${list(b.condutas)}</td><td>${reg(b)}</td></tr>`;
+  }).join("");
+  const titulo=`<h1>Passômetro – ${esc(st.unit)}</h1><p class="sub">Data: <b>${fmtDate(st.data,true)}</b></p>`;
+  let hdr=titulo;
+  if(st.logo&&logoSrc){
+    const h=44, w=Math.round(h*(st.logoRatio||1));
+    hdr=`<table class="hd" style="width:auto;table-layout:auto;border:none;border-collapse:collapse"><tr><td style="border:none;padding:0 12pt 0 0;vertical-align:middle"><img src="${logoSrc}" height="${h}" width="${w}" style="height:${h}px;width:${w}px"></td><td style="border:none;padding:0;vertical-align:middle">${titulo}</td></tr></table><p style="margin:0 0 4pt"> </p>`;
+  }
+  return `<div class="pt">${hdr}
+<table><thead><tr>
+<th style="width:4%">Leito</th><th style="width:10%">Paciente</th><th style="width:10%">Problemas</th><th style="width:10%">Dispositivos</th>
+<th style="width:11%">Antibióticos</th><th style="width:13%">Culturas</th><th style="width:12%">Imagem</th><th style="width:9%">Pendências</th><th style="width:12%">Condutas</th><th style="width:9%">Registro</th>
+</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function doPrint(){
+  $("#printArea").innerHTML=`<style>${DOC_CSS}</style>`+docBody(S);
+  window.print();
+}
+function download(name,blob){
+  const a=el("a",{href:URL.createObjectURL(blob),download:name}); document.body.append(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
+}
+function wordHtml(st,logoSrc){
+  return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>Passômetro</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>
+@page Section1{size:841.9pt 595.3pt;mso-page-orientation:landscape;margin:28pt 28pt 28pt 28pt}
+div.Section1{page:Section1}
+${DOC_CSS}
+</style></head><body><div class="Section1">${docBody(st,logoSrc)}</div></body></html>`;
+}
+function wrap76(t){ return t.replace(/(.{76})/g,"$1\r\n"); }
+function wordFile(st){
+  const m=st.logo&&st.logo.match(/^data:image\/[a-z+]+;base64,(.*)$/);
+  if(!m) return "\ufeff"+wordHtml(st);
+  const html=wordHtml(st,"logo.png"), B="----=_NextPart_passometro_001";
+  const h64=btoa(unescape(encodeURIComponent(html)));
+  return "MIME-Version: 1.0\r\nContent-Type: multipart/related; boundary=\""+B+"\"; type=\"text/html\"\r\n\r\n"+
+    "--"+B+"\r\nContent-Type: text/html; charset=\"utf-8\"\r\nContent-Transfer-Encoding: base64\r\nContent-Location: file:///C:/passometro/passometro.htm\r\n\r\n"+wrap76(h64)+"\r\n\r\n"+
+    "--"+B+"\r\nContent-Type: image/png\r\nContent-Transfer-Encoding: base64\r\nContent-Location: file:///C:/passometro/logo.png\r\n\r\n"+wrap76(m[1])+"\r\n\r\n--"+B+"--\r\n";
+}
+function saveWord(st,name){ download(name,new Blob([wordFile(st)],{type:"application/msword"})); }
+function doWord(){
+  saveWord(S,`passometro_${S.data}.doc`);
+  toast("Arquivo Word gerado (paisagem)");
+}
+function logoModal(){
+  const prev=el("div",{style:"margin:12px 0;padding:12px;border:1px dashed var(--line);border-radius:8px;min-height:60px"});
+  const draw=()=>{ prev.innerHTML=""; prev.append(S.logo?el("img",{src:S.logo,style:"max-height:80px;max-width:100%"}):el("p",{class:"hint",style:"margin:0"},"Nenhuma logo definida.")); };
+  draw();
+  const file=el("input",{type:"file",accept:"image/*",hidden:""});
+  file.addEventListener("change",()=>{
+    const f=file.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=()=>{
+      const img=new Image();
+      img.onload=()=>{
+        const k=Math.min(1,200/img.height,600/img.width);
+        const w=Math.max(1,Math.round(img.width*k)), h=Math.max(1,Math.round(img.height*k));
+        const c=document.createElement("canvas"); c.width=w; c.height=h;
+        c.getContext("2d").drawImage(img,0,0,w,h);
+        S.logo=c.toDataURL("image/png"); S.logoRatio=w/h; save(); draw(); toast("Logo salva");
+      };
+      img.onerror=()=>alert("Não foi possível ler essa imagem. Use um arquivo PNG ou JPG.");
+      img.src=r.result;
+    };
+    r.readAsDataURL(f); file.value="";
+  });
+  const body=el("div",{},
+    el("p",{class:"hint"},"A logo aparece no topo do passômetro impresso e do arquivo Word. Use uma imagem PNG ou JPG."),
+    prev,
+    el("div",{style:"display:flex;gap:10px"},
+      el("button",{class:"btn primary",onclick:()=>file.click()},"Escolher imagem"),
+      el("button",{class:"btn danger",onclick:()=>{ delete S.logo; delete S.logoRatio; save(); draw(); }},"Remover logo")),
+    file);
+  openModal("Logo do passômetro",body);
+}
+
+/* ============ Transferência de leito ============ */
+const PAT_KEYS=["nome","idade","admissao","plano","problemas","disp","atb","culturas","imagem","pend","condutas","dd","resp"];
+function bedHasPatient(b){
+  return !!(b.nome||b.problemas.length||b.atb.length||(b.culturas||[]).length||b.imagem.length||b.pend.length||b.condutas.length||DEVS.some(([k])=>devOn(b,k)));
+}
+function movePatient(a,b,swap){
+  const pa={}, pb={}; PAT_KEYS.forEach(k=>{pa[k]=a[k]; pb[k]=b[k];});
+  const blank=newBed(a.id,a.extra);
+  PAT_KEYS.forEach(k=>{ b[k]=pa[k]; a[k]=swap?pb[k]:blank[k]; });
+  a.upd=b.upd=Date.now();
+}
+function transferModal(src){
+  const opts=S.beds.filter(x=>x.id!==src.id);
+  const status=x=>(x.extra&&!x.ativo)?"não utilizado":(bedHasPatient(x)?(x.nome||"paciente sem nome")+" (ocupado)":"vago");
+  const sel=el("select",{class:"txt","aria-label":"Leito de destino"},
+    ...opts.map(x=>el("option",{value:x.id},bedLabel(x)+(x.extra&&x.local?" · "+x.local:"")+" — "+status(x))));
+  const info=el("div",{style:"margin-top:12px"});
+  const go=el("button",{class:"btn primary",type:"button"},"Transferir paciente");
+  let swapChk=null, localIn=null, close;
+  const dest=()=>opts.find(x=>x.id===sel.value);
+  function draw(){
+    info.innerHTML=""; const d=dest(); swapChk=null; localIn=null;
+    if(d.extra){
+      localIn=el("input",{class:"txt",type:"text",value:d.local||"",placeholder:"Localização real (ex.: Sala de recuperação)"});
+      info.append(el("label",{class:"lbl"},"Localização do "+bedLabel(d)),localIn);
+    }
+    if(bedHasPatient(d)&&!(d.extra&&!d.ativo)){
+      swapChk=true;
+      info.append(el("div",{class:"alert-banner",style:"margin:12px 0 0;background:#fff6e5;border-color:#f0cf8a;color:#7a4b00"},
+        `O ${bedLabel(d)} está ocupado${d.nome?" por "+d.nome:""}. Os dois pacientes vão trocar de lugar: ${d.nome||"o paciente dele"} irá para o ${bedLabel(src)}.`));
+    }
+    go.textContent=swapChk?"Trocar os dois de lugar":"Transferir paciente";
+  }
+  sel.addEventListener("change",draw);
+  go.addEventListener("click",()=>{ try{
+    const d=dest(), swap=!!swapChk;
+    if(d.extra){ d.ativo=true; d.local=localIn?localIn.value.trim():d.local; }
+    movePatient(src,d,swap);
+    if(src.extra&&!swap){ src.ativo=false; src.local=""; }
+    selected=d.id; save();
+    const msg=swap?`Pacientes trocados entre ${bedLabel(src)} e ${bedLabel(d)}`:`Paciente transferido do ${bedLabel(src)} para o ${bedLabel(d)}`;
+    close(); toast(msg);
+  }catch(err){ alert("Não foi possível transferir: "+err.message); } });
+  const body=el("div",{},
+    el("p",{class:"hint"},`Move todas as informações do ${bedLabel(src)}${src.nome?" ("+src.nome+")":""} para o leito escolhido: identificação, problemas, dispositivos e datas, antibióticos, culturas, imagem, pendências, condutas e registro.`
+      +(src.extra?" Como este é um leito extra, ele ficará como não utilizado após a transferência.":"")),
+    el("label",{class:"lbl"},"Leito de destino"),sel,info,
+    el("div",{style:"margin-top:16px;display:flex;gap:10px"},go));
+  draw(); close=openModal("Transferir de leito",body);
+}
+
+/* ============ Janelas ============ */
+function openModal(title,bodyNode,extraBtns){
+  const ov=el("div",{class:"overlay",onmousedown:e=>{if(e.target===ov)close();}});
+  const close=()=>{ov.remove();renderNav();renderEditor();};
+  ov.append(el("div",{class:"modal",role:"dialog","aria-label":title},
+    el("header",{},el("h3",{},title),el("div",{},extraBtns||"",el("button",{class:"btn",onclick:close},"Fechar"))),
+    el("div",{class:"body"},bodyNode)));
+  document.body.append(ov); return close;
+}
+function listsModal(){
+  const body=el("div"); let cur="problemas";
+  const sel=el("select",{class:"txt",style:"max-width:320px;margin-bottom:10px",onchange:e=>{cur=e.target.value;draw();}},
+    ...Object.keys(LIST_NAMES).map(k=>el("option",{value:k},LIST_NAMES[k])));
+  const holder=el("div");
+  body.append(el("p",{class:"hint"},"Corrija erros de digitação, renomeie ou exclua itens. Itens já usados nos leitos não são alterados."),sel,holder);
+  function draw(){
+    holder.innerHTML=""; const L=S.lists[cur];
+    const addIn=el("input",{class:"txt",placeholder:"Novo item…",style:"margin-bottom:8px",onkeydown:e=>{
+      if(e.key==="Enter"&&addIn.value.trim()){ addToList(cur,addIn.value); draw(); }}});
+    holder.append(addIn);
+    L.forEach((v,i)=>{
+      const inp=el("input",{value:v,onchange:e=>{
+        const nv=e.target.value.replace(/\s+/g," ").trim();
+        if(!nv){e.target.value=v;return;}
+        if(L.some((x,j)=>j!==i&&norm(x)===norm(nv))){toast("Esse item já existe na lista");e.target.value=v;return;}
+        L[i]=nv; L.sort((a,b)=>a.localeCompare(b,"pt-BR",{sensitivity:"base"})); save(); draw();
+      }});
+      holder.append(el("div",{class:"list-item"},inp,el("button",{class:"btn small danger",onclick:()=>{
+        if(confirm(`Excluir "${v}" da lista?`)){L.splice(i,1);save();draw();}}},"Excluir")));
+    });
+    if(!L.length) holder.append(el("p",{class:"hint"},"Lista vazia."));
+  }
+  draw(); openModal("Gerenciar listas",body);
+}
+function archiveCurrent(){
+  S.archive.unshift({ts:Date.now(),data:S.data,beds:JSON.parse(JSON.stringify(S.beds))});
+  S.archive=S.archive.slice(0,60);
+}
+function histModal(){
+  const body=el("div");
+  function draw(){
+    body.innerHTML="";
+    if(!S.archive.length){ body.append(el("p",{class:"hint"},"Nenhum plantão arquivado ainda. Use “Novo plantão” para arquivar o atual.")); return; }
+    S.archive.forEach((a,i)=>{
+      const when=new Date(a.ts).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});
+      const n=a.beds.filter(b=>b.nome).length;
+      body.append(el("div",{class:"list-item",style:"padding:8px 0"},
+        el("div",{style:"flex:1"},el("b",{},"Passômetro de "+fmtDate(a.data,true)),el("div",{class:"hint",style:"margin:0"},`Arquivado em ${when} · ${n} paciente(s)`)),
+        el("button",{class:"btn small",onclick:()=>saveWord({unit:S.unit,data:a.data,beds:a.beds,logo:S.logo,logoRatio:S.logoRatio},`passometro_${a.data}.doc`)},"Word"),
+        el("button",{class:"btn small",onclick:()=>{ $("#printArea").innerHTML=`<style>${DOC_CSS}</style>`+docBody({unit:S.unit,data:a.data,beds:a.beds,logo:S.logo,logoRatio:S.logoRatio}); window.print(); }},"Imprimir"),
+        el("button",{class:"btn small",onclick:()=>{ if(confirm("Restaurar este plantão? Os dados atuais serão substituídos (arquive antes, se quiser guardá-los).")){
+          S.beds=normalizeState({beds:JSON.parse(JSON.stringify(a.beds))}).beds; S.data=a.data; $("#hData").value=S.data; save(); toast("Plantão restaurado"); } }},"Restaurar"),
+        el("button",{class:"btn small danger",onclick:()=>{ if(confirm("Excluir este plantão arquivado?")){S.archive.splice(i,1);save();draw();} }},"Excluir")));
+    });
+  }
+  draw(); openModal("Histórico de plantões",body);
+}
+function importBackup(file){
+  if(!file) return;
+  const r=new FileReader();
+  r.onerror=()=>alert("Não foi possível ler o arquivo escolhido.");
+  r.onload=()=>{
+    let d;
+    try{ d=JSON.parse(String(r.result).replace(/^\uFEFF/,"")); }
+    catch(e){ alert("Não foi possível ler esse arquivo como backup. Escolha o arquivo .json gerado em Backup > Exportar backup."); return; }
+    try{
+      if(d&&d.parts&&!d.beds){ /* formato do servidor (estado.json ou backup_*.json) */
+        const prev=S; S=normalizeState(null);
+        Object.keys(d.parts).forEach(n=>applyPart(n,d.parts[n].value));
+        d=normalizeState(S); S=prev;
+      }
+      if(!d||!Array.isArray(d.beds)||!d.lists) throw new Error("o arquivo não tem a estrutura de um backup do passômetro");
+      const n=d.beds.filter(b=>b&&b.nome).length;
+      if(!confirm(`Importar este backup (${n} paciente(s) nos leitos)?\n\nOs dados atuais serão substituídos.`)) return;
+      const ur=S.ultimoResp;
+      S=normalizeState(d); S.ultimoResp=ur; selected="L1";
+      if(NET){ Object.keys(pending).forEach(k=>delete pending[k]); renderBanner(); }
+      $("#hUnit").value=S.unit; $("#hData").value=S.data;
+      save(); renderNav(); renderEditor();
+      document.querySelectorAll(".overlay").forEach(o=>o.remove());
+      toast("Backup importado ("+n+" paciente(s))");
+    }catch(e){ alert("Não foi possível importar: "+e.message); }
+  };
+  r.readAsText(file);
+}
+function backupModal(){
+  const body=el("div",{},
+    el("p",{class:"hint"},"O backup guarda pacientes, listas aprendidas e histórico em um arquivo .json. Guarde-o em local seguro, pois contém dados de pacientes."),
+    el("div",{style:"display:flex;gap:10px"},
+      el("button",{class:"btn primary",onclick:()=>{ download(`backup_passometro_${todayISO()}.json`,new Blob([JSON.stringify(S)],{type:"application/json"})); }},"Exportar backup")),
+    el("div",{style:"margin-top:20px;padding-top:16px;border-top:1px solid var(--line)"},
+      el("label",{class:"lbl",style:"font-weight:600;color:var(--ink)"},"Importar backup"),
+      el("p",{class:"hint"},"Escolha o arquivo .json salvo em “Exportar backup”. Os dados atuais serão substituídos."),
+      el("input",{type:"file",accept:".json,.txt,application/json,text/plain",onchange:e=>{ importBackup(e.target.files[0]); e.target.value=""; }})));
+  openModal("Backup",body);
+}
+function novoPlantao(){
+  if(!confirm("Arquivar o plantão atual e iniciar o próximo?\n\nOs dados dos pacientes continuam nos leitos para você atualizar; a data passa a ser a de hoje.")) return;
+  archiveCurrent(); S.data=todayISO(); $("#hData").value=S.data; save(); renderNav(); renderEditor(); toast("Plantão arquivado");
+}
+
+/* ============ Sincronização (Firebase) ============ */
+let NET=false, netDown=false, needRender=false, tickN=0, pushing=false, again=false, netUser="";
+const CID=Math.random().toString(36).slice(2)+Date.now().toString(36);
+const versions={}, synced={}, pending={};
+
+function partNames(){ return ["meta","logo",...S.archive.map(a=>"arch:"+a.ts),...Object.keys(S.lists).map(k=>"list:"+k),...S.beds.map(b=>"bed:"+b.id)]; }
+function getPart(n){
+  if(n==="meta") return {unit:S.unit,data:S.data};
+  if(n==="logo") return {logo:S.logo||"",logoRatio:S.logoRatio||0};
+  if(n.startsWith("arch:")) return S.archive.find(a=>String(a.ts)===n.slice(5));
+  if(n.startsWith("list:")) return S.lists[n.slice(5)];
+  if(n.startsWith("bed:")) return S.beds.find(b=>b.id===n.slice(4));
+}
+function serialize(n){ return n.startsWith("arch:") ? "1" : JSON.stringify(getPart(n)); }
+function applyPart(n,v){
+  if(n==="meta"){ S.unit=v.unit||S.unit; S.data=v.data||S.data; }
+  else if(n==="logo"){ if(v.logo){ S.logo=v.logo; S.logoRatio=v.logoRatio; } else { delete S.logo; delete S.logoRatio; } }
+  else if(n==="archive"){ S.archive=(v||[]).map(a=>{ a.beds=(a.beds||[]).map(fixBed); return a; }); }  /* formato antigo (servidor local) */
+  else if(n.startsWith("arch:")){
+    const e=Object.assign({},v); e.beds=(e.beds||[]).map(fixBed);
+    const i=S.archive.findIndex(a=>a.ts===e.ts); if(i>=0) S.archive[i]=e; else S.archive.push(e);
+    S.archive.sort((a,b)=>b.ts-a.ts);
+  }
+  else if(n.startsWith("list:")) S.lists[n.slice(5)]=v;
+  else if(n.startsWith("bed:")){ const i=S.beds.findIndex(b=>b.id===n.slice(4)); if(i>=0) S.beds[i]=fixBed(Object.assign({},v)); }
+}
+function labelOf(n){
+  if(n.startsWith("bed:")){ const b=S.beds.find(x=>x.id===n.slice(4)); return b?bedLabel(b):n; }
+  if(n.startsWith("list:")) return "Lista “"+(LIST_NAMES[n.slice(5)]||n.slice(5))+"”";
+  if(n==="meta") return "Data do passômetro"; if(n==="logo") return "Logo"; return "Histórico";
+}
+function unionList(a,b){
+  const out=a.slice(); b.forEach(x=>{ if(!out.some(y=>norm(y)===norm(x))) out.push(x); });
+  return out.sort((x,y)=>x.localeCompare(y,"pt-BR",{sensitivity:"base"}));
+}
+function editingNow(){
+  const a=document.activeElement; return !!(a&&$("#editor").contains(a)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+}
+function setNet(up,stamp){
+  netDown=!up; const m=$("#savedMsg");
+  if(!up){ m.textContent="⚠ Sem conexão – alterações serão enviadas ao reconectar"; m.classList.add("bad"); return; }
+  m.classList.remove("bad");
+  if(stamp||!m.textContent||m.textContent.startsWith("⚠")) m.textContent="Sincronizado às "+new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+}
+function blockAccess(){
+  document.body.innerHTML="";
+  const b=el("div",{style:"padding:40px;font:16px/1.5 sans-serif;max-width:560px;margin:auto"},
+    el("h2",{},"Acesso não autorizado"),
+    el("p",{},`O e-mail ${netUser?"“"+netUser+"…” ":""}não está na lista de acesso do passômetro. Peça ao responsável pelo sistema para incluí-lo.`),
+    el("button",{class:"btn",onclick:()=>FB.signOut().then(()=>location.reload())},"Sair"));
+  document.body.append(b);
+}
+function netError(e){ if(e&&e.code==="permission-denied") blockAccess(); else setNet(false); }
+
+async function pushDirty(){
+  if(!NET) return;
+  if(pushing){ again=true; return; }
+  pushing=true; let sent=false;
+  try{
+    const names=partNames();
+    for(const n of names){
+      if(pending[n]&&pending[n].conflict) continue;
+      const js=serialize(n);
+      if(synced[n]===js) continue;
+      let r;
+      try{ r=await FB.put(n,versions[n]||0,getPart(n),netUser,CID); }catch(e){ netError(e); return; }
+      if(r.conflict){
+        const cur=r.current;
+        if(n.startsWith("list:")&&cur){ versions[n]=cur.v; S.lists[n.slice(5)]=unionList(S.lists[n.slice(5)],cur.value); again=true; continue; }
+        if(cur){ pending[n]={ev:{part:n,v:cur.v,value:cur.value,by:cur.by},conflict:true}; renderBanner(); }
+        continue;
+      }
+      versions[n]=r.v; synced[n]=js; sent=true;
+    }
+    for(const n of Object.keys(synced)){           /* histórico apagado localmente */
+      if(n.startsWith("arch:")&&!names.includes(n)){
+        try{ await FB.remove(n); delete synced[n]; delete versions[n]; sent=true; }catch(e){ netError(e); return; }
+      }
+    }
+    setNet(true,sent);
+  } finally { pushing=false; if(again){ again=false; pushDirty(); } }
+}
+function applyRemote(ev){
+  versions[ev.part]=ev.v; applyPart(ev.part,ev.value); synced[ev.part]=serialize(ev.part); delete pending[ev.part];
+  renderBanner(); renderNav();
+  if(ev.part==="meta"){ $("#hUnit").value=S.unit; $("#hData").value=S.data; }
+  if(ev.part==="meta"||ev.part==="bed:"+selected){ if(editingNow()) needRender=true; else renderEditor(); }
+}
+function onRemote(ev){
+  if(ev.value==null) return;
+  if(ev.cid&&ev.cid===CID) return;
+  if((versions[ev.part]||0)>=ev.v) return;
+  const dirty=synced[ev.part]!==undefined && serialize(ev.part)!==synced[ev.part];
+  if(ev.part.startsWith("list:")){
+    const k=ev.part.slice(5); versions[ev.part]=ev.v;
+    if(dirty){ S.lists[k]=unionList(S.lists[k],ev.value); save(); }
+    else { S.lists[k]=ev.value; synced[ev.part]=serialize(ev.part); }
+    return;
+  }
+  if(dirty||(ev.part==="bed:"+selected&&editingNow())){ pending[ev.part]={ev,conflict:dirty}; renderBanner(); return; }
+  applyRemote(ev);
+}
+function onChange(c){
+  if(c.type==="removed"){
+    if(c.part.startsWith("arch:")){ const ts=Number(c.part.slice(5)); S.archive=S.archive.filter(a=>a.ts!==ts); delete synced[c.part]; delete versions[c.part]; }
+    return;
+  }
+  onRemote({part:c.part,v:c.v,value:c.value,by:c.by,cid:c.cid});
+}
+function flushPending(){
+  Object.keys(pending).forEach(k=>{
+    const p=pending[k]; if(!p||p.conflict) return;
+    if(k==="bed:"+selected&&editingNow()) return;
+    if(serialize(k)!==synced[k]) return;
+    applyRemote(p.ev);
+  });
+}
+function renderBanner(){
+  const bn=$("#netBanner"), keys=Object.keys(pending);
+  if(!keys.length){ bn.hidden=true; bn.innerHTML=""; return; }
+  const k=keys[0], p=pending[k]; bn.hidden=false; bn.innerHTML="";
+  bn.append(el("span",{},`⚠ ${p.ev.by||"Outro usuário"} atualizou: ${labelOf(k)}.${p.conflict?" Suas alterações nesse item ainda não foram salvas.":""}`),
+    el("button",{class:"btn small",type:"button",onclick:()=>applyRemote(p.ev)},"Carregar a versão atual"));
+  if(p.conflict) bn.append(el("button",{class:"btn small",type:"button",onclick:()=>{ versions[k]=p.ev.v; delete pending[k]; renderBanner(); save(); }},"Manter a minha versão"));
+}
+
+/* ---- login ---- */
+function authMsg(e){
+  const c=(e&&e.code)||"";
+  if(/invalid-credential|wrong-password|user-not-found|invalid-email/.test(c)) return "E-mail ou senha incorretos.";
+  if(c==="auth/too-many-requests") return "Muitas tentativas. Aguarde alguns minutos e tente de novo.";
+  if(c==="auth/network-request-failed") return "Sem conexão com a internet.";
+  return "Não foi possível entrar ("+c+").";
+}
+function hideLogin(){ const ov=document.getElementById("loginOv"); if(ov) ov.remove(); }
+function showLogin(){
+  hideLogin();
+  const email=el("input",{class:"txt",type:"email",placeholder:"E-mail institucional",autocomplete:"username"});
+  const pass=el("input",{class:"txt",type:"password",placeholder:"Senha",autocomplete:"current-password"});
+  const err=el("p",{class:"hint",style:"color:var(--danger);min-height:20px;margin:8px 0"});
+  const go=el("button",{class:"btn primary",type:"button",style:"width:100%"},"Entrar");
+  async function entrar(){
+    err.style.color="var(--danger)"; err.textContent=""; go.disabled=true;
+    try{ await FB.signIn(email.value.trim(),pass.value); }
+    catch(e){ err.textContent=authMsg(e); go.disabled=false; }
+  }
+  go.addEventListener("click",entrar);
+  [email,pass].forEach(i=>i.addEventListener("keydown",e=>{ if(e.key==="Enter") entrar(); }));
+  const reset=el("button",{class:"btn small",type:"button",onclick:async()=>{
+    if(!email.value.trim()){ err.textContent="Digite seu e-mail e clique de novo."; return; }
+    try{ await FB.resetPassword(email.value.trim()); err.style.color="var(--accent)"; err.textContent="Enviamos um e-mail para redefinir a senha."; }
+    catch(e){ err.textContent=authMsg(e); }
+  }},"Esqueci a senha");
+  const ov=el("div",{class:"overlay",id:"loginOv",style:"background:var(--bg)"},
+    el("div",{class:"modal",style:"width:min(400px,100%)"},el("div",{class:"body"},
+      el("h2",{style:"margin:0 0 4px"},"Passômetro"),el("p",{class:"hint"},"UTI IOG – acesso restrito à equipe"),
+      email,el("div",{style:"height:10px"}),pass,err,go,el("div",{style:"margin-top:10px;text-align:center"},reset))));
+  document.body.append(ov); email.focus();
+}
+function requireLogin(){
+  return new Promise(resolve=>{
+    let done=false;
+    FB.onAuth(u=>{
+      if(u){ hideLogin(); if(!done){ done=true; resolve(u); } }
+      else if(done) location.reload(); else showLogin();
+    });
+  });
+}
+
+/* ---- início da sincronização ---- */
+async function netStart(){
+  S=normalizeState(null);
+  try{ S.ultimoResp=localStorage.getItem("passometro_ultimoResp")||""; }catch(e){}
+  let first=true;
+  await new Promise((resolve,reject)=>{
+    FB.listen(changes=>{
+      if(first){
+        first=false;
+        changes.forEach(c=>{ if(c.type!=="removed"&&c.value!=null){ versions[c.part]=c.v; applyPart(c.part,c.value); } });
+        S=normalizeState(S);
+        const names=partNames();
+        Object.keys(versions).forEach(n=>{ if(names.includes(n)) synced[n]=serialize(n); });
+        resolve(); return;
+      }
+      changes.forEach(onChange);
+    },err=>{ if(first){ first=false; reject(err); } else netError(err); });
+  });
+  setInterval(()=>{ tickN++; if(netDown||tickN%2===0) pushDirty(); flushPending(); if(needRender&&!editingNow()){ needRender=false; renderEditor(); } },3000);
+  window.addEventListener("online",()=>{ setNet(true); pushDirty(); });
+  window.addEventListener("offline",()=>setNet(false));
+  window.addEventListener("beforeunload",e=>{
+    if(partNames().some(n=>!(pending[n]&&pending[n].conflict)&&synced[n]!==serialize(n))){ e.preventDefault(); e.returnValue=""; }
+  });
+  $("#editor").addEventListener("focusout",()=>setTimeout(()=>{
+    if(editingNow()) return; flushPending(); if(needRender){ needRender=false; renderEditor(); }
+  },250));
+  save();
+}
+
+/* ============ Inicialização ============ */
+async function init(){
+  const fb=await window.fbReady;
+  if(fb){
+    NET=true;
+    try{
+      const u=await requireLogin();
+      netUser=(u.email||"usuário").split("@")[0];
+      $("#userInfo").textContent=u.email||"";
+      const so=$("#bSair"); so.hidden=false; so.onclick=()=>FB.signOut().then(()=>location.reload());
+      await netStart();
+    }catch(e){
+      if(e&&e.code==="permission-denied"){ blockAccess(); return; }
+      console.error(e);
+      document.body.innerHTML="<p style='padding:30px;font:16px sans-serif'>Não foi possível carregar os dados. Verifique a internet e recarregue a página (F5).</p>"; return;
+    }
+  } else {
+    if(!confirm("Não foi possível conectar ao serviço online (sem internet?).\n\nUsar o modo local, somente neste computador e sem sincronização?")){
+      document.body.innerHTML="<p style='padding:30px;font:16px sans-serif'>Sem conexão. Recarregue a página (F5) quando a internet voltar.</p>"; return;
+    }
+    load();
+  }
+  $("#hUnit").value=S.unit; $("#hData").value=S.data;
+  $("#hUnit").addEventListener("input",e=>{S.unit=e.target.value;save();});
+  $("#hData").addEventListener("input",e=>{ if(e.target.value){S.data=e.target.value; save(); renderEditor();} });
+  $("#bLists").onclick=listsModal; $("#bHist").onclick=histModal; $("#bBackup").onclick=backupModal; $("#bLogo").onclick=logoModal;
+  $("#bNovo").onclick=novoPlantao; $("#bPrint").onclick=doPrint; $("#bWord").onclick=doWord;
+  renderNav(); renderEditor();
+}
+init();
+</script>
+</body>
+</html>
