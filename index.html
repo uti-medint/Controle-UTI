@@ -78,7 +78,7 @@ input.txt{width:100%;border:1px solid var(--line);border-radius:6px;padding:8px 
 .tog:hover{border-color:#9bb8b3}
 .tog.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .dev-sites{margin-top:12px;display:grid;gap:10px}
-.dev-sites .row{display:grid;grid-template-columns:70px 150px 210px 1fr;gap:10px;align-items:center}
+.dev-sites .row{display:grid;grid-template-columns:120px 150px 210px 1fr;gap:10px;align-items:center}
 .dev-badge{font-weight:600;color:var(--muted);font-size:14px}
 .dev-badge.warn{color:#fff;background:var(--danger);border-radius:14px;padding:3px 10px;justify-self:start}
 .alert-banner{background:#fdecea;border:1px solid #f1b8b3;color:var(--danger);padding:10px 14px;border-radius:8px;margin-bottom:14px;font-weight:600}
@@ -92,10 +92,16 @@ input.txt{width:100%;border:1px solid var(--line);border-radius:6px;padding:8px 
 .dev-sites .row b{color:var(--accent)}
 
 /* antibióticos */
-.atb-row{display:grid;grid-template-columns:2fr 1fr 1fr 90px 34px;gap:10px;align-items:end;padding:10px;border:1px solid #efd5c0;background:#fff9f4;border-radius:8px;margin-bottom:8px}
+.atb-row{display:grid;grid-template-columns:2fr 1fr 1fr 130px 34px;gap:10px;align-items:end;padding:10px;border:1px solid #efd5c0;background:#fff9f4;border-radius:8px;margin-bottom:8px}
 .atb-row .picker{border-color:#e6cdb8}
 .atb-row input[type=date]{width:100%;border:1px solid #e6cdb8;border-radius:6px;padding:7px 8px;background:#fff;min-height:40px}
 .atb-day{font-weight:700;color:var(--atb);text-align:center;padding-bottom:9px}
+.atb-day.fin{color:var(--muted);font-size:.9em}
+.tog.add{border-style:dashed}
+.out-row{display:grid;grid-template-columns:2fr 150px 1.5fr 80px 34px;gap:10px;align-items:end}
+.rowbox.proc-row{grid-template-columns:minmax(0,1.3fr) 150px 140px minmax(0,1.1fr) 140px 34px}
+.anest.feito.on{background:#e3f4ea;border-color:#2e8b57;color:#1f6b41}
+@media(max-width:900px){.out-row,.rowbox.proc-row{grid-template-columns:1fr 1fr}}
 .x-btn{border:none;background:none;color:var(--muted);font-size:22px;border-radius:6px;height:36px}
 .x-btn:hover{background:#f6e3d3;color:var(--danger)}
 @media(max-width:900px){.atb-row{grid-template-columns:1fr 1fr}}
@@ -133,8 +139,9 @@ input.txt{width:100%;border:1px solid var(--line);border-radius:6px;padding:8px 
 .hub-card.soon .hub-ic{background:#eceff0;color:#7a8b89}
 .badge{font-size:11px;font-weight:700;background:#eceff0;color:#5f716f;border-radius:10px;padding:2px 8px;text-transform:uppercase;letter-spacing:.04em}
 
-.exm-row{grid-template-columns:1.3fr 2.7fr 34px}
-.exm-detail{display:grid;grid-template-columns:minmax(220px,auto) 150px 120px;gap:10px;align-items:end}
+.exm-row{grid-template-columns:minmax(0,1fr) minmax(0,2.4fr) 34px}
+.rowbox>div,.exm-detail>div{min-width:0}.rowbox input.txt,.exm-detail input.txt{width:100%}
+.exm-detail{display:grid;grid-template-columns:minmax(150px,1.2fr) 140px 150px 140px;gap:10px;align-items:end}
 .anest{min-height:40px;border:1.5px solid var(--line);background:#fff;border-radius:8px;padding:0 14px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:8px}
 .anest.on{background:var(--atb-soft);border-color:var(--atb);color:var(--atb)}
 @media(max-width:900px){.rowbox.exm-row,.exm-detail{grid-template-columns:1fr}}
@@ -278,7 +285,8 @@ const LIST_NAMES = {
   pend:"Pendências", condutas:"Condutas", plano:"Planos de saúde",
   sCVC:"Sítios de CVC", sCDL:"Sítios de CDL", sDreno:"Sítios de dreno",
   achado:"Achados de imagem", sCultura:"Sítios de cultura", germe:"Germes identificados", perfil:"Perfis de antibiograma", medico:"Médicos / residentes",
-  npend:"Pendências (enfermagem)"
+  npend:"Pendências (enfermagem)", sPA:"Sítios de punção arterial", procOutros:"Procedimentos (outros dispositivos)",
+  sOutros:"Sítios (outros dispositivos)", procP:"Procedimentos pendentes"
 };
 const DEFAULT_LISTS = {
   problemas:["Sepse","Choque séptico","Pneumonia associada à ventilação","Insuficiência respiratória aguda","SDRA","Lesão renal aguda","Pré-eclâmpsia grave","Eclâmpsia","Síndrome HELLP","Hemorragia pós-parto","Atonia uterina","Acretismo placentário","Histerectomia puerperal","Choque hemorrágico","Coagulopatia","Anemia","Distúrbio hidroeletrolítico","Diabetes descompensado","Cardiopatia","Insuficiência cardíaca","Edema agudo de pulmão","Tromboembolismo pulmonar","Crise convulsiva","Encefalopatia","Pós-parada cardiorrespiratória","Corioamnionite","Endometrite","Infecção de sítio cirúrgico","Pós-operatório de cesariana","Pós-operatório de laparotomia","Neoplasia ginecológica"],
@@ -295,10 +303,16 @@ const DEFAULT_LISTS = {
   germe:["Escherichia coli","Klebsiella pneumoniae","Pseudomonas aeruginosa","Acinetobacter baumannii","Enterobacter cloacae","Proteus mirabilis","Serratia marcescens","Stenotrophomonas maltophilia","Staphylococcus aureus","Staphylococcus coagulase negativo","Enterococcus faecalis","Enterococcus faecium","Streptococcus agalactiae","Candida albicans","Candida não-albicans"],
   perfil:["Pan-sensível","MSSA","MRSA","ESBL","AmpC","KPC","Carbapenemase (resistente a carbapenêmicos)","Pseudomonas resistente a carbapenêmicos","VRE","Multirresistente (MDR)","Extensivamente resistente (XDR)","Sensível a carbapenêmicos","Sensível a polimixina"],
   medico:[],
-  npend:["Banho no leito","Higiene oral","Mudança de decúbito","Curativo de CVC","Troca de fixação do TOT","Troca de equipos","Troca de SVD","Troca de SNE","Aspiração de vias aéreas","Glicemia capilar","Coleta de exames laboratoriais","Balanço hídrico","Aguardando transporte","Preparar para transferência"]
+  npend:["Banho no leito","Higiene oral","Mudança de decúbito","Curativo de CVC","Troca de fixação do TOT","Troca de equipos","Troca de SVD","Troca de SNE","Aspiração de vias aéreas","Glicemia capilar","Coleta de exames laboratoriais","Balanço hídrico","Aguardando transporte","Preparar para transferência"],
+  sPA:["Femoral D","Femoral E","Radial D","Radial E"],
+  procOutros:["Cateter de hemodiálise","PICC","Marcapasso transitório","Cateter epidural","Cateter de Swan-Ganz","ECMO","Balão intra-aórtico"],
+  sOutros:["Jugular D","Jugular E","Subclávia D","Subclávia E","Femoral D","Femoral E","Radial D","Radial E","Braço D","Braço E","Tórax D","Tórax E","Abdome"],
+  procP:["Passagem de CVC","Passagem de acesso arterial (PAI)","Intubação orotraqueal","Traqueostomia","Drenagem torácica","Paracentese","Toracocentese","Punção lombar","Cateter de hemodiálise","PICC","Passagem de SNE","Endoscopia digestiva alta","Broncoscopia","Retirada de dreno","Curativo extenso"]
 };
-const DEVS=[["svd","SVD"],["sne","SNE"],["tot","TOT"],["tqt","TQT"],["cvc","CVC"],["cdl","CDL"],["dreno","Dreno"]];
-const SITED={cvc:"sCVC",cdl:"sCDL",dreno:"sDreno"};
+const DEVS=[["svd","SVD"],["sne","SNE"],["gtt","GTT"],["tot","TOT"],["tqt","TQT"],["cvc","CVC"],["cdl","CDL"],["pa","Punção arterial"],["dreno","Dreno"]];
+const SITED={cvc:"sCVC",cdl:"sCDL",pa:"sPA",dreno:"sDreno"};
+const THRESH=10;                      /* citações para um texto novo entrar na lista de sugestões */
+const IMEDIATO={medico:true};         /* nomes de médicos entram na lista já na primeira vez */
 const ALERT_DIAS=15;
 const N_FIXOS = 17, N_EXTRAS = 4;
 
@@ -306,16 +320,16 @@ const N_FIXOS = 17, N_EXTRAS = 4;
    identificação, lista de problemas, dispositivos invasivos e situação do leito ficam em SHARED.pac[idDoLeito]. */
 const PAC_KEYS=["pid","nome","idade","admissao","plano","problemas","disp","dd","ativo","local"];
 const PAC_MOVE=["pid","nome","idade","admissao","plano","problemas","disp","dd"];
-const SVC_KEYS=["atb","culturas","imagem","pend","condutas","exm","resp"];
+const SVC_KEYS=["atb","culturas","imagem","pend","condutas","exm","proc","resp"];
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
-function defaultDisp(){ return {svd:false,sne:false,tot:false,tqt:false,cvc:{on:false,sitios:[]},cdl:{on:false,sitios:[]},dreno:{on:false,sitios:[]}}; }
+function defaultDisp(){ return {svd:false,sne:false,gtt:false,tot:false,tqt:false,cvc:{on:false,sitios:[]},cdl:{on:false,sitios:[]},pa:{on:false,sitios:[]},dreno:{on:false,sitios:[]},outros:[]}; }
 function defaultPac(id){ return {pid:"",nome:"",idade:"",admissao:"",plano:"",problemas:[],disp:defaultDisp(),dd:{},ativo:!String(id).startsWith("E"),local:""}; }
 function pacOf(id){ return SHARED.pac[id]||(SHARED.pac[id]=defaultPac(id)); }
 function pacPristine(p,id){
   const d=defaultPac(id);
   const dev=DEVS.some(([k])=>{ const v=p.disp&&p.disp[k]; return v&&typeof v==="object"?!!v.on:!!v; });
   return !p.pid && ["nome","idade","admissao","plano","local"].every(k=>!p[k]) && !(p.problemas||[]).length
-    && !dev && !Object.keys(p.dd||{}).length && p.ativo===d.ativo;
+    && !dev && !((p.disp&&p.disp.outros)||[]).length && !Object.keys(p.dd||{}).length && p.ativo===d.ativo;
 }
 function bindPac(b){
   PAC_KEYS.forEach(k=>Object.defineProperty(b,k,{get:()=>pacOf(b.id)[k],set:v=>{ pacOf(b.id)[k]=v; },enumerable:false,configurable:true}));
@@ -330,13 +344,35 @@ function absorbLegacy(b){          /* dados antigos (identificação dentro do l
   if(pacPristine(p,b.id)) PAC_KEYS.forEach(k=>{ if(got[k]!==undefined) p[k]=got[k]; });
 }
 function newBed(id, extra){
-  return {id, extra, atb:[], culturas:[], imagem:[], pend:[], condutas:[], exm:[], resp:"", upd:null};
+  return {id, extra, atb:[], culturas:[], imagem:[], pend:[], condutas:[], exm:[], proc:[], resp:"", upd:null};
 }
 function devOn(b,k){ const v=b.disp[k]; return (v&&typeof v==='object')?!!v.on:!!v; }
-function setDevOn(b,k,val){ if(typeof b.disp[k]==='object') b.disp[k].on=val; else b.disp[k]=val; }
-function devAlerts(b,ref){ return DEVS.filter(([k])=>devOn(b,k)).map(([k,l])=>({k,l,d:daysSince((b.dd||{})[k],ref)})).filter(x=>x.d>ALERT_DIAS); }
+const DEV_OBJ=["cvc","cdl","pa","dreno"];
+function setDevOn(b,k,val){
+  if(DEV_OBJ.includes(k)){ if(!b.disp[k]||typeof b.disp[k]!=='object') b.disp[k]={on:false,sitios:[]}; b.disp[k].on=val; }
+  else b.disp[k]=val;
+}
+function devEntries(b,ref){            /* todos os dispositivos em uso (fixos + "Outros"), com sítio, data e dia */
+  const dd=b.dd||{}, out=[];
+  DEVS.forEach(([k,l])=>{
+    if(!devOn(b,k)) return;
+    const sit=(SITED[k]&&b.disp[k].sitios&&b.disp[k].sitios.length)?b.disp[k].sitios.join(", "):"";
+    out.push({k,l,sit,data:dd[k]||"",d:daysSince(dd[k],ref)});
+  });
+  ((b.disp&&b.disp.outros)||[]).forEach((o,i)=>{
+    if(!o||!(o.proc||o.sitio||o.data)) return;
+    out.push({k:"o"+i,l:o.proc||"Outro",sit:o.sitio||"",data:o.data||"",d:daysSince(o.data,ref)});
+  });
+  return out;
+}
+function devAlerts(b,ref){ return devEntries(b,ref).filter(x=>x.data&&x.d>ALERT_DIAS); }
+function atbInfo(a,ref){               /* contagem do antibiótico: para ao chegar a data de término */
+  if(!a.nome||!a.ini) return {txt:"",fin:false};
+  if(a.fim&&ref&&a.fim<=ref&&a.fim>=a.ini){ const n=daysSince(a.ini,a.fim); return {txt:"Finalizado · "+n+" D",fin:true,n}; }
+  const d=daysSince(a.ini,ref); return {txt:(d&&d>0)?"D"+d:"",fin:false,n:d};
+}
 function fixSvc(b){                /* somente os campos de cada passômetro */
-  b.exm=Array.isArray(b.exm)?b.exm:[]; b.culturas=Array.isArray(b.culturas)?b.culturas:[];
+  b.exm=Array.isArray(b.exm)?b.exm:[]; b.proc=Array.isArray(b.proc)?b.proc:[]; b.culturas=Array.isArray(b.culturas)?b.culturas:[];
   b.atb=Array.isArray(b.atb)?b.atb:[]; b.pend=Array.isArray(b.pend)?b.pend:[]; b.condutas=Array.isArray(b.condutas)?b.condutas:[];
   b.resp=b.resp||''; b.upd=b.upd||null;
   b.imagem=(b.imagem||[]).map(x=>typeof x==='string'?{nome:x,data:'',achado:''}:x);
@@ -359,7 +395,7 @@ function freshBeds(){
 /* Dois serviços (med = médico, enf = enfermagem) com leitos e histórico próprios.
    Listas, logo, exames POCUS e último responsável são compartilhados (SHARED). */
 const SVCS=["med","enf"];
-const SHARED={lists:{},logo:"",logoRatio:0,ultimoResp:"",pocus:[],pac:{}};
+const SHARED={lists:{},logo:"",logoRatio:0,ultimoResp:"",pocus:[],pac:{},reg:{}};
 const SV={};
 const SEL={med:"L1",enf:"L1"};
 let S, selected="L1", view="hub";
@@ -385,12 +421,14 @@ function buildAll(raw){
   SHARED.logo=raw.logo||""; SHARED.logoRatio=raw.logoRatio||0;
   SHARED.pocus=Array.isArray(raw.pocus)?raw.pocus:[];
   SHARED.pac=(raw.pac&&typeof raw.pac==='object')?raw.pac:{};
+  Object.keys(SHARED.pac).forEach(id=>{ const q=SHARED.pac[id]; if(q&&typeof q==='object') q.disp=Object.assign(defaultDisp(),q.disp||{}); });
+  SHARED.reg=(raw.reg&&typeof raw.reg==='object')?raw.reg:{};
   SV.med=normalizeService(legacy?raw:raw.med,"med");
   SV.enf=normalizeService(raw.enf,"enf");
 }
 function snapService(st){ return {unit:st.unit,data:st.data,beds:st.beds,archive:st.archive}; }
 function snapshotAll(){
-  return {v:2,med:snapService(SV.med),enf:snapService(SV.enf),lists:SHARED.lists,logo:SHARED.logo,logoRatio:SHARED.logoRatio,pocus:SHARED.pocus,pac:SHARED.pac};
+  return {v:2,med:snapService(SV.med),enf:snapService(SV.enf),lists:SHARED.lists,logo:SHARED.logo,logoRatio:SHARED.logoRatio,pocus:SHARED.pocus,pac:SHARED.pac,reg:SHARED.reg};
 }
 function load(){
   try{ const raw=localStorage.getItem(STORE_KEY); buildAll(raw?JSON.parse(raw):null); }
@@ -438,6 +476,81 @@ function dayCount(iso){ return daysSince(iso,S.data||todayISO()); }
 function updText(b){
   return b.upd ? "Última alteração neste leito: "+new Date(b.upd).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}) : "Nenhuma alteração registrada neste leito.";
 }
+/* Registro de tudo o que é digitado nas listas (sem identificação do paciente). Cada computador grava só o seu
+   próprio registro (reg:<id>); o total de citações é a soma de todos. Com THRESH citações o texto entra na lista. */
+const RID=(()=>{ try{ let r=localStorage.getItem("passometro_rid"); if(!r){ r="r"+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4); localStorage.setItem("passometro_rid",r); } return r; }catch(e){ return "r"+Math.random().toString(36).slice(2,8); } })();
+function regOwn(){ return SHARED.reg[RID]||(SHARED.reg[RID]={}); }
+function regTotal(key,nk){
+  let n=0,t="",best=-1,l=0;
+  Object.values(SHARED.reg).forEach(p=>{ const e=p&&p[key]&&p[key][nk]; if(e){ n+=e.n; l=Math.max(l,e.l||0); if(e.n>best){best=e.n;t=e.t;} } });
+  return {n,t,l};
+}
+function regMerge(dst,src){
+  Object.keys(src||{}).forEach(k=>{ const m=dst[k]||(dst[k]={});
+    Object.keys(src[k]).forEach(nk=>{ const e=src[k][nk], d=m[nk];
+      if(!d) m[nk]=Object.assign({},e); else { d.n=Math.max(d.n,e.n); d.l=Math.max(d.l||0,e.l||0); } }); });
+}
+function regPrune(o){
+  let c=0; Object.keys(o).forEach(k=>c+=Object.keys(o[k]).length);
+  if(c<=4000) return;
+  const lim=Date.now()-90*86400000;
+  Object.keys(o).forEach(k=>Object.keys(o[k]).forEach(nk=>{ const e=o[k][nk]; if(e.n<=2&&(e.l||0)<lim) delete o[k][nk]; }));
+}
+function regPromoteAll(){
+  let ch=false;
+  const keys=new Set(); Object.values(SHARED.reg).forEach(p=>Object.keys(p||{}).forEach(k=>keys.add(k)));
+  keys.forEach(k=>{
+    if(!Array.isArray(SHARED.lists[k])) return;
+    const nks=new Set(); Object.values(SHARED.reg).forEach(p=>Object.keys((p&&p[k])||{}).forEach(x=>nks.add(x)));
+    nks.forEach(nk=>{ if(SHARED.lists[k].some(x=>norm(x)===nk)) return; const t=regTotal(k,nk); if(t.n>=THRESH){ addToList(k,t.t); ch=true; } });
+  });
+  return ch;
+}
+function regRecord(key,text){
+  text=String(text||"").replace(/\s+/g," ").trim(); if(!text||text.length>200) return;
+  const nk=norm(text); if(!nk) return;
+  const o=regOwn(), m=o[key]||(o[key]={});
+  const e=m[nk]||(m[nk]={t:text,n:0,f:Date.now(),l:0}); e.n++; e.l=Date.now(); e.t=text;
+  regPrune(o);
+  const tot=regTotal(key,nk);
+  if(tot.n>=THRESH&&Array.isArray(SHARED.lists[key])) addToList(key,text);
+  save();
+}
+function learn(key,name){            /* usa o texto; só entra na lista de sugestões após THRESH citações (médicos: na hora) */
+  name=String(name||"").replace(/\s+/g," ").trim(); if(!name) return null;
+  const hit=S.lists[key].find(x=>norm(x)===norm(name)); if(hit) return hit;
+  if(IMEDIATO[key]) return addToList(key,name);
+  regRecord(key,name); return name;
+}
+function regModal(){
+  const body=el("div"); let cur="pend", q="";
+  const sel=el("select",{class:"txt",style:"max-width:320px",onchange:e=>{cur=e.target.value;draw();}},
+    ...Object.keys(LIST_NAMES).filter(k=>!IMEDIATO[k]).map(k=>el("option",{value:k,...(k===cur?{selected:""}:{})},LIST_NAMES[k])));
+  const search=el("input",{class:"txt",placeholder:"Buscar…",style:"max-width:240px;margin-left:8px",oninput:e=>{q=norm(e.target.value);draw();}});
+  const csv=el("button",{class:"btn small",style:"margin-left:8px",onclick:()=>{
+    const rows=[["lista","texto","citacoes","ultima_vez","na_lista"]];
+    Object.keys(LIST_NAMES).forEach(k=>{ const nks=new Set(); Object.values(SHARED.reg).forEach(p=>Object.keys((p&&p[k])||{}).forEach(x=>nks.add(x)));
+      nks.forEach(nk=>{ const t=regTotal(k,nk); rows.push([LIST_NAMES[k],t.t,t.n,t.l?new Date(t.l).toISOString():"",(S.lists[k]||[]).some(x=>norm(x)===nk)?"sim":"não"]); }); });
+    const txt=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(";")).join("\r\n");
+    download("registro_textos_"+todayISO()+".csv",new Blob(["\ufeff"+txt],{type:"text/csv"}));
+  }},"Exportar CSV");
+  const holder=el("div",{style:"margin-top:10px"});
+  body.append(el("p",{class:"hint"},"Tudo o que é digitado nas listas fica registrado aqui, mesmo sem entrar na lista de sugestões. O texto passa a ser sugerido quando for citado "+THRESH+" vezes. Nomes de pacientes não são registrados."),
+    el("div",{},sel,search,csv),holder);
+  function draw(){
+    holder.innerHTML="";
+    const nks=new Set(); Object.values(SHARED.reg).forEach(p=>Object.keys((p&&p[cur])||{}).forEach(x=>nks.add(x)));
+    const items=[...nks].map(nk=>Object.assign({nk},regTotal(cur,nk))).filter(x=>!q||x.nk.includes(q)).sort((a,b)=>b.n-a.n||b.l-a.l).slice(0,300);
+    if(!items.length){ holder.append(el("p",{class:"hint"},"Nada registrado nesta lista ainda.")); return; }
+    items.forEach(x=>{
+      const inList=S.lists[cur].some(y=>norm(y)===x.nk);
+      holder.append(el("div",{class:"list-item"},
+        el("div",{style:"flex:1"},el("b",{},x.t),el("div",{class:"hint",style:"margin:0"},x.n+" citaç"+(x.n===1?"ão":"ões")+(x.l?" · última em "+new Date(x.l).toLocaleDateString("pt-BR"):"")+(inList?" · já está na lista":""))),
+        inList?null:el("button",{class:"btn small",onclick:()=>{ addToList(cur,x.t); draw(); }},"Adicionar à lista")));
+    });
+  }
+  draw(); openModal("Registro de textos digitados",body);
+}
 function addToList(key,name){
   name=name.replace(/\s+/g," ").trim(); if(!name) return null;
   const L=S.lists[key]; const hit=L.find(x=>norm(x)===norm(name));
@@ -475,12 +588,12 @@ function picker(opts){
       onmousedown:e=>{e.preventDefault(); pick(x);}},x)));
     const exact=S.lists[opts.key].some(x=>norm(x)===nq);
     if(nq && !exact) dd.append(el("div",{class:"opt new",onmousedown:e=>{e.preventDefault(); pick(q,true);}},
-      `Adicionar "${q.trim()}" à lista`));
+      `Usar "${q.trim()}"`));
     if(!shown.length && !(nq&&!exact)) dd.append(el("div",{class:"none"},"Nenhum item disponível"));
     dd.hidden=false;
   }
   function pick(v){
-    const name=addToList(opts.key,v); if(!name) return;
+    const name=learn(opts.key,v); if(!name) return;
     if(opts.single){ opts.set(name); input.value=name; dd.hidden=true; input.blur(); }
     else{ const a=opts.get().slice(); if(!a.some(x=>norm(x)===norm(name))) a.push(name); opts.set(a);
       input.value=""; active=-1; renderChips(); renderDD(); input.focus(); }
@@ -494,7 +607,10 @@ function picker(opts){
     if(opts.single){ // texto digitado sem confirmar: aceita como novo item
       const v=input.value.trim();
       if(!v){ if(opts.get()){ opts.set(""); afterChange(); } }
-      else if(norm(v)!==norm(opts.get()||"")){ const n=addToList(opts.key,v); opts.set(n); input.value=n; afterChange(); }
+      else if(norm(v)!==norm(opts.get()||"")){ const n=learn(opts.key,v); opts.set(n); input.value=n; afterChange(); }
+    } else if(input.value.trim()){        // texto digitado sem confirmar: vira item (e fica registrado)
+      const n=learn(opts.key,input.value);
+      if(n){ const a=opts.get().slice(); if(!a.some(x=>norm(x)===norm(n))) a.push(n); opts.set(a); input.value=""; renderChips(); afterChange(); }
     }
   });
   input.addEventListener("keydown",e=>{
@@ -504,7 +620,7 @@ function picker(opts){
       if(active>=0&&shown[active]) pick(shown[active]);
       else if(input.value.trim()) pick(input.value);
     }
-    else if(e.key==="Escape"){ dd.hidden=true; input.blur(); }
+    else if(e.key==="Escape"){ dd.hidden=true; input.value=""; input.blur(); }
     else if(e.key==="Backspace" && !input.value && !opts.single){ const a=opts.get().slice(); if(a.length){a.pop(); opts.set(a); renderChips(); renderDD(); afterChange();} }
   });
   renderChips();
@@ -523,8 +639,8 @@ function bedLabel(b){ return b.extra ? `Extra ${b.id.slice(1)}` : `Leito ${b.id.
 function renderNav(){
   const nav=$("#nav"); nav.innerHTML="";
   const mk=b=>{
-    const has=b.nome||b.problemas.length||b.atb.length||b.pend.length||(b.exm||[]).length;
-    const devs=["svd","sne","tot","tqt"].filter(k=>b.disp[k]).length+["cvc","cdl","dreno"].filter(k=>b.disp[k].on).length;
+    const has=b.nome||b.problemas.length||b.atb.length||b.pend.length||(b.exm||[]).length||(b.proc||[]).length;
+    const devs=devEntries(b,S.data).length;
     const inactive=b.extra&&!b.ativo;
     const btn=el("button",{class:"bed-btn"+(b.id===selected?" active":"")+(!has?" empty":"")+(inactive?" inactive":""),
       onclick:()=>{selected=b.id; renderNav(); renderEditor(); }},
@@ -587,6 +703,8 @@ function renderEditor(){
     const wrap=el("div",{class:"devs"});
     DEVS.forEach(([k,l])=>wrap.append(el("button",{type:"button",class:"tog"+(devOn(b,k)?" on":""),"aria-pressed":devOn(b,k),
       onclick:()=>{ setDevOn(b,k,!devOn(b,k)); if(!devOn(b,k)) delete b.dd[k]; afterChange(); renderDevs(); renderAlert(); }},l)));
+    wrap.append(el("button",{type:"button",class:"tog add",title:"Adicionar outro dispositivo ou procedimento",
+      onclick:()=>{ b.disp.outros=(b.disp.outros||[]).concat([{proc:"",data:"",sitio:""}]); afterChange(); renderDevs(); }},"+ Outros"));
     devCard.append(wrap);
     const on=DEVS.filter(([k])=>devOn(b,k));
     if(on.length){
@@ -605,6 +723,23 @@ function renderEditor(){
           SITED[k]?picker({key:SITED[k],placeholder:"Sítio (clique para escolher)",get:()=>b.disp[k].sitios,set:v=>b.disp[k].sitios=v}):el("span")));
       });
       devCard.append(g);
+    }
+    if((b.disp.outros||[]).length){
+      const og=el("div",{class:"dev-sites",style:"margin-top:12px"});
+      b.disp.outros.forEach((o,i)=>{
+        const badge=el("span",{class:"dev-badge"});
+        const upd=()=>{ const d=daysSince(o.data,S.data); badge.className="dev-badge"+(d>ALERT_DIAS?" warn":""); badge.textContent=!o.data?"":(d<1?"Data posterior ao plantão":(d>ALERT_DIAS?"⚠ D"+d:"D"+d)); };
+        upd();
+        og.append(el("div",{class:"out-row"},
+          el("div",{},el("label",{class:"lbl"},"Outros · procedimento"),picker({key:"procOutros",single:true,placeholder:"Escolher ou digitar",get:()=>o.proc,set:v=>{o.proc=v;}})),
+          el("div",{},el("label",{class:"lbl"},"Data"),el("input",{class:"txt",type:"date",value:o.data||"",oninput:e=>{o.data=e.target.value;upd();afterChange();renderAlert();}})),
+          el("div",{},el("label",{class:"lbl"},"Sítio"),picker({key:"sOutros",single:true,placeholder:"Escolher ou digitar",get:()=>o.sitio,set:v=>{o.sitio=v;}})),
+          badge,
+          el("button",{class:"x-btn",type:"button","aria-label":"Remover",onclick:()=>{ b.disp.outros.splice(i,1); afterChange(); renderDevs(); renderAlert(); }},"×")));
+      });
+      devCard.append(og);
+    }
+    if(on.length){
       devCard.append(el("p",{class:"hint",style:"margin:10px 0 0"},"A data de inserção é opcional. Quando informada, o dia da inserção conta como D1 e o alerta aparece acima de "+ALERT_DIAS+" dias."));
     }
   }
@@ -625,6 +760,9 @@ function renderEditor(){
             el("button",{type:"button",class:"anest"+(x.anest?" on":""),"aria-pressed":!!x.anest,title:"Clique para marcar se o exame será com suporte anestésico",
               onclick:()=>{ x.anest=!x.anest; afterChange(); drawDetail(); }},
               el("span",{"aria-hidden":"true"},"💉"),x.anest?"Com suporte anestésico":"Sem suporte anestésico"),
+            el("button",{type:"button",class:"anest feito"+(x.feito?" on":""),"aria-pressed":!!x.feito,title:"Clique para marcar se o exame já foi realizado",
+              onclick:()=>{ x.feito=!x.feito; afterChange(); drawDetail(); }},
+              el("span",{"aria-hidden":"true"},x.feito?"✔":"○"),x.feito?"Realizado":"Não realizado"),
             el("div",{},el("label",{class:"lbl"},"Data prevista"),el("input",{class:"txt",type:"date",value:x.data||"",oninput:e=>{x.data=e.target.value;afterChange();}})),
             el("div",{},el("label",{class:"lbl"},"Hora provável"),el("input",{class:"txt",type:"time",value:x.hora||"",oninput:e=>{x.hora=e.target.value;afterChange();}})));
         };
@@ -634,9 +772,27 @@ function renderEditor(){
           detail,
           el("button",{class:"x-btn",type:"button","aria-label":"Remover exame",onclick:()=>{b.exm.splice(i,1);afterChange();renderExm();}},"×")));
       });
-      exCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.exm.push({nome:"",anest:false,data:S.data,hora:""});afterChange();renderExm();}},"+ Adicionar exame"));
+      exCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.exm.push({nome:"",anest:false,feito:false,data:S.data,hora:""});afterChange();renderExm();}},"+ Adicionar exame"));
     }
     renderExm();
+    const prCard=el("div",{class:"card"}); ed.append(prCard);
+    function renderProc(){
+      prCard.innerHTML=""; prCard.append(el("h3",{},"Procedimentos pendentes"));
+      if(!b.proc.length) prCard.append(el("p",{class:"hint"},"Nenhum procedimento pendente. Escolha o procedimento para informar data, hora provável e o médico que irá realizar."));
+      b.proc.forEach((x,i)=>{
+        prCard.append(el("div",{class:"rowbox proc-row"},
+          el("div",{},el("label",{class:"lbl"},"Procedimento"),picker({key:"procP",single:true,placeholder:"Escolher ou digitar o procedimento",get:()=>x.nome,set:v=>{x.nome=v;}})),
+          el("div",{},el("label",{class:"lbl"},"Data prevista"),el("input",{class:"txt",type:"date",value:x.data||"",oninput:e=>{x.data=e.target.value;afterChange();}})),
+          el("div",{},el("label",{class:"lbl"},"Hora provável"),el("input",{class:"txt",type:"time",value:x.hora||"",oninput:e=>{x.hora=e.target.value;afterChange();}})),
+          el("div",{},el("label",{class:"lbl"},"Médico que irá realizar"),picker({key:"medico",single:true,placeholder:"Escolher ou digitar o nome",get:()=>x.medico,set:v=>{x.medico=v;}})),
+          el("button",{type:"button",class:"anest feito"+(x.feito?" on":""),"aria-pressed":!!x.feito,title:"Clique para marcar se o procedimento já foi realizado",
+            onclick:()=>{ x.feito=!x.feito; afterChange(); renderProc(); }},
+            el("span",{"aria-hidden":"true"},x.feito?"✔":"○"),x.feito?"Realizado":"Não realizado"),
+          el("button",{class:"x-btn",type:"button","aria-label":"Remover procedimento",onclick:()=>{b.proc.splice(i,1);afterChange();renderProc();}},"×")));
+      });
+      prCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.proc.push({nome:"",feito:false,data:S.data,hora:"",medico:""});afterChange();renderProc();}},"+ Adicionar procedimento"));
+    }
+    renderProc();
     ed.append(el("p",{class:"hint",id:"updInfo",style:"margin:4px 2px"},updText(b)));
     return;
   }
@@ -648,12 +804,12 @@ function renderEditor(){
     if(!b.atb.length) atbCard.append(el("p",{class:"hint"},"Nenhum antibiótico em uso."));
     b.atb.forEach((a,i)=>{
       const day=el("div",{class:"atb-day"});
-      const upd=()=>{const d=dayCount(a.ini); day.textContent=(a.nome&&d&&d>0)?"D"+d:"";};
+      const upd=()=>{ const t=atbInfo(a,S.data||todayISO()); day.textContent=t.txt; day.className="atb-day"+(t.fin?" fin":""); };
       upd();
       atbCard.append(el("div",{class:"atb-row"},
         el("div",{},el("label",{class:"lbl"},"Antibiótico"),picker({key:"atb",single:true,placeholder:"Escolher antibiótico",get:()=>a.nome,set:v=>{a.nome=v;upd();}})),
         el("div",{},el("label",{class:"lbl"},"Início"),el("input",{type:"date",value:a.ini||"",oninput:e=>{a.ini=e.target.value;upd();afterChange();}})),
-        el("div",{},el("label",{class:"lbl"},"Término previsto"),el("input",{type:"date",value:a.fim||"",oninput:e=>{a.fim=e.target.value;afterChange();}})),
+        el("div",{},el("label",{class:"lbl"},"Término"),el("input",{type:"date",value:a.fim||"",oninput:e=>{a.fim=e.target.value;upd();afterChange();}})),
         day,
         el("button",{class:"x-btn",type:"button","aria-label":"Remover antibiótico",onclick:()=>{b.atb.splice(i,1);afterChange();renderAtb();}},"×")));
     });
@@ -729,55 +885,42 @@ function docHead(st,logoSrc,title){
   return titulo;
 }
 function devTxt(b,ref){
-  const dd=b.dd||{}; const out=[];
-  DEVS.forEach(([k,l])=>{
-    if(!devOn(b,k)) return;
-    const sit=(SITED[k]&&b.disp[k].sitios&&b.disp[k].sitios.length)?" ("+b.disp[k].sitios.join(", ")+")":"";
-    const d=daysSince(dd[k],ref);
-    const tail=dd[k]?` – ${fmtDate(dd[k])}, D${d}`:"";
-    const txt=esc(l+sit+tail);
-    out.push(d>ALERT_DIAS?`<b style="color:#b00000">⚠ ${txt}</b>`:txt);
-  });
-  return out.join("<br>");
+  return devEntries(b,ref).map(x=>{
+    const txt=esc(x.l+(x.sit?" ("+x.sit+")":"")+(x.data?` – ${fmtDate(x.data)}, D${x.d}`:""));
+    return (x.data&&x.d>ALERT_DIAS)?`<b style="color:#b00000">⚠ ${txt}</b>`:txt;
+  }).join("<br>");
 }
 function docBodyEnf(st,logoSrc){
   const ref=st.data; logoSrc=logoSrc||st.logo;
   const list=a=>(a||[]).map(esc).join("; ");
   const exm=b=>(b.exm||[]).filter(x=>x.nome).map(x=>{
     const quando=(x.data?fmtDate(x.data)+(x.hora?" "+esc(x.hora):""):(x.hora?esc(x.hora):""));
-    return `<div class="atb"><b>${esc(x.nome)}</b>${quando?" – "+quando:""}${x.anest?" · <b>com suporte anestésico</b>":""}</div>`;
+    return `<div class="atb"><b>${esc(x.nome)}</b>${quando?" – "+quando:""}${x.anest?" · <b>com suporte anestésico</b>":""}${x.feito?" · <b>realizado ✔</b>":""}</div>`;
+  }).join("");
+  const proc=b=>(b.proc||[]).filter(x=>x.nome).map(x=>{
+    const quando=(x.data?fmtDate(x.data)+(x.hora?" "+esc(x.hora):""):(x.hora?esc(x.hora):""));
+    return `<div class="atb"><b>${esc(x.nome)}</b>${quando?" – "+quando:""}${x.medico?" · "+esc(x.medico):""}${x.feito?" · <b>realizado ✔</b>":""}</div>`;
   }).join("");
   const rows=st.beds.filter(b=>!b.extra||b.ativo).map(b=>{
     const lab=b.extra?`Extra ${b.id.slice(1)}${b.local?"<br>"+esc(b.local):""}`:b.id.slice(1).padStart(2,"0");
     const dv=devTxt(b,ref);
-    const has=b.nome||b.problemas.length||b.pend.length||(b.exm||[]).length||dv;
-    if(!has) return `<tr class="vago"><td class="b">${lab}</td><td colspan="5">Vago</td></tr>`;
+    const has=b.nome||b.problemas.length||b.pend.length||(b.exm||[]).length||(b.proc||[]).length||dv;
+    if(!has) return `<tr class="vago"><td class="b">${lab}</td><td colspan="6">Vago</td></tr>`;
     const id=`<span class="b">${esc(b.nome)||"—"}</span>${b.idade?"<br>"+esc(b.idade)+" anos":""}${b.admissao?"<br>Adm.: "+fmtDate(b.admissao,true):""}${b.plano?"<br>"+esc(b.plano):""}`;
-    return `<tr><td class="b">${lab}</td><td>${id}</td><td>${list(b.problemas)}</td><td>${dv}</td><td>${list(b.pend)}</td><td>${exm(b)}</td></tr>`;
+    return `<tr><td class="b">${lab}</td><td>${id}</td><td>${list(b.problemas)}</td><td>${dv}</td><td>${list(b.pend)}</td><td>${exm(b)}</td><td>${proc(b)}</td></tr>`;
   }).join("");
   return `<div class="pt">${docHead(st,logoSrc,"Passômetro de Enfermagem")}
 <table><thead><tr>
-<th style="width:5%">Leito</th><th style="width:15%">Paciente</th><th style="width:18%">Problemas</th><th style="width:16%">Dispositivos</th><th style="width:20%">Pendências</th><th style="width:26%">Exames de imagem pendentes</th>
+<th style="width:5%">Leito</th><th style="width:13%">Paciente</th><th style="width:15%">Problemas</th><th style="width:15%">Dispositivos</th><th style="width:16%">Pendências</th><th style="width:18%">Exames de imagem pendentes</th><th style="width:18%">Procedimentos pendentes</th>
 </tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function docBody(st,logoSrc){
   if(st.svc==="enf") return docBodyEnf(st,logoSrc);
   const ref=st.data; logoSrc=logoSrc||st.logo;
-  const dev=b=>{
-    const dd=b.dd||{}; const out=[];
-    DEVS.forEach(([k,l])=>{
-      if(!devOn(b,k)) return;
-      const sit=(SITED[k]&&b.disp[k].sitios&&b.disp[k].sitios.length)?" ("+b.disp[k].sitios.join(", ")+")":"";
-      const d=daysSince(dd[k],ref);
-      const tail=dd[k]?` – ${fmtDate(dd[k])}, D${d}`:"";
-      const txt=esc(l+sit+tail);
-      out.push(d>ALERT_DIAS?`<b style="color:#b00000">⚠ ${txt}</b>`:txt);
-    });
-    return out.join("<br>");
-  };
+  const dev=b=>devTxt(b,ref);
   const atb=b=>b.atb.filter(a=>a.nome).map(a=>{
-    const d=daysSince(a.ini,ref);
-    const per=a.ini||a.fim?` (${fmtDate(a.ini)||"?"} a ${fmtDate(a.fim)||"?"}${d>0?", D"+d:""})`:"";
+    const d=daysSince(a.ini,ref), ai=atbInfo(a,ref);
+    const per=a.ini||a.fim?` (${fmtDate(a.ini)||"?"} a ${fmtDate(a.fim)||"?"}${ai.fin?", finalizado · "+ai.n+" D":(d>0?", D"+d:"")})`:"";
     return `<div class="atb"><b>${esc(a.nome)}</b>${esc(per)}</div>`;
   }).join("");
   const cul=b=>(b.culturas||[]).filter(c=>c.sitio||c.germe).map(c=>
@@ -867,7 +1010,7 @@ function logoModal(){
 
 /* ============ Transferência de leito ============ */
 function bedHasPatient(b){
-  return !!(b.nome||b.problemas.length||b.atb.length||(b.culturas||[]).length||b.imagem.length||b.pend.length||b.condutas.length||(b.exm||[]).length||DEVS.some(([k])=>devOn(b,k)));
+  return !!(b.nome||b.problemas.length||b.atb.length||(b.culturas||[]).length||b.imagem.length||b.pend.length||b.condutas.length||(b.exm||[]).length||(b.proc||[]).length||((b.disp&&b.disp.outros)||[]).length||DEVS.some(([k])=>devOn(b,k)));
 }
 function movePatient(a,b,swap){
   const ia=a.id, ib=b.id, now=Date.now();
@@ -963,7 +1106,7 @@ function listsModal(){
     });
     if(!L.length) holder.append(el("p",{class:"hint"},"Lista vazia."));
   }
-  draw(); openModal("Gerenciar listas",body);
+  draw(); openModal("Gerenciar listas",body,el("button",{class:"btn",onclick:regModal},"Registro de textos"));
 }
 function restoreArchive(a){
   const copy=JSON.parse(JSON.stringify(a.beds));
@@ -1015,7 +1158,7 @@ function importBackup(file){
       const n=d.pac?Object.values(d.pac).filter(q=>q&&q.nome).length:med.beds.filter(b=>b&&b.nome).length;
       if(!confirm(`Importar este backup (${n} paciente(s) nos leitos)?\n\nOs dados atuais de TODOS os serviços serão substituídos.`)) return;
       const svc=S.svc, ur=SHARED.ultimoResp;
-      buildAll(d); SHARED.ultimoResp=ur; S=SV[svc]; selected="L1"; SEL.med="L1"; SEL.enf="L1";
+      const rg=SHARED.reg; buildAll(d); SHARED.ultimoResp=ur; const rg2=SHARED.reg; SHARED.reg=rg; Object.keys(rg2).forEach(id=>regMerge(SHARED.reg[id]||(SHARED.reg[id]={}),rg2[id])); S=SV[svc]; selected="L1"; SEL.med="L1"; SEL.enf="L1";
       if(NET){ Object.keys(pending).forEach(k=>delete pending[k]); renderBanner(); }
       $("#hUnit").value=S.unit; $("#hData").value=S.data;
       save(); renderNav(); renderEditor();
@@ -1065,7 +1208,7 @@ function rerenderActive(){
   if(view==="pocus") renderPocus(); else if(view==="med"||view==="enf") renderEditor();
 }
 function partNames(){
-  const out=["logo",...Object.keys(SHARED.lists).map(k=>"list:"+k),...SHARED.pocus.map(r=>"pocus:"+r.ts),...SV.med.beds.map(b=>"pac:"+b.id)];
+  const out=["logo",...Object.keys(SHARED.lists).map(k=>"list:"+k),...SHARED.pocus.map(r=>"pocus:"+r.ts),...SV.med.beds.map(b=>"pac:"+b.id),...Object.keys(Object.assign({[RID]:1},SHARED.reg)).map(r=>"reg:"+r)];
   SVCS.forEach(k=>{ const st=SV[k], p=PFX[k]; out.push(p.meta,...st.archive.map(a=>p.arch+a.ts),...st.beds.map(b=>p.bed+b.id)); });
   return out;
 }
@@ -1073,6 +1216,7 @@ function getPart(n){
   if(n==="logo") return {logo:SHARED.logo||"",logoRatio:SHARED.logoRatio||0};
   if(n.startsWith("list:")) return SHARED.lists[n.slice(5)];
   if(n.startsWith("pac:")) return pacOf(n.slice(4));
+  if(n.startsWith("reg:")) return SHARED.reg[n.slice(4)]||(SHARED.reg[n.slice(4)]={});
   if(n.startsWith("pocus:")) return SHARED.pocus.find(r=>String(r.ts)===n.slice(6));
   const k=svcOfPart(n); if(!k) return undefined;
   const st=SV[k], p=PFX[k];
@@ -1084,6 +1228,7 @@ function serialize(n){ return isImmutable(n)?"1":JSON.stringify(getPart(n)); }
 function applyPart(n,v){
   if(n==="logo"){ SHARED.logo=v.logo||""; SHARED.logoRatio=v.logoRatio||0; return; }
   if(n.startsWith("list:")){ SHARED.lists[n.slice(5)]=v; return; }
+  if(n.startsWith("reg:")){ SHARED.reg[n.slice(4)]=(v&&typeof v==="object")?v:{}; return; }
   if(n.startsWith("pac:")){ const id=n.slice(4), q=Object.assign(defaultPac(id),v); q.disp=Object.assign(defaultDisp(),q.disp||{}); SHARED.pac[id]=q; return; }
   if(n.startsWith("pocus:")){
     const r=Object.assign({},v), i=SHARED.pocus.findIndex(x=>x.ts===r.ts);
@@ -1104,6 +1249,7 @@ function applyPart(n,v){
 function labelOf(n){
   if(n.startsWith("list:")) return "Lista “"+(LIST_NAMES[n.slice(5)]||n.slice(5))+"”";
   if(n.startsWith("pocus:")) return "Histórico do POCUS";
+  if(n.startsWith("reg:")) return "Registro de textos";
   if(n.startsWith("pac:")){ const b=SV.med.beds.find(x=>x.id===n.slice(4)); return "Identificação, problemas e dispositivos do "+(b?bedLabel(b):n); }
   if(n==="logo") return "Logo";
   const k=svcOfPart(n), tag=k==="enf"?" (enfermagem)":"";
@@ -1112,10 +1258,11 @@ function labelOf(n){
   return "Histórico"+tag;
 }
 function isPristine(n){
+  if(n.startsWith("reg:")) return !Object.keys(getPart(n)||{}).some(k=>Object.keys(getPart(n)[k]||{}).length);
   if(n.startsWith("pac:")){ const id=n.slice(4); return pacPristine(pacOf(id),id); }
   const k=svcOfPart(n); if(!k||!n.startsWith(PFX[k].bed)) return false;
   const b=getPart(n); if(!b) return false;
-  return !(b.atb.length||b.culturas.length||b.imagem.length||b.pend.length||b.condutas.length||b.exm.length||b.resp);
+  return !(b.atb.length||b.culturas.length||b.imagem.length||b.pend.length||b.condutas.length||b.exm.length||(b.proc||[]).length||b.resp);
 }
 function unionList(a,b){
   const out=a.slice(); b.forEach(x=>{ if(!out.some(y=>norm(y)===norm(x))) out.push(x); });
@@ -1158,6 +1305,7 @@ async function pushDirty(){
         const cur=r.current;
         if(cur&&JSON.stringify(cur.value)===JSON.stringify(getPart(n))){ versions[n]=cur.v; synced[n]=js; continue; }
         if(cur&&isPristine(n)){ applyRemote({part:n,v:cur.v,value:cur.value,by:cur.by}); continue; }
+        if(n.startsWith("reg:")&&cur){ versions[n]=cur.v; regMerge(getPart(n),cur.value); regPromoteAll(); again=true; continue; }
         if(n.startsWith("list:")&&cur){ versions[n]=cur.v; S.lists[n.slice(5)]=unionList(S.lists[n.slice(5)],cur.value); again=true; continue; }
         if(cur){ pending[n]={ev:{part:n,v:cur.v,value:cur.value,by:cur.by},conflict:true}; renderBanner(); }
         continue;
@@ -1187,6 +1335,12 @@ function onRemote(ev){
   if(ev.cid&&ev.cid===CID) return;
   if((versions[ev.part]||0)>=ev.v) return;
   const dirty=synced[ev.part]!==undefined && serialize(ev.part)!==synced[ev.part];
+  if(ev.part.startsWith("reg:")){
+    versions[ev.part]=ev.v;
+    if(dirty) regMerge(getPart(ev.part),ev.value); else { applyPart(ev.part,ev.value); synced[ev.part]=serialize(ev.part); }
+    if(regPromoteAll()) save();
+    return;
+  }
   if(ev.part.startsWith("list:")){
     const k=ev.part.slice(5); versions[ev.part]=ev.v;
     if(dirty){ SHARED.lists[k]=unionList(SHARED.lists[k]||[],ev.value); save(); }
@@ -1300,6 +1454,7 @@ async function netStart(){
       changes.forEach(onChange);
     },err=>{ if(first){ first=false; reject(err); } else netError(err); });
   });
+  regPromoteAll();
   setInterval(()=>{ tickN++; if(netDown||tickN%2===0) pushDirty(); flushPending(); if(needRender&&!editingNow()){ needRender=false; rerenderActive(); } },3000);
   window.addEventListener("online",()=>{ setNet(true); pushDirty(); });
   window.addEventListener("offline",()=>setNet(false));
@@ -1455,11 +1610,7 @@ function leitoDoRegistro(r){          /* acompanha o paciente quando ele muda de
   return l?(r.pid?l+" (leito anterior)":l):"";
 }
 function devList(b,ref){
-  return DEVS.filter(([k])=>devOn(b,k)).map(([k,l])=>{
-    const sit=(SITED[k]&&b.disp[k].sitios&&b.disp[k].sitios.length)?" ("+b.disp[k].sitios.join(", ")+")":"";
-    const dd=(b.dd||{})[k], d=daysSince(dd,ref);
-    return {txt:l+sit+(dd?" · D"+d:""),alert:!!dd&&d>ALERT_DIAS};
-  });
+  return devEntries(b,ref).map(x=>({txt:x.l+(x.sit?" ("+x.sit+")":"")+(x.data?" · D"+x.d:""),alert:!!x.data&&x.d>ALERT_DIAS}));
 }
 function pacSnap(id){                 /* cópia dos dados do passômetro no momento do exame (sem o nome completo) */
   const b=id?SV.med.beds.find(x=>x.id===id):null;
