@@ -167,10 +167,16 @@ input.txt{width:100%;border:1px solid var(--line);border-radius:6px;padding:8px 
 .un{color:var(--muted);font-size:14px}
 .poc-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
 
+.poc-block.has{border-color:var(--accent)}
+.poc-block.has:not(.on){background:#f1f8f6}
+.chip.dev{background:#e8eef9;color:#1f3d7a;padding-right:10px}
+.chip.dev.warn{background:#fdecea;color:var(--danger);font-weight:700}
+.poc-pac .lb2{font-size:12px;color:var(--muted);margin:6px 0 2px}
+.hub-logo{height:34px;width:auto;margin-right:4px}
 /* impressão */
 #printArea{display:none}
 @page{size:A4 landscape;margin:8mm}
-@page portrait1{size:A4 portrait;margin:12mm}
+@page portrait1{size:A4 portrait;margin:10mm}
 .sheet-portrait{page:portrait1}
 @media print{
   body{background:#fff}
@@ -182,9 +188,11 @@ input.txt{width:100%;border:1px solid var(--line);border-radius:6px;padding:8px 
 <body>
 <div id="hub" hidden>
   <header class="top">
-    <h1>UTI IOG</h1>
+    <img id="hubLogo" class="hub-logo" alt="" hidden>
+    <h1 id="hubTitle">UTI IOG</h1>
     <div class="spacer"></div>
     <span class="saved netmsg" id="hubMsg"></span>
+    <button class="btn" id="hubLogoBtn">Logo</button>
     <span class="saved" id="hubUser"></span>
     <button class="btn" id="hubSair" hidden>Sair</button>
   </header>
@@ -294,22 +302,52 @@ const SITED={cvc:"sCVC",cdl:"sCDL",dreno:"sDreno"};
 const ALERT_DIAS=15;
 const N_FIXOS = 17, N_EXTRAS = 4;
 
+/* Cadastro único por leito, compartilhado entre passômetro médico, enfermagem e POCUS:
+   identificação, lista de problemas, dispositivos invasivos e situação do leito ficam em SHARED.pac[idDoLeito]. */
+const PAC_KEYS=["pid","nome","idade","admissao","plano","problemas","disp","dd","ativo","local"];
+const PAC_MOVE=["pid","nome","idade","admissao","plano","problemas","disp","dd"];
+const SVC_KEYS=["atb","culturas","imagem","pend","condutas","exm","resp"];
+function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
+function defaultDisp(){ return {svd:false,sne:false,tot:false,tqt:false,cvc:{on:false,sitios:[]},cdl:{on:false,sitios:[]},dreno:{on:false,sitios:[]}}; }
+function defaultPac(id){ return {pid:"",nome:"",idade:"",admissao:"",plano:"",problemas:[],disp:defaultDisp(),dd:{},ativo:!String(id).startsWith("E"),local:""}; }
+function pacOf(id){ return SHARED.pac[id]||(SHARED.pac[id]=defaultPac(id)); }
+function pacPristine(p,id){
+  const d=defaultPac(id);
+  const dev=DEVS.some(([k])=>{ const v=p.disp&&p.disp[k]; return v&&typeof v==="object"?!!v.on:!!v; });
+  return !p.pid && ["nome","idade","admissao","plano","local"].every(k=>!p[k]) && !(p.problemas||[]).length
+    && !dev && !Object.keys(p.dd||{}).length && p.ativo===d.ativo;
+}
+function bindPac(b){
+  PAC_KEYS.forEach(k=>Object.defineProperty(b,k,{get:()=>pacOf(b.id)[k],set:v=>{ pacOf(b.id)[k]=v; },enumerable:false,configurable:true}));
+}
+function absorbLegacy(b){          /* dados antigos (identificação dentro do leito) passam para o cadastro único */
+  if(!b||!b.id) return;
+  const got={}; let any=false;
+  PAC_KEYS.forEach(k=>{ const d=Object.getOwnPropertyDescriptor(b,k); if(d&&("value" in d)){ got[k]=d.value; any=true; delete b[k]; } });
+  if(!any) return;
+  const p=pacOf(b.id);
+  if(got.disp) got.disp=Object.assign(defaultDisp(),got.disp);
+  if(pacPristine(p,b.id)) PAC_KEYS.forEach(k=>{ if(got[k]!==undefined) p[k]=got[k]; });
+}
 function newBed(id, extra){
-  return {id, extra, ativo:!extra, local:"", nome:"", idade:"", admissao:"", plano:"",
-    problemas:[], disp:{svd:false,sne:false,tot:false,tqt:false,
-      cvc:{on:false,sitios:[]}, cdl:{on:false,sitios:[]}, dreno:{on:false,sitios:[]}},
-    atb:[], culturas:[], imagem:[], pend:[], condutas:[], exm:[], dd:{}, resp:"", upd:null};
+  return {id, extra, atb:[], culturas:[], imagem:[], pend:[], condutas:[], exm:[], resp:"", upd:null};
 }
 function devOn(b,k){ const v=b.disp[k]; return (v&&typeof v==='object')?!!v.on:!!v; }
 function setDevOn(b,k,val){ if(typeof b.disp[k]==='object') b.disp[k].on=val; else b.disp[k]=val; }
 function devAlerts(b,ref){ return DEVS.filter(([k])=>devOn(b,k)).map(([k,l])=>({k,l,d:daysSince((b.dd||{})[k],ref)})).filter(x=>x.d>ALERT_DIAS); }
-function fixBed(b){
-  const base=newBed(b.id||'x',!!b.extra);
-  b.disp=Object.assign(base.disp,b.disp||{});
-  b.dd=b.dd||{}; b.exm=Array.isArray(b.exm)?b.exm:[]; b.culturas=Array.isArray(b.culturas)?b.culturas:[]; b.resp=b.resp||''; b.upd=b.upd||null;
+function fixSvc(b){                /* somente os campos de cada passômetro */
+  b.exm=Array.isArray(b.exm)?b.exm:[]; b.culturas=Array.isArray(b.culturas)?b.culturas:[];
+  b.atb=Array.isArray(b.atb)?b.atb:[]; b.pend=Array.isArray(b.pend)?b.pend:[]; b.condutas=Array.isArray(b.condutas)?b.condutas:[];
+  b.resp=b.resp||''; b.upd=b.upd||null;
   b.imagem=(b.imagem||[]).map(x=>typeof x==='string'?{nome:x,data:'',achado:''}:x);
   return b;
 }
+function fixArch(b){               /* leito arquivado: carrega a própria cópia da identificação */
+  fixSvc(b); b.disp=Object.assign(defaultDisp(),b.disp||{}); b.dd=b.dd||{};
+  b.problemas=Array.isArray(b.problemas)?b.problemas:[];
+  return b;
+}
+function fixBed(b){ absorbLegacy(b); bindPac(b); return fixSvc(b); }
 function todayISO(){ const d=new Date(); return new Date(d-d.getTimezoneOffset()*60000).toISOString().slice(0,10); }
 function freshBeds(){
   const beds=[]; for(let i=1;i<=N_FIXOS;i++) beds.push(newBed("L"+i,false));
@@ -321,7 +359,7 @@ function freshBeds(){
 /* Dois serviços (med = médico, enf = enfermagem) com leitos e histórico próprios.
    Listas, logo, exames POCUS e último responsável são compartilhados (SHARED). */
 const SVCS=["med","enf"];
-const SHARED={lists:{},logo:"",logoRatio:0,ultimoResp:"",pocus:[]};
+const SHARED={lists:{},logo:"",logoRatio:0,ultimoResp:"",pocus:[],pac:{}};
 const SV={};
 const SEL={med:"L1",enf:"L1"};
 let S, selected="L1", view="hub";
@@ -334,7 +372,7 @@ function normalizeService(raw,svc){
   const f=mkService(svc); raw=raw||{};
   f.unit=raw.unit||f.unit; f.data=raw.data||f.data;
   f.archive=Array.isArray(raw.archive)?raw.archive:[];
-  f.archive.forEach(a=>{ a.beds=(a.beds||[]).map(fixBed); });
+  f.archive.forEach(a=>{ a.beds=(a.beds||[]).map(fixArch); });
   const byId={}; (raw.beds||[]).forEach(b=>byId[b.id]=b);
   f.beds=f.beds.map(b=>fixBed(Object.assign(b,byId[b.id]||{})));
   return f;
@@ -346,12 +384,13 @@ function buildAll(raw){
   for(const k in DEFAULT_LISTS) if(!Array.isArray(SHARED.lists[k])) SHARED.lists[k]=DEFAULT_LISTS[k].slice();
   SHARED.logo=raw.logo||""; SHARED.logoRatio=raw.logoRatio||0;
   SHARED.pocus=Array.isArray(raw.pocus)?raw.pocus:[];
+  SHARED.pac=(raw.pac&&typeof raw.pac==='object')?raw.pac:{};
   SV.med=normalizeService(legacy?raw:raw.med,"med");
   SV.enf=normalizeService(raw.enf,"enf");
 }
 function snapService(st){ return {unit:st.unit,data:st.data,beds:st.beds,archive:st.archive}; }
 function snapshotAll(){
-  return {v:2,med:snapService(SV.med),enf:snapService(SV.enf),lists:SHARED.lists,logo:SHARED.logo,logoRatio:SHARED.logoRatio,pocus:SHARED.pocus};
+  return {v:2,med:snapService(SV.med),enf:snapService(SV.enf),lists:SHARED.lists,logo:SHARED.logo,logoRatio:SHARED.logoRatio,pocus:SHARED.pocus,pac:SHARED.pac};
 }
 function load(){
   try{ const raw=localStorage.getItem(STORE_KEY); buildAll(raw?JSON.parse(raw):null); }
@@ -474,6 +513,7 @@ function picker(opts){
 function afterChange(){
   const inSvc=(view==="med"||view==="enf");
   const b=inSvc?S.beds.find(x=>x.id===selected):null;
+  if(b&&(b.nome||b.problemas.length)&&!b.pid) b.pid=uid();
   if(b){ b.upd=Date.now(); const u=document.getElementById("updInfo"); if(u) u.textContent=updText(b); }
   save(); if(inSvc) renderNav();
 }
@@ -515,8 +555,8 @@ function renderEditor(){
   title.append(el("span",{class:"spacer",style:"flex:1"}),
     (bedHasPatient(b)&&!(b.extra&&!b.ativo))?el("button",{class:"btn small",type:"button",onclick:()=>transferModal(b)},"Transferir de leito"):null,
     el("button",{class:"btn small danger",onclick:()=>{
-      if(confirm(`Limpar todos os dados do ${bedLabel(b)}? (alta ou transferência do paciente)`)){
-        const nb=newBed(b.id,b.extra); nb.ativo=b.ativo; nb.local=b.local; Object.assign(b,nb); afterChange(); renderEditor(); }
+      if(confirm(`Limpar todos os dados do ${bedLabel(b)} nos DOIS passômetros (médico e enfermagem)? Use na alta ou saída do paciente. Os exames de POCUS já salvos continuam no histórico.`)){
+        clearBedAll(b.id); afterChange(); renderEditor(); }
     }},"Limpar leito"));
   ed.append(title);
   if(b.extra&&!b.ativo){ ed.append(el("div",{class:"card"},el("p",{class:"hint",style:"margin:0"},"Marque “Leito extra em uso” para preencher este leito.")));return; }
@@ -826,15 +866,29 @@ function logoModal(){
 }
 
 /* ============ Transferência de leito ============ */
-const PAT_KEYS=["nome","idade","admissao","plano","problemas","disp","atb","culturas","imagem","pend","condutas","exm","dd","resp"];
 function bedHasPatient(b){
   return !!(b.nome||b.problemas.length||b.atb.length||(b.culturas||[]).length||b.imagem.length||b.pend.length||b.condutas.length||(b.exm||[]).length||DEVS.some(([k])=>devOn(b,k)));
 }
 function movePatient(a,b,swap){
-  const pa={}, pb={}; PAT_KEYS.forEach(k=>{pa[k]=a[k]; pb[k]=b[k];});
-  const blank=newBed(a.id,a.extra);
-  PAT_KEYS.forEach(k=>{ b[k]=pa[k]; a[k]=swap?pb[k]:blank[k]; });
-  a.upd=b.upd=Date.now();
+  const ia=a.id, ib=b.id, now=Date.now();
+  SVCS.forEach(k=>{                               /* dados próprios de cada passômetro */
+    const x=SV[k].beds.find(t=>t.id===ia), y=SV[k].beds.find(t=>t.id===ib); if(!x||!y) return;
+    const px={}, py={}; SVC_KEYS.forEach(f=>{ px[f]=x[f]; py[f]=y[f]; });
+    const blank=newBed(ia,x.extra);
+    SVC_KEYS.forEach(f=>{ y[f]=px[f]; x[f]=swap?py[f]:blank[f]; });
+    x.upd=y.upd=now;
+  });
+  const A=pacOf(ia), B=pacOf(ib), pa={}, pb={};     /* identificação, problemas e dispositivos (valem para os 3 módulos) */
+  PAC_MOVE.forEach(f=>{ pa[f]=A[f]; pb[f]=B[f]; });
+  const blankP=defaultPac(ia);
+  PAC_MOVE.forEach(f=>{ B[f]=pa[f]; A[f]=swap?pb[f]:blankP[f]; });
+}
+function clearBedAll(id){
+  SVCS.forEach(k=>{
+    const bd=SV[k].beds.find(x=>x.id===id); if(!bd) return;
+    const nb=newBed(id,bd.extra); SVC_KEYS.forEach(f=>{ bd[f]=nb[f]; }); bd.upd=Date.now();
+  });
+  const p=pacOf(id), d=defaultPac(id); PAC_MOVE.forEach(f=>{ p[f]=d[f]; });
 }
 function transferModal(src){
   const opts=S.beds.filter(x=>x.id!==src.id);
@@ -869,7 +923,7 @@ function transferModal(src){
     close(); toast(msg);
   }catch(err){ alert("Não foi possível transferir: "+err.message); } });
   const body=el("div",{},
-    el("p",{class:"hint"},`Move todas as informações do ${bedLabel(src)}${src.nome?" ("+src.nome+")":""} para o leito escolhido: ${S.svc==="enf"?"identificação, problemas, dispositivos e datas, pendências e exames de imagem pendentes":"identificação, problemas, dispositivos e datas, antibióticos, culturas, imagem, pendências, condutas e registro"}.`
+    el("p",{class:"hint"},`Move todas as informações do ${bedLabel(src)}${src.nome?" ("+src.nome+")":""} para o leito escolhido, nos dois passômetros (médico e enfermagem) e no POCUS: identificação, problemas, dispositivos e datas, e os dados próprios de cada passômetro.`
       +(src.extra?" Como este é um leito extra, ele ficará como não utilizado após a transferência.":"")),
     el("label",{class:"lbl"},"Leito de destino"),sel,info,
     el("div",{style:"margin-top:16px;display:flex;gap:10px"},go));
@@ -879,7 +933,8 @@ function transferModal(src){
 /* ============ Janelas ============ */
 function openModal(title,bodyNode,extraBtns){
   const ov=el("div",{class:"overlay",onmousedown:e=>{if(e.target===ov)close();}});
-  const close=()=>{ov.remove();renderNav();renderEditor();};
+  const close=()=>{ ov.remove();
+    if(view==="med"||view==="enf"){ renderNav(); renderEditor(); } else if(view==="pocus") renderPocus(); else if(view==="hub") renderHub(); };
   ov.append(el("div",{class:"modal",role:"dialog","aria-label":title},
     el("header",{},el("h3",{},title),el("div",{},extraBtns||"",el("button",{class:"btn",onclick:close},"Fechar"))),
     el("div",{class:"body"},bodyNode)));
@@ -910,8 +965,14 @@ function listsModal(){
   }
   draw(); openModal("Gerenciar listas",body);
 }
+function restoreArchive(a){
+  const copy=JSON.parse(JSON.stringify(a.beds));
+  copy.forEach(b=>{ const q=pacOf(b.id); PAC_KEYS.forEach(k=>{ if(k in b) q[k]=b[k]; }); q.disp=Object.assign(defaultDisp(),q.disp||{}); });
+  S.beds=S.beds.map(cur=>{ const o=Object.assign(newBed(cur.id,cur.extra),copy.find(x=>x.id===cur.id)||{}); PAC_KEYS.forEach(k=>{ delete o[k]; }); return fixBed(o); });
+  S.data=a.data;
+}
 function archiveCurrent(){
-  S.archive.unshift({ts:Date.now(),data:S.data,beds:JSON.parse(JSON.stringify(S.beds))});
+  S.archive.unshift({ts:Date.now(),data:S.data,beds:S.beds.map(b=>{ const c=JSON.parse(JSON.stringify(b)), q=pacOf(b.id); PAC_KEYS.forEach(k=>{ c[k]=JSON.parse(JSON.stringify(q[k])); }); return c; })});
   S.archive=S.archive.slice(0,60);
 }
 function histModal(){
@@ -926,8 +987,8 @@ function histModal(){
         el("div",{style:"flex:1"},el("b",{},"Passômetro de "+fmtDate(a.data,true)),el("div",{class:"hint",style:"margin:0"},`Arquivado em ${when} · ${n} paciente(s)`)),
         el("button",{class:"btn small",onclick:()=>saveWord({svc:S.svc,unit:S.unit,data:a.data,beds:a.beds,logo:S.logo,logoRatio:S.logoRatio},`passometro${S.svc==="enf"?"_enfermagem":""}_${a.data}.doc`)},"Word"),
         el("button",{class:"btn small",onclick:()=>{ $("#printArea").innerHTML=`<style>${DOC_CSS}</style>`+docBody({svc:S.svc,unit:S.unit,data:a.data,beds:a.beds,logo:S.logo,logoRatio:S.logoRatio}); window.print(); }},"Imprimir"),
-        el("button",{class:"btn small",onclick:()=>{ if(confirm("Restaurar este plantão? Os dados atuais serão substituídos (arquive antes, se quiser guardá-los).")){
-          S.beds=normalizeService({beds:JSON.parse(JSON.stringify(a.beds))},S.svc).beds; S.data=a.data; $("#hData").value=S.data; save(); toast("Plantão restaurado"); } }},"Restaurar"),
+        el("button",{class:"btn small",onclick:()=>{ if(confirm("Restaurar este plantão? Os dados atuais serão substituídos, inclusive identificação, problemas e dispositivos, que são compartilhados com os outros módulos (arquive antes, se quiser guardá-los).")){
+          restoreArchive(a); $("#hData").value=S.data; save(); toast("Plantão restaurado"); } }},"Restaurar"),
         el("button",{class:"btn small danger",onclick:()=>{ if(confirm("Excluir este plantão arquivado?")){S.archive.splice(i,1);save();draw();} }},"Excluir")));
     });
   }
@@ -945,13 +1006,13 @@ function importBackup(file){
       if(d&&d.parts&&!d.beds&&!d.med){ /* formato do servidor (estado.json ou backup_*.json) */
         const prevSV={med:SV.med,enf:SV.enf}, prevSH=Object.assign({},SHARED);
         buildAll(null);
-        Object.keys(d.parts).forEach(n=>{ const q=d.parts[n]; applyPart(n,(q&&q.value!==undefined)?q.value:(q&&q.json?JSON.parse(q.json):undefined)); });
+        Object.keys(d.parts).sort((x,y)=>partPri(x)-partPri(y)).forEach(n=>{ const q=d.parts[n]; applyPart(n,(q&&q.value!==undefined)?q.value:(q&&q.json?JSON.parse(q.json):undefined)); });
         d=snapshotAll();
         SV.med=prevSV.med; SV.enf=prevSV.enf; Object.assign(SHARED,prevSH);
       }
       const med=d&&(d.med||(Array.isArray(d.beds)?d:null));
       if(!med||!Array.isArray(med.beds)||!d.lists) throw new Error("o arquivo não tem a estrutura de um backup do passômetro");
-      const n=med.beds.filter(b=>b&&b.nome).length+((d.enf&&d.enf.beds)?d.enf.beds.filter(b=>b&&b.nome).length:0);
+      const n=d.pac?Object.values(d.pac).filter(q=>q&&q.nome).length:med.beds.filter(b=>b&&b.nome).length;
       if(!confirm(`Importar este backup (${n} paciente(s) nos leitos)?\n\nOs dados atuais de TODOS os serviços serão substituídos.`)) return;
       const svc=S.svc, ur=SHARED.ultimoResp;
       buildAll(d); SHARED.ultimoResp=ur; S=SV[svc]; selected="L1"; SEL.med="L1"; SEL.enf="L1";
@@ -990,16 +1051,28 @@ function svcOfPart(n){
   for(const k of SVCS){ const p=PFX[k]; if(n===p.meta||n.startsWith(p.bed)||n.startsWith(p.arch)) return k; }
   return null;
 }
+function partPri(p){ return p.startsWith("pac:")?0:p.startsWith("bed:")?1:p.startsWith("nbed:")?2:3; }
 function isImmutable(n){ return /^(arch:|narch:|pocus:)/.test(n); }
 function openPart(){ return (view==="med"||view==="enf")?PFX[S.svc].bed+selected:null; }
+function isOpen(n){
+  if(n===openPart()) return true;
+  if(view==="med"||view==="enf") return n==="pac:"+selected;
+  if(view==="pocus") return !!(pdraft&&pdraft.leito&&n==="pac:"+pdraft.leito);
+  return false;
+}
+function rerenderActive(){
+  if(editingNow()){ needRender=true; return; }
+  if(view==="pocus") renderPocus(); else if(view==="med"||view==="enf") renderEditor();
+}
 function partNames(){
-  const out=["logo",...Object.keys(SHARED.lists).map(k=>"list:"+k),...SHARED.pocus.map(r=>"pocus:"+r.ts)];
+  const out=["logo",...Object.keys(SHARED.lists).map(k=>"list:"+k),...SHARED.pocus.map(r=>"pocus:"+r.ts),...SV.med.beds.map(b=>"pac:"+b.id)];
   SVCS.forEach(k=>{ const st=SV[k], p=PFX[k]; out.push(p.meta,...st.archive.map(a=>p.arch+a.ts),...st.beds.map(b=>p.bed+b.id)); });
   return out;
 }
 function getPart(n){
   if(n==="logo") return {logo:SHARED.logo||"",logoRatio:SHARED.logoRatio||0};
   if(n.startsWith("list:")) return SHARED.lists[n.slice(5)];
+  if(n.startsWith("pac:")) return pacOf(n.slice(4));
   if(n.startsWith("pocus:")) return SHARED.pocus.find(r=>String(r.ts)===n.slice(6));
   const k=svcOfPart(n); if(!k) return undefined;
   const st=SV[k], p=PFX[k];
@@ -1011,17 +1084,18 @@ function serialize(n){ return isImmutable(n)?"1":JSON.stringify(getPart(n)); }
 function applyPart(n,v){
   if(n==="logo"){ SHARED.logo=v.logo||""; SHARED.logoRatio=v.logoRatio||0; return; }
   if(n.startsWith("list:")){ SHARED.lists[n.slice(5)]=v; return; }
+  if(n.startsWith("pac:")){ const id=n.slice(4), q=Object.assign(defaultPac(id),v); q.disp=Object.assign(defaultDisp(),q.disp||{}); SHARED.pac[id]=q; return; }
   if(n.startsWith("pocus:")){
     const r=Object.assign({},v), i=SHARED.pocus.findIndex(x=>x.ts===r.ts);
     if(i>=0) SHARED.pocus[i]=r; else SHARED.pocus.push(r);
     SHARED.pocus.sort((a,b)=>b.ts-a.ts); return;
   }
-  if(n==="archive"){ SV.med.archive=(v||[]).map(a=>{ a.beds=(a.beds||[]).map(fixBed); return a; }); return; }  /* formato antigo (servidor local) */
+  if(n==="archive"){ SV.med.archive=(v||[]).map(a=>{ a.beds=(a.beds||[]).map(fixArch); return a; }); return; }  /* formato antigo (servidor local) */
   const k=svcOfPart(n); if(!k) return;
   const st=SV[k], p=PFX[k];
   if(n===p.meta){ st.unit=v.unit||st.unit; st.data=v.data||st.data; }
   else if(n.startsWith(p.arch)){
-    const e=Object.assign({},v); e.beds=(e.beds||[]).map(fixBed);
+    const e=Object.assign({},v); e.beds=(e.beds||[]).map(fixArch);
     const i=st.archive.findIndex(a=>a.ts===e.ts); if(i>=0) st.archive[i]=e; else st.archive.push(e);
     st.archive.sort((a,b)=>b.ts-a.ts);
   }
@@ -1030,6 +1104,7 @@ function applyPart(n,v){
 function labelOf(n){
   if(n.startsWith("list:")) return "Lista “"+(LIST_NAMES[n.slice(5)]||n.slice(5))+"”";
   if(n.startsWith("pocus:")) return "Histórico do POCUS";
+  if(n.startsWith("pac:")){ const b=SV.med.beds.find(x=>x.id===n.slice(4)); return "Identificação, problemas e dispositivos do "+(b?bedLabel(b):n); }
   if(n==="logo") return "Logo";
   const k=svcOfPart(n), tag=k==="enf"?" (enfermagem)":"";
   if(k&&n.startsWith(PFX[k].bed)){ const b=SV[k].beds.find(x=>x.id===n.slice(PFX[k].bed.length)); return (b?bedLabel(b):n)+tag; }
@@ -1037,16 +1112,17 @@ function labelOf(n){
   return "Histórico"+tag;
 }
 function isPristine(n){
+  if(n.startsWith("pac:")){ const id=n.slice(4); return pacPristine(pacOf(id),id); }
   const k=svcOfPart(n); if(!k||!n.startsWith(PFX[k].bed)) return false;
   const b=getPart(n); if(!b) return false;
-  return JSON.stringify(b)===JSON.stringify(fixBed(newBed(b.id,b.extra)));
+  return !(b.atb.length||b.culturas.length||b.imagem.length||b.pend.length||b.condutas.length||b.exm.length||b.resp);
 }
 function unionList(a,b){
   const out=a.slice(); b.forEach(x=>{ if(!out.some(y=>norm(y)===norm(x))) out.push(x); });
   return out.sort((x,y)=>x.localeCompare(y,"pt-BR",{sensitivity:"base"}));
 }
 function editingNow(){
-  const a=document.activeElement; return !!(a&&$("#editor").contains(a)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+  const a=document.activeElement; return !!(a&&($("#editor").contains(a)||$("#pocusApp").contains(a))&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
 }
 function setNet(up,stamp){ setNet0(up,stamp); mirrorMsg(); }
 function setNet0(up,stamp){
@@ -1059,7 +1135,7 @@ function blockAccess(){
   document.body.innerHTML="";
   const b=el("div",{style:"padding:40px;font:16px/1.5 sans-serif;max-width:560px;margin:auto"},
     el("h2",{},"Acesso não autorizado"),
-    el("p",{},`O e-mail ${netUser?"“"+netUser+"…” ":""}não está na lista de acesso do passômetro. Peça ao responsável pelo sistema para incluí-lo.`),
+    el("p",{},`O usuário ${netUser?"“"+netUser+"” ":""}não está na lista de acesso do passômetro. Peça ao responsável pelo sistema para incluí-lo.`),
     el("button",{class:"btn",onclick:()=>FB.signOut().then(()=>location.reload())},"Sair"));
   document.body.append(b);
 }
@@ -1075,6 +1151,7 @@ async function pushDirty(){
       if(pending[n]&&pending[n].conflict) continue;
       const js=serialize(n);
       if(synced[n]===js) continue;
+      if(n.startsWith("pac:")&&versions[n]===undefined&&isPristine(n)){ synced[n]=js; continue; }   /* leito vazio e nunca gravado */
       let r;
       try{ r=await FB.put(n,versions[n]||0,getPart(n),netUser,CID); }catch(e){ netError(e); return; }
       if(r.conflict){
@@ -1101,8 +1178,9 @@ function applyRemote(ev){
   if(view==="med"||view==="enf"){
     renderNav();
     if(ev.part===PFX[S.svc].meta){ $("#hUnit").value=S.unit; $("#hData").value=S.data; }
-    if(ev.part===PFX[S.svc].meta||ev.part===openPart()){ if(editingNow()) needRender=true; else renderEditor(); }
-  }
+    if(ev.part===PFX[S.svc].meta||isOpen(ev.part)) rerenderActive();
+  } else if(view==="pocus"&&(ev.part.startsWith("pac:")||ev.part.startsWith("pocus:"))) rerenderActive();
+  else if(view==="hub") renderHub();
 }
 function onRemote(ev){
   if(ev.value==null) return;
@@ -1115,7 +1193,7 @@ function onRemote(ev){
     else { SHARED.lists[k]=ev.value; synced[ev.part]=serialize(ev.part); }
     return;
   }
-  if(dirty||(ev.part===openPart()&&editingNow())){ pending[ev.part]={ev,conflict:dirty}; renderBanner(); return; }
+  if(dirty||(isOpen(ev.part)&&editingNow())){ pending[ev.part]={ev,conflict:dirty}; renderBanner(); return; }
   applyRemote(ev);
 }
 function onChange(c){
@@ -1134,7 +1212,7 @@ function onChange(c){
 function flushPending(){
   Object.keys(pending).forEach(k=>{
     const p=pending[k]; if(!p||p.conflict) return;
-    if(k===openPart()&&editingNow()) return;
+    if(isOpen(k)&&editingNow()) return;
     if(serialize(k)!==synced[k]) return;
     applyRemote(p.ev);
   });
@@ -1149,9 +1227,14 @@ function renderBanner(){
 }
 
 /* ---- login ---- */
+const USER_DOMAIN="uti.local";   /* usuários sem e-mail viram usuario@uti.local dentro do Firebase */
+function toLoginEmail(v){
+  v=String(v||"").trim(); if(!v) return "";
+  return v.includes("@")?v.toLowerCase():v.toLowerCase().replace(/\s+/g,"")+"@"+USER_DOMAIN;
+}
 function authMsg(e){
   const c=(e&&e.code)||"";
-  if(/invalid-credential|wrong-password|user-not-found|invalid-email/.test(c)) return "E-mail ou senha incorretos.";
+  if(/invalid-credential|wrong-password|user-not-found|invalid-email/.test(c)) return "Usuário ou senha incorretos.";
   if(c==="auth/too-many-requests") return "Muitas tentativas. Aguarde alguns minutos e tente de novo.";
   if(c==="auth/network-request-failed") return "Sem conexão com a internet.";
   return "Não foi possível entrar ("+c+").";
@@ -1159,20 +1242,22 @@ function authMsg(e){
 function hideLogin(){ const ov=document.getElementById("loginOv"); if(ov) ov.remove(); }
 function showLogin(){
   hideLogin();
-  const email=el("input",{class:"txt",type:"email",placeholder:"E-mail institucional",autocomplete:"username"});
+  const email=el("input",{class:"txt",type:"text",placeholder:"Usuário (ou e-mail)",autocomplete:"username",autocapitalize:"off",spellcheck:"false"});
   const pass=el("input",{class:"txt",type:"password",placeholder:"Senha",autocomplete:"current-password"});
   const err=el("p",{class:"hint",style:"color:var(--danger);min-height:20px;margin:8px 0"});
   const go=el("button",{class:"btn primary",type:"button",style:"width:100%"},"Entrar");
   async function entrar(){
     err.style.color="var(--danger)"; err.textContent=""; go.disabled=true;
-    try{ await FB.signIn(email.value.trim(),pass.value); }
+    try{ await FB.signIn(toLoginEmail(email.value),pass.value); }
     catch(e){ err.textContent=authMsg(e); go.disabled=false; }
   }
   go.addEventListener("click",entrar);
   [email,pass].forEach(i=>i.addEventListener("keydown",e=>{ if(e.key==="Enter") entrar(); }));
   const reset=el("button",{class:"btn small",type:"button",onclick:async()=>{
-    if(!email.value.trim()){ err.textContent="Digite seu e-mail e clique de novo."; return; }
-    try{ await FB.resetPassword(email.value.trim()); err.style.color="var(--accent)"; err.textContent="Enviamos um e-mail para redefinir a senha."; }
+    const v=email.value.trim();
+    if(!v){ err.textContent="Digite seu usuário ou e-mail e clique de novo."; return; }
+    if(!v.includes("@")){ err.textContent="Usuário sem e-mail: peça ao responsável pelo sistema para redefinir a sua senha."; return; }
+    try{ await FB.resetPassword(v); err.style.color="var(--accent)"; err.textContent="Enviamos um e-mail para redefinir a senha."; }
     catch(e){ err.textContent=authMsg(e); }
   }},"Esqueci a senha");
   const ov=el("div",{class:"overlay",id:"loginOv",style:"background:var(--bg)"},
@@ -1200,22 +1285,32 @@ async function netStart(){
     FB.listen(changes=>{
       if(first){
         first=false;
-        changes.forEach(c=>{ if(c.type!=="removed"&&c.value!=null){ versions[c.part]=c.v; applyPart(c.part,c.value); } });
+        const legacy=[];
+        changes.slice().sort((x,y)=>partPri(x.part)-partPri(y.part)).forEach(c=>{
+          if(c.type!=="removed"&&c.value!=null){
+            if(/^n?bed:/.test(c.part)&&PAC_KEYS.some(k=>k in c.value)) legacy.push(c.part);
+            versions[c.part]=c.v; applyPart(c.part,c.value);
+          }
+        });
         const names=partNames();
         Object.keys(versions).forEach(n=>{ if(names.includes(n)) synced[n]=serialize(n); });
+        legacy.forEach(n=>{ delete synced[n]; });   /* regrava o leito sem a identificação duplicada */
         resolve(); return;
       }
       changes.forEach(onChange);
     },err=>{ if(first){ first=false; reject(err); } else netError(err); });
   });
-  setInterval(()=>{ tickN++; if(netDown||tickN%2===0) pushDirty(); flushPending(); if(needRender&&!editingNow()){ needRender=false; renderEditor(); } },3000);
+  setInterval(()=>{ tickN++; if(netDown||tickN%2===0) pushDirty(); flushPending(); if(needRender&&!editingNow()){ needRender=false; rerenderActive(); } },3000);
   window.addEventListener("online",()=>{ setNet(true); pushDirty(); });
   window.addEventListener("offline",()=>setNet(false));
   window.addEventListener("beforeunload",e=>{
     if(partNames().some(n=>!(pending[n]&&pending[n].conflict)&&synced[n]!==serialize(n))){ e.preventDefault(); e.returnValue=""; }
   });
   $("#editor").addEventListener("focusout",()=>setTimeout(()=>{
-    if(editingNow()) return; flushPending(); if(needRender){ needRender=false; renderEditor(); }
+    if(editingNow()) return; flushPending(); if(needRender){ needRender=false; rerenderActive(); }
+  },250));
+  $("#pocusApp").addEventListener("focusout",()=>setTimeout(()=>{
+    if(editingNow()) return; flushPending(); if(needRender){ needRender=false; rerenderActive(); }
   },250));
   save();
 }
@@ -1228,6 +1323,8 @@ const ICONS={
   visita:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.5 3-6 6-6s6 2.5 6 6"/><path d="M15.5 14.5c3 0 5.5 2 5.5 5.5"/></svg>'
 };
 function renderHub(){
+  const lg=$("#hubLogo"); if(SHARED.logo){ lg.src=SHARED.logo; lg.hidden=false; } else { lg.hidden=true; lg.removeAttribute("src"); }
+  $("#hubTitle").textContent=(SV.med&&SV.med.unit)||"UTI IOG";
   const g=$("#hubGrid"); g.innerHTML="";
   const card=(ic,t,d,fn,soon)=>el("button",{class:"hub-card"+(soon?" soon":""),type:"button",onclick:fn},
     el("div",{class:"hub-ic",html:ic}),
@@ -1313,7 +1410,7 @@ const POC_BLOCOS=[
  ],regras:[
   {q:g=>g.s("perfil")==="hiper"&&g.s("vci")==="alt",a:"Perfil hiperdinâmico (“kissing walls”) + VCI colabada",t:"Choque distributivo."},
   {q:g=>g.s("perfil")==="hipo",a:"Perfil hipodinâmico (contratilidade global reduzida)",t:"Choque cardiogênico."},
-  {q:g=>g.s("vd")==="pres",a:"VD dilatado",t:"Suspeitar de choque obstrutivo (TEP)."},
+  {q:g=>g.s("vd")==="pres",a:"VD dilatado com septo retificado",t:"Suspeitar de choque obstrutivo (TEP)."},
   {q:g=>g.s("per")==="pres",a:"Derrame pericárdico + colapso de câmaras direitas",t:"Tamponamento cardíaco."},
   {q:g=>g.s("plr")==="resp",a:"Aumento do VTI > 10–15% após PLR",t:"Paciente fluido-responsivo."},
   {q:g=>g.s("plr")==="nao",a:"VTI sem incremento após PLR",t:"Não responsivo. Suspender expansão."}
@@ -1340,23 +1437,49 @@ const POC_BLOCOS=[
   {q:g=>g.has("hid","aus")&&g.s("bex")==="aus"&&g.s("perf")==="ind",a:"Sem obstrução e sem alteração hemodinâmica clara",t:"Considerar causas intrínsecas."}
  ]}
 ];
-const POC_RODAPE="Protocolo POCUS UTI · IOG · Desenvolvido por Leonardo de Campos Castro. Ferramenta de apoio à decisão clínica — não substitui o julgamento médico.";
+const POC_RODAPE="Protocolo POCUS UTI · IOG. Ferramenta de apoio à decisão clínica — não substitui o julgamento médico.";
 function pocusInterp(B,vals){
   const g=pA(vals||{});
   return B.regras.filter(r=>{ try{ return r.q(g); }catch(e){ return false; } })
     .map(r=>({a:r.a,t:(typeof r.t==="function"?r.t(g):r.t),alerta:!!r.alerta}));
 }
 function leitoLabel(id){ const b=SV.med.beds.find(x=>x.id===id); return b?bedLabel(b)+(b.extra&&b.local?" · "+b.local:""):""; }
+function ensurePid(id){ const q=pacOf(id); if(!q.pid){ q.pid=uid(); save(); } return q.pid; }
+function iniciaisDe(nome){
+  const skip=["de","da","do","das","dos","e"];
+  return String(nome||"").trim().split(/\s+/).filter(w=>w&&!skip.includes(w.toLowerCase())).map(w=>w[0].toUpperCase()+".").join("");
+}
+function leitoDoRegistro(r){          /* acompanha o paciente quando ele muda de leito */
+  if(r.pid){ const b=SV.med.beds.find(x=>x.pid===r.pid); if(b) return leitoLabel(b.id); }
+  const l=leitoLabel(r.leito);
+  return l?(r.pid?l+" (leito anterior)":l):"";
+}
+function devList(b,ref){
+  return DEVS.filter(([k])=>devOn(b,k)).map(([k,l])=>{
+    const sit=(SITED[k]&&b.disp[k].sitios&&b.disp[k].sitios.length)?" ("+b.disp[k].sitios.join(", ")+")":"";
+    const dd=(b.dd||{})[k], d=daysSince(dd,ref);
+    return {txt:l+sit+(dd?" · D"+d:""),alert:!!dd&&d>ALERT_DIAS};
+  });
+}
+function pacSnap(id){                 /* cópia dos dados do passômetro no momento do exame (sem o nome completo) */
+  const b=id?SV.med.beds.find(x=>x.id===id):null;
+  if(!b||!bedHasPatient(b)) return null;
+  return {idade:b.idade,plano:b.plano,admissao:b.admissao,problemas:b.problemas.slice(),disp:devList(b,todayISO())};
+}
+/* ---- rascunho: cada bloco guarda os próprios achados ---- */
 let pdraft=null;
-function pocusNew(bloco,keep){
-  return {bloco,leito:keep?keep.leito:"",iniciais:keep?keep.iniciais:"",examinador:keep?keep.examinador:(SHARED.ultimoResp||""),vals:{},obs:"",salvo:false};
+function pocusNew(keep){
+  return {atual:keep?keep.atual:0,leito:keep?keep.leito:"",pid:keep?keep.pid:"",iniciais:keep?keep.iniciais:"",iniAuto:keep?keep.iniAuto:true,
+    examinador:keep?keep.examinador:(SHARED.ultimoResp||""),blocos:{},obs:"",salvo:false};
 }
-function pocusHasData(d){
-  return !!d.obs||Object.values(d.vals).some(v=>(Array.isArray(v.st)?v.st.length:v.st)||(v.n||[]).some(x=>x!==""));
-}
-function ensureVal(it,d){ return d.vals[it.id]||(d.vals[it.id]={st:it.op==="hidro"?[]:"",n:(it.nums||[]).map(()=>"")}); }
-function pocusItem(it,d,onChange){
-  const v=ensureVal(it,d);
+function blocoVals(d,id){ return (d.blocos[id]||(d.blocos[id]={vals:{}})).vals; }
+function blocoTemDados(vals){ return Object.values(vals||{}).some(v=>(Array.isArray(v.st)?v.st.length:v.st)||(v.n||[]).some(x=>x!=="")); }
+function blocosPreenchidos(blocos){ return POC_BLOCOS.filter(B=>blocos&&blocos[B.id]&&blocoTemDados(blocos[B.id].vals)); }
+function pocusHasData(d){ return blocosPreenchidos(d.blocos).length>0; }
+function recBlocos(r){ return r.blocos?r.blocos:(r.bloco?{[r.bloco]:{vals:r.vals||{}}}:{}); }   /* aceita registros antigos de um só bloco */
+function ensureVal(it,vals){ return vals[it.id]||(vals[it.id]={st:it.op==="hidro"?[]:"",n:(it.nums||[]).map(()=>"")}); }
+function pocusItem(it,vals,onChange){
+  const v=ensureVal(it,vals);
   const card=el("div",{class:"poc-item"});
   card.append(el("div",{class:"nm"},it.nome),it.sub?el("div",{class:"rf"},it.sub):null,el("div",{class:"rf"},"Referência: "+it.ref));
   const kids=[], btns=[];
@@ -1379,20 +1502,23 @@ function pocusItem(it,d,onChange){
   card.append(el("div",{class:"poc-opts"},...kids),extra);
   const paint=()=>{
     btns.forEach(([k,b])=>{ const on=Array.isArray(v.st)?v.st.includes(k):v.st===k; b.classList.toggle("on",on); b.setAttribute("aria-pressed",on); });
-    extra.textContent=it.extra?it.extra(pA(d.vals)):"";
+    extra.textContent=it.extra?it.extra(pA(vals)):"";
   };
   paint();
   return {node:card,paint};
 }
 function renderPocus(){
   const root=$("#pocusApp"); root.innerHTML="";
-  if(!pdraft) pdraft=pocusNew(0,null);
+  if(!pdraft) pdraft=pocusNew(null);
   const d=pdraft;
+  if(d.pid){ const nb=SV.med.beds.find(x=>x.pid===d.pid); if(nb&&nb.id!==d.leito) d.leito=nb.id; }          /* paciente mudou de leito */
+  if(d.leito&&d.iniAuto){ const bb=SV.med.beds.find(x=>x.id===d.leito); if(bb&&bb.nome) d.iniciais=iniciaisDe(bb.nome); }
   const msg=el("span",{class:"saved netmsg"}); const sm=$("#savedMsg"); msg.textContent=sm.textContent; if(sm.classList.contains("bad")) msg.classList.add("bad");
   const touch=()=>{ d.salvo=false; const sb=document.getElementById("pocSalvar"); if(sb) sb.textContent="Salvar exame"; };
   const head=el("header",{class:"top"},
     el("button",{class:"btn",type:"button",onclick:()=>showView("hub")},"← Menu"),
     el("h1",{},"POCUS"),el("div",{class:"spacer"}),msg,
+    el("button",{class:"btn",type:"button",onclick:logoModal},"Logo"),
     el("button",{class:"btn",type:"button",onclick:pocusHist},"Histórico"),
     el("button",{class:"btn",type:"button",onclick:()=>pocusPrint(true)},"Ficha em branco"),
     el("button",{class:"btn",type:"button",onclick:()=>pocusPrint(false)},"Imprimir"),
@@ -1400,31 +1526,59 @@ function renderPocus(){
   const inner=el("div",{class:"poc-inner"}); const wrap=el("div",{class:"poc-wrap"},inner);
   root.append(head,wrap);
 
-  /* 1. bloco */
-  inner.append(el("div",{class:"poc-blocks"},...POC_BLOCOS.map(B=>el("button",{type:"button",class:"poc-block"+(d.bloco===B.id?" on":""),
-    onclick:()=>{
-      if(d.bloco===B.id) return;
-      if(pocusHasData(d)&&!confirm("Trocar de bloco apaga os achados já marcados. Continuar?")) return;
-      pdraft=pocusNew(B.id,d); renderPocus();
-    }},"Bloco "+B.id,el("small",{},B.curto)))));
+  /* 1. blocos: trocar de bloco não apaga nada */
+  inner.append(el("div",{class:"poc-blocks"},...POC_BLOCOS.map(B=>{
+    const has=!!(d.blocos[B.id]&&blocoTemDados(d.blocos[B.id].vals));
+    return el("button",{type:"button",class:"poc-block"+(d.atual===B.id?" on":"")+(has?" has":""),"aria-pressed":d.atual===B.id,
+      onclick:()=>{ d.atual=B.id; renderPocus(); }},"Bloco "+B.id+(has?" ●":""),el("small",{},B.curto));
+  })));
+  const pre=blocosPreenchidos(d.blocos);
+  if(pre.length) inner.append(el("p",{class:"hint",style:"margin:-6px 0 12px"},"Blocos com achados: "+pre.map(B=>B.curto).join(", ")+". Todos entram juntos na impressão e no histórico."));
 
-  /* 2. identificação */
-  const selL=el("select",{class:"txt","aria-label":"Leito"},el("option",{value:""},"Leito…"),
-    ...SV.med.beds.map(b=>el("option",{value:b.id},bedLabel(b)+(b.extra&&b.local?" · "+b.local:""))));
-  selL.value=d.leito; selL.addEventListener("change",e=>{ d.leito=e.target.value; touch(); });
+  /* 2. identificação (vem do passômetro) */
+  const bedOpts=SV.med.beds.filter(b=>!b.extra||b.ativo||b.id===d.leito);
+  const selL=el("select",{class:"txt","aria-label":"Leito"},el("option",{value:""},"Escolher leito…"),
+    ...bedOpts.map(b=>el("option",{value:b.id},bedLabel(b)+(b.extra&&b.local?" · "+b.local:"")+" — "+(bedHasPatient(b)?(b.nome||"paciente"):"vago"))));
+  selL.value=d.leito;
+  const iniIn=el("input",{class:"txt",type:"text",value:d.iniciais,placeholder:"Iniciais",oninput:e=>{d.iniciais=e.target.value;d.iniAuto=false;touch();}});
+  const pacBox=el("div",{class:"poc-pac"});
+  const paintPac=()=>{
+    pacBox.innerHTML="";
+    const b=d.leito?SV.med.beds.find(x=>x.id===d.leito):null;
+    if(!b){ pacBox.append(el("div",{class:"rf"},"Escolha o leito para trazer identificação, problemas e dispositivos do passômetro.")); return; }
+    if(!bedHasPatient(b)){ pacBox.append(el("div",{class:"rf"},"Leito vago no passômetro. Digite as iniciais se quiser registrar o exame mesmo assim.")); return; }
+    pacBox.append(el("div",{class:"nm"},[b.nome||"(sem nome)",b.idade?b.idade+" anos":"",b.plano||"",b.admissao?"Adm. "+fmtDate(b.admissao,true):""].filter(Boolean).join(" · ")));
+    pacBox.append(el("div",{class:"lb2"},"Problemas"));
+    pacBox.append(b.problemas.length?el("div",{class:"poc-chips"},...b.problemas.map(x=>el("span",{class:"chip",style:"padding-right:10px"},x))):el("div",{class:"rf"},"Nenhum problema registrado."));
+    const dv=devList(b,todayISO());
+    pacBox.append(el("div",{class:"lb2"},"Dispositivos invasivos"));
+    pacBox.append(dv.length?el("div",{class:"poc-chips"},...dv.map(x=>el("span",{class:"chip dev"+(x.alert?" warn":"")},(x.alert?"⚠ ":"")+x.txt))):el("div",{class:"rf"},"Nenhum dispositivo registrado."));
+    const ult=b.pid?SHARED.pocus.find(r=>r.pid===b.pid):null;
+    if(ult){ const nomes=blocosPreenchidos(recBlocos(ult)).map(x=>x.curto).join(", "); pacBox.append(el("div",{class:"rf",style:"margin-top:6px"},"Último POCUS deste paciente: "+nomes+" em "+new Date(ult.ts).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})+".")); }
+    pacBox.append(el("div",{class:"rf",style:"font-style:italic;margin-top:4px"},"Dados do passômetro; para alterar, edite lá. A troca de leito é atualizada aqui automaticamente."));
+  };
+  selL.addEventListener("change",e=>{
+    d.leito=e.target.value; const b=d.leito?SV.med.beds.find(x=>x.id===d.leito):null;
+    d.pid=(b&&bedHasPatient(b))?ensurePid(b.id):"";
+    if(!d.iniciais||d.iniAuto){ d.iniciais=(b&&b.nome)?iniciaisDe(b.nome):""; d.iniAuto=true; iniIn.value=d.iniciais; }
+    paintPac(); touch();
+  });
+  paintPac();
   inner.append(el("div",{class:"poc-strip"},
     el("div",{},el("label",{class:"lbl"},"Leito"),selL),
-    el("div",{},el("label",{class:"lbl"},"Paciente / iniciais"),el("input",{class:"txt",type:"text",value:d.iniciais,placeholder:"Iniciais",oninput:e=>{d.iniciais=e.target.value;touch();}})),
-    el("div",{},el("label",{class:"lbl"},"Examinador"),picker({key:"medico",single:true,placeholder:"Escolher ou digitar",get:()=>d.examinador,set:v=>{d.examinador=v;if(v)SHARED.ultimoResp=v;touch();}}))));
+    el("div",{},el("label",{class:"lbl"},"Paciente / iniciais"),iniIn),
+    el("div",{},el("label",{class:"lbl"},"Examinador"),picker({key:"medico",single:true,placeholder:"Escolher ou digitar",get:()=>d.examinador,set:v=>{d.examinador=v;if(v)SHARED.ultimoResp=v;touch();}}))),
+    pacBox);
 
-  const B=POC_BLOCOS.find(x=>x.id===d.bloco);
-  if(!B){ inner.append(el("p",{class:"hint",style:"font-size:15px"},"Escolha o bloco conforme o perfil clínico do paciente: neurocrítico, cirrótico, choque, congesto ou insuficiência renal aguda/oligúria.")); inner.append(el("p",{class:"hint"},POC_RODAPE)); return; }
+  const B=POC_BLOCOS.find(x=>x.id===d.atual);
+  if(!B){ inner.append(el("p",{class:"hint",style:"font-size:15px"},"Escolha o bloco conforme o perfil clínico do paciente: neurocrítico, cirrótico, choque, congesto ou insuficiência renal aguda/oligúria. Você pode preencher mais de um bloco no mesmo exame.")); inner.append(el("p",{class:"hint"},POC_RODAPE)); return; }
+  const vals=blocoVals(d,B.id);
 
   /* 3. interpretação (fixa no topo) + itens */
   const interp=el("div",{class:"poc-interp"});
   const paintInterp=()=>{
     interp.innerHTML=""; interp.append(el("div",{class:"poc-ih"},"Interpretação"));
-    const rs=pocusInterp(B,d.vals);
+    const rs=pocusInterp(B,vals);
     if(!rs.length) interp.append(el("div",{class:"rf",style:"color:var(--muted);font-size:13px"},"Marque os achados: as interpretações do fluxograma aparecem aqui."));
     rs.forEach(r=>interp.append(el("div",{class:"poc-r"+(r.alerta?" alerta":"")},el("b",{},r.a),r.t?el("div",{},r.t):null)));
   };
@@ -1432,76 +1586,135 @@ function renderPocus(){
   const paints=[];
   const onChange=(it,isNum)=>{
     if(isNum) B.itens.forEach(x=>{
-      if(x.auto&&(x.id===it.id||(x.deps||[]).includes(it.id))){ const r=x.auto(pA(d.vals)); if(r) ensureVal(x,d).st=r; }
+      if(x.auto&&(x.id===it.id||(x.deps||[]).includes(it.id))){ const r=x.auto(pA(vals)); if(r) ensureVal(x,vals).st=r; }
     });
     paints.forEach(f=>f()); paintInterp(); touch();
   };
-  B.itens.forEach(it=>{ const o=pocusItem(it,d,onChange); paints.push(o.paint); inner.append(o.node); });
+  B.itens.forEach(it=>{ const o=pocusItem(it,vals,onChange); paints.push(o.paint); inner.append(o.node); });
   paintInterp();
 
   /* 4. observações e ações */
-  const ta=el("textarea",{class:"txt",rows:"3",placeholder:"Observações",oninput:e=>{d.obs=e.target.value;touch();}}); ta.value=d.obs;
-  inner.append(el("div",{style:"margin-top:6px"},el("label",{class:"lbl"},"Observações"),ta),
+  const ta=el("textarea",{class:"txt",rows:"3",placeholder:"Observações do exame",oninput:e=>{d.obs=e.target.value;touch();}}); ta.value=d.obs;
+  inner.append(el("div",{style:"margin-top:6px"},el("label",{class:"lbl"},"Observações (valem para todos os blocos)"),ta),
     el("div",{class:"poc-actions"},
       el("button",{class:"btn primary",type:"button",onclick:pocusSave},"Salvar exame"),
       el("button",{class:"btn",type:"button",onclick:()=>pocusPrint(false)},"Imprimir"),
-      el("button",{class:"btn danger",type:"button",onclick:()=>{ if(!pocusHasData(d)||confirm("Limpar todos os achados deste exame?")){ pdraft=pocusNew(d.bloco,d); renderPocus(); } }},"Limpar achados")),
+      el("button",{class:"btn danger",type:"button",onclick:()=>{ if(!blocoTemDados(vals)||confirm("Limpar os achados deste bloco? Os outros blocos não são alterados.")){ d.blocos[B.id]={vals:{}}; touch(); renderPocus(); } }},"Limpar este bloco"),
+      el("button",{class:"btn danger",type:"button",onclick:()=>{ if((!pocusHasData(d)&&!d.obs)||confirm("Começar um novo exame? Todos os blocos e a identificação deste rascunho serão limpos (o que já foi salvo continua no histórico).")){ pdraft=pocusNew(null); renderPocus(); } }},"Novo exame")),
     el("p",{class:"hint",style:"margin-top:14px"},POC_RODAPE));
+}
+function pocusRecord(d){
+  const bb=d.leito?SV.med.beds.find(x=>x.id===d.leito):null;
+  const rec={ts:Date.now(),por:netUser||"",leito:d.leito,pid:(bb&&bedHasPatient(bb))?bb.pid:"",iniciais:d.iniciais,examinador:d.examinador,obs:d.obs,blocos:{},snap:pacSnap(d.leito)};
+  blocosPreenchidos(d.blocos).forEach(B=>{ rec.blocos[B.id]={vals:JSON.parse(JSON.stringify(d.blocos[B.id].vals))}; });
+  return rec;
 }
 function pocusSave(){
   const d=pdraft;
-  if(!d||!d.bloco){ toast("Escolha um bloco primeiro"); return; }
-  if(!pocusHasData(d)){ toast("Marque ao menos um achado antes de salvar"); return; }
-  const rec=JSON.parse(JSON.stringify(d)); delete rec.salvo; rec.ts=Date.now(); rec.por=netUser||"";
+  if(!d||!pocusHasData(d)){ toast("Marque ao menos um achado antes de salvar"); return; }
+  const bb=d.leito?SV.med.beds.find(x=>x.id===d.leito):null;
+  if(bb&&bedHasPatient(bb)) d.pid=ensurePid(bb.id);
+  const rec=pocusRecord(d);
   SHARED.pocus.unshift(rec); if(SHARED.pocus.length>150) SHARED.pocus.length=150;
   d.salvo=true; save();
   const sb=document.getElementById("pocSalvar"); if(sb) sb.textContent="Salvo ✓";
-  toast("Exame salvo no histórico do POCUS");
+  toast("Exame salvo no histórico do POCUS ("+Object.keys(rec.blocos).length+" bloco(s))");
 }
+/* ---- impressão: tudo em uma folha A4 ---- */
 const POC_CSS=`
-.pocs{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:10.5pt}
-.pocs h1{font-size:15pt;color:#0f6b5e;border-bottom:2px solid #0f6b5e;padding-bottom:4pt;margin:0 0 8pt}
-.pocs .pid{margin:0 0 10pt;font-size:10pt}
-.pocs table{width:100%;border-collapse:collapse;table-layout:fixed}
-.pocs th{background:#e1f0ed;border:1px solid #888;padding:4pt;text-align:left;font-size:9.5pt}
-.pocs td{border:1px solid #888;padding:4pt;vertical-align:top;font-size:9.5pt;word-wrap:break-word}
-.pocs tr{page-break-inside:avoid}
-.pocs h2{font-size:11.5pt;margin:12pt 0 4pt}
-.pocs small{color:#444}
-.pocs .ft{margin-top:14pt;font-size:8.5pt;color:#555;font-style:italic}
-.pocs ul{margin:2pt 0 0 14pt;padding:0}
+.pocs{font-family:Arial,Helvetica,sans-serif;color:#14211f;line-height:1.25;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pocs.s1{font-size:11pt}.pocs.s2{font-size:10pt}.pocs.s3{font-size:8.8pt}
+.pocs *{box-sizing:border-box}
+.pocs .ph{display:flex;align-items:center;gap:10pt;border-bottom:2.5pt solid #0f6b5e;padding-bottom:5pt;margin-bottom:6pt}
+.pocs .ph img{display:block;max-width:120pt;object-fit:contain}
+.pocs h1{font-size:1.7em;margin:0;color:#0f6b5e;letter-spacing:-.01em}
+.pocs .sub{font-size:.95em;color:#4b5f5c}
+.pocs .pat{display:grid;grid-template-columns:1.5fr .8fr 1.3fr 1.2fr 1.4fr;border:1pt solid #9db7b2;border-radius:4pt;margin-bottom:4pt}
+.pocs .pat div{padding:3pt 6pt;border-right:1pt solid #cfdedb;min-width:0}
+.pocs .pat div:last-child{border-right:none}
+.pocs .pat small{display:block;font-size:.7em;color:#5a6f6c}
+.pocs .pat b{font-size:1.05em;word-wrap:break-word}
+.pocs .pl{font-size:.92em;margin:0 0 2pt}
+.pocs .pl b{color:#0f6b5e}
+.pocs .dv-al{color:#b00000;font-weight:bold}
+.pocs .grid{display:grid;grid-template-columns:1fr 1fr;gap:6pt;margin-top:6pt}
+.pocs .grid.n1,.pocs .grid.n2{grid-template-columns:1fr}
+.pocs .grid>.bk:last-child:nth-child(odd){grid-column:1/-1}
+.pocs .bk{border:1pt solid #9db7b2;border-radius:4pt;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
+.pocs .bk h2{margin:0;padding:3pt 6pt;font-size:.98em;background:#dcefeb;color:#0b4f45;border-bottom:1.5pt solid #0f6b5e}
+.pocs .bk table{width:100%;border-collapse:collapse;table-layout:fixed}
+.pocs .bk td{padding:2.5pt 5pt;border-top:.5pt solid #d6e3e0;vertical-align:top;font-size:.92em}
+.pocs .bk tr:first-child td{border-top:none}
+.pocs td.n{width:38%}
+.pocs td.n small{display:block;color:#5a6f6c;font-size:.78em}
+.pocs td.o{width:42%}
+.pocs td.v{width:20%;text-align:right;white-space:nowrap}
+.pocs .ck{display:inline-block;white-space:nowrap;margin-right:.7em}
+.pocs .ck.on{font-weight:bold}
+.pocs .ck.warn{color:#a14500}
+.pocs .bx{display:inline-block;width:.85em;height:.85em;border:1pt solid #333;vertical-align:-.12em;margin-right:.3em;background:#fff}
+.pocs .bx.on{border:.45em solid #0f6b5e}
+.pocs .ck.warn .bx.on{border-color:#c25a00}
+.pocs .ip{background:#f1f8f6;border-top:.5pt solid #b7d8d2;padding:3pt 6pt;font-size:.88em}
+.pocs .ip ul{margin:1pt 0 0 1.1em;padding:0}
+.pocs .ip li.al{color:#8a5a00}
+.pocs .mu{color:#5a6f6c}
+.pocs .obs{margin-top:6pt;border:1pt solid #9db7b2;border-radius:4pt;padding:4pt 6pt;font-size:.95em;min-height:26pt}
+.pocs .ft{margin-top:5pt;font-size:.75em;color:#5a6f6c;text-align:center}
 `;
-function pocusSheet(d,blank){
-  const B=POC_BLOCOS.find(x=>x.id===d.bloco); const vals=d.vals||{};
-  const dt=blank?null:new Date(d.ts||Date.now());
-  const quando=dt?dt.toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"___/___/___";
-  const rows=B.itens.map(it=>{
-    const v=vals[it.id]||{};
-    const opts=POC_OP[it.op].map(([k,l])=>{ const on=Array.isArray(v.st)?v.st.includes(k):v.st===k; return `(${on?"X":"&nbsp;&nbsp;"}) ${esc(l)}`; }).join(" &nbsp; ");
-    const nums=(it.nums||[]).map((u,i)=>{ const x=v.n&&v.n[i]; return (x?esc(x):"______")+(u?" "+esc(u):""); }).join(" / ");
-    return `<tr><td>${esc(it.nome)}${it.sub?"<br><small>"+esc(it.sub)+"</small>":""}</td><td>${esc(it.ref)}</td><td>${opts}</td><td>${nums||"—"}</td></tr>`;
+function pocusSheet(r,blank){
+  const dt=blank?null:new Date(r.ts||Date.now());
+  const quando=dt?dt.toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"___/___/______";
+  const bl=blank?{}:recBlocos(r);
+  const ids=blank?POC_BLOCOS.map(B=>B.id):blocosPreenchidos(bl).map(B=>B.id);
+  const n=ids.length, g0=pA({});
+  const bx=on=>`<i class="bx${on?" on":""}"></i>`;
+  const blocks=ids.map(id=>{
+    const B=POC_BLOCOS.find(x=>x.id===id), vals=(bl[id]&&bl[id].vals)||{};
+    const rows=B.itens.map(it=>{
+      const v=vals[it.id]||{};
+      const opts=POC_OP[it.op].map(([k,l])=>{
+        const on=Array.isArray(v.st)?v.st.includes(k):v.st===k;
+        const warn=on&&["alt","pres","hiper","hipo","D","E","card"].includes(k);
+        return `<span class="ck${on?" on":""}${warn?" warn":""}">${bx(on)}${esc(l)}</span>`;
+      }).join("");
+      const nums=(it.nums||[]).map((u,i)=>{ const x=v.n&&v.n[i]; return (x?`<b>${esc(x)}</b>`:"____")+(u?" "+esc(u):""); }).join(" / ");
+      return `<tr><td class="n">${esc(it.nome)}${(n<=2&&it.sub)?`<small>${esc(it.sub)}</small>`:""}<small>Ref.: ${esc(it.ref)}</small></td><td class="o">${opts}</td><td class="v">${nums}</td></tr>`;
+    }).join("");
+    let foot;
+    if(blank){
+      foot=`<div class="ip"><b>Fluxograma</b><ul>${B.regras.map(x=>{ const t=typeof x.t==="function"?x.t(g0):x.t; return `<li><b>${esc(x.a)}</b>${t?" → "+esc(t):""}</li>`; }).join("")}</ul></div>`;
+    } else {
+      const rs=pocusInterp(B,vals);
+      foot=`<div class="ip"><b>Interpretação</b>${rs.length?`<ul>${rs.map(x=>`<li class="${x.alerta?"al":""}"><b>${esc(x.a)}</b>${x.t?" → "+esc(x.t):""}</li>`).join("")}</ul>`:` <span class="mu">nenhuma regra do fluxograma acionada.</span>`}</div>`;
+    }
+    return `<section class="bk"><h2>${esc(B.titulo)}</h2><table><tbody>${rows}</tbody></table>${foot}</section>`;
   }).join("");
-  let bottom;
-  if(blank){
-    const g=pA({});
-    bottom=`<h2>Fluxograma de decisão</h2><table><thead><tr><th style="width:42%">Se o achado for…</th><th>Então…</th></tr></thead><tbody>${
-      B.regras.map(r=>`<tr><td>${esc(r.a)}</td><td>${esc(typeof r.t==="function"?r.t(g):r.t)}</td></tr>`).join("")}</tbody></table>`;
-  } else {
-    const rs=pocusInterp(B,vals);
-    bottom=`<h2>Interpretação</h2>${rs.length?"<ul>"+rs.map(r=>`<li><b>${esc(r.a)}</b>${r.t?" → "+esc(r.t):""}</li>`).join("")+"</ul>":"<p>Nenhuma regra do fluxograma foi acionada pelos achados registrados.</p>"}`;
-  }
-  return `<style>${POC_CSS}</style><div class="sheet-portrait pocs"><h1>${esc(B.titulo)}</h1>
-<p class="pid"><b>Paciente/Iniciais:</b> ${esc(d.iniciais)||"______________"} &nbsp; <b>Leito:</b> ${esc(leitoLabel(d.leito))||"______"} &nbsp; <b>Data:</b> ${quando} &nbsp; <b>Examinador:</b> ${esc(d.examinador)||"______________"}</p>
-<h2>Checklist de exame</h2>
-<table><thead><tr><th style="width:34%">Item</th><th style="width:22%">Referência</th><th style="width:28%">Achado</th><th style="width:16%">Valor medido</th></tr></thead><tbody>${rows}</tbody></table>
-${bottom}
-<p><b>Observações:</b> ${d.obs?esc(d.obs):"________________________________________________________________"}</p>
-<p class="ft">${esc(POC_RODAPE)}</p></div>`;
+  const sn=blank?null:(r.snap||null);
+  const cell=(l,v)=>`<div><small>${l}</small><b>${v||"&nbsp;"}</b></div>`;
+  const pat=`<div class="pat">${cell("Paciente",blank?"":esc(r.iniciais))}${cell("Idade",sn&&sn.idade?esc(sn.idade)+" anos":"")}${cell("Leito",blank?"":esc(leitoDoRegistro(r)))}${cell("Data / hora",esc(quando))}${cell("Examinador",blank?"":esc(r.examinador))}</div>`;
+  const prob=(sn&&sn.problemas&&sn.problemas.length)?`<p class="pl"><b>Problemas:</b> ${sn.problemas.map(esc).join("; ")}</p>`:"";
+  const dv=(sn&&sn.disp&&sn.disp.length)?`<p class="pl"><b>Dispositivos:</b> ${sn.disp.map(x=>x.alert?`<span class="dv-al">⚠ ${esc(x.txt)}</span>`:esc(x.txt)).join("; ")}</p>`:"";
+  const logo=SHARED.logo?`<img src="${SHARED.logo}" style="height:34pt" alt="">`:"";
+  const head=`<div class="ph">${logo}<div><h1>POCUS à beira-leito</h1><div class="sub">${esc(SV.med.unit)}</div></div></div>`;
+  return `<style>${POC_CSS}</style><div class="sheet-portrait pocs s${Math.min(n,3)}">${head}${pat}${prob}${dv}<div class="grid n${n}">${blocks}</div><div class="obs"><b>Observações:</b> ${(!blank&&r.obs)?esc(r.obs).replace(/\n/g,"<br>"):""}</div><div class="ft">${esc(POC_RODAPE)}</div></div>`;
 }
-function printHtml(h){ $("#printArea").innerHTML=h; window.print(); }
+function fitSheet(pa){                /* garante uma única folha: reduz a escala se o conteúdo passar da página */
+  const sh=pa.querySelector(".pocs"); if(!sh) return;
+  const keep=pa.getAttribute("style");
+  pa.style.cssText="display:block;position:absolute;left:-10000px;top:0;width:190mm;visibility:hidden";
+  sh.style.zoom="";
+  const maxH=Math.floor(277/25.4*96)-8;
+  const h=sh.scrollHeight;
+  if(h>maxH) sh.style.zoom=Math.max(0.5,maxH/h).toFixed(3);
+  if(keep===null) pa.removeAttribute("style"); else pa.setAttribute("style",keep);
+}
+function printHtml(h){ const pa=$("#printArea"); pa.innerHTML=h; fitSheet(pa); window.print(); }
 function pocusPrint(blank){
-  const d=pdraft; if(!d||!d.bloco){ toast("Escolha um bloco primeiro"); return; }
-  printHtml(pocusSheet(blank?{bloco:d.bloco,vals:{},leito:"",iniciais:"",examinador:"",obs:""}:d,blank));
+  const d=pdraft;
+  if(blank){ printHtml(pocusSheet({},true)); return; }
+  if(!d||!pocusHasData(d)){ toast("Marque ao menos um achado antes de imprimir"); return; }
+  printHtml(pocusSheet(pocusRecord(d),false));
 }
 function pocusHist(){
   const body=el("div");
@@ -1509,10 +1722,10 @@ function pocusHist(){
     body.innerHTML="";
     if(!SHARED.pocus.length){ body.append(el("p",{class:"hint"},"Nenhum exame salvo ainda.")); return; }
     SHARED.pocus.forEach((r,i)=>{
-      const B=POC_BLOCOS.find(x=>x.id===r.bloco);
+      const nomes=blocosPreenchidos(recBlocos(r)).map(x=>x.curto).join(" + ")||"POCUS";
       const when=new Date(r.ts).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});
       body.append(el("div",{class:"list-item",style:"padding:8px 0"},
-        el("div",{style:"flex:1"},el("b",{},(B?B.curto:"POCUS")+" · "+(leitoLabel(r.leito)||"sem leito")+(r.iniciais?" · "+r.iniciais:"")),
+        el("div",{style:"flex:1"},el("b",{},nomes+" · "+(leitoDoRegistro(r)||"sem leito")+(r.iniciais?" · "+r.iniciais:"")),
           el("div",{class:"hint",style:"margin:0"},when+(r.examinador?" · "+r.examinador:""))),
         el("button",{class:"btn small",onclick:()=>printHtml(pocusSheet(r,false))},"Imprimir"),
         el("button",{class:"btn small danger",onclick:()=>{ if(confirm("Excluir este exame do histórico?")){ SHARED.pocus.splice(i,1); save(); draw(); } }},"Excluir")));
@@ -1529,7 +1742,8 @@ async function init(){
     try{
       const u=await requireLogin();
       netUser=(u.email||"usuário").split("@")[0];
-      $("#userInfo").textContent=u.email||""; $("#hubUser").textContent=u.email||"";
+      const shown=(u.email||"").endsWith("@"+USER_DOMAIN)?(u.email||"").split("@")[0]:(u.email||"");
+      $("#userInfo").textContent=shown; $("#hubUser").textContent=shown;
       const sair=()=>FB.signOut().then(()=>location.reload());
       ["#bSair","#hubSair"].forEach(q=>{ const b=$(q); b.hidden=false; b.onclick=sair; });
       await netStart();
@@ -1548,7 +1762,7 @@ async function init(){
   $("#hData").addEventListener("input",e=>{ if(e.target.value){S.data=e.target.value; save(); renderEditor();} });
   $("#bLists").onclick=listsModal; $("#bHist").onclick=histModal; $("#bBackup").onclick=backupModal; $("#bLogo").onclick=logoModal;
   $("#bNovo").onclick=novoPlantao; $("#bPrint").onclick=doPrint; $("#bWord").onclick=doWord;
-  $("#bMenu").onclick=()=>showView("hub");
+  $("#bMenu").onclick=()=>showView("hub"); $("#hubLogoBtn").onclick=logoModal;
   showView("hub");
 }
 init();
