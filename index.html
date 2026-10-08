@@ -375,7 +375,7 @@ try{
 const STORE_KEY = "passometro_uti_iog_v1";
 const LIST_NAMES = {
   problemas:"Problemas / diagnósticos", atb:"Antibióticos", imagem:"Exames de imagem",
-  pend:"Pendências", condutas:"Condutas", plano:"Planos de saúde",
+  pend:"Pendências", condutas:"Condutas", labEsp:"Exames laboratoriais especiais", plano:"Planos de saúde",
   sCVC:"Sítios de CVC", sCDL:"Sítios de CDL", sDreno:"Sítios de dreno",
   achado:"Achados de imagem", sCultura:"Sítios de cultura", germe:"Germes identificados", perfil:"Perfis de antibiograma", medico:"Médicos / residentes",
   npend:"Atualizações, Condutas, Pendências e Observações (enfermagem)", sPA:"Sítios de punção arterial", procOutros:"Procedimentos (outros dispositivos)",
@@ -387,6 +387,7 @@ const DEFAULT_LISTS = {
   atb:["Ampicilina","Ampicilina + Sulbactam","Amoxicilina + Clavulanato","Amicacina","Azitromicina","Cefazolina","Cefepime","Ceftazidima","Ceftazidima + Avibactam","Ceftriaxona","Ciprofloxacino","Clindamicina","Ertapenem","Fluconazol","Gentamicina","Imipenem","Levofloxacino","Linezolida","Meropenem","Metronidazol","Micafungina","Oxacilina","Penicilina cristalina","Piperacilina + Tazobactam","Polimixina B","Sulfametoxazol + Trimetoprima","Teicoplanina","Tigeciclina","Vancomicina"],
   imagem:["RX de tórax","USG abdominal","USG obstétrica","USG transvaginal","USG à beira leito (POCUS)","TC de crânio","TC de tórax","TC de abdome","TC de pelve","Angiotomografia de tórax","RM de crânio","Ecocardiograma","Doppler venoso de MMII"],
   pend:["Aguardando cultura","Aguardando resultado de exame","Aguardando vaga em enfermaria","Coletar exames da manhã","Solicitar hemocomponentes","Avaliação da cardiologia","Avaliação da nefrologia","Avaliação da fisioterapia","Avaliação da nutrição","Avaliação da cirurgia","Troca de acesso venoso","Alta da UTI"],
+  labEsp:["Procalcitonina","Lactato","BNP / NT-proBNP","Troponina","D-dímero","Galactomanana"],
   condutas:["Manter antibiótico","Escalonar antibiótico","Descalonar antibiótico","Desmame de ventilação","Extubar","Desmame de droga vasoativa","Desmame de sedação","Iniciar dieta","Progredir dieta","Hidratação","Reposição de eletrólitos","Transfusão","Profilaxia de TEV","Fisioterapia motora e respiratória","Solicitar exames de controle","Ajustar insulina","Avaliar alta da UTI"],
   plano:["SUS","Particular","IPASGO","Unimed","Bradesco Saúde","Amil","SulAmérica","Golden Cross","Prevent Senior","NotreDame Intermédica"],
   sCVC:["Jugular D","Jugular E","Subclávia D","Subclávia E","Femoral D","Femoral E"],
@@ -415,7 +416,7 @@ const N_FIXOS = 17, N_EXTRAS = 4;
    identificação, lista de problemas, dispositivos invasivos e situação do leito ficam em SHARED.pac[idDoLeito]. */
 const PAC_KEYS=["pid","nome","idade","admissao","plano","problemas","disp","dd","ativo","local"];
 const PAC_MOVE=["pid","nome","idade","admissao","plano","problemas","disp","dd"];
-const SVC_KEYS=["atb","culturas","imagem","pend","condutas","exm","proc","resp"];
+const SVC_KEYS=["atb","culturas","imagem","pend","condutas","exm","proc","labesp","resp"];
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
 function defaultDisp(){ return {svd:false,sne:false,gtt:false,tot:false,tqt:false,avp:false,prec:{on:false,resp:false,cont:false},cvc:{on:false,sitios:[]},cdl:{on:false,sitios:[]},pa:{on:false,sitios:[]},dreno:{on:false,sitios:[]},outros:[]}; }
 function defaultPac(id){ return {pid:"",nome:"",idade:"",admissao:"",plano:"",problemas:[],disp:defaultDisp(),dd:{},ativo:!String(id).startsWith("E"),local:""}; }
@@ -439,7 +440,7 @@ function absorbLegacy(b){          /* dados antigos (identificação dentro do l
   if(pacPristine(p,b.id)) PAC_KEYS.forEach(k=>{ if(got[k]!==undefined) p[k]=got[k]; });
 }
 function newBed(id, extra){
-  return {id, extra, atb:[], culturas:[], imagem:[], pend:[], condutas:[], exm:[], proc:[], resp:"", upd:null};
+  return {id, extra, atb:[], culturas:[], imagem:[], pend:[], condutas:[], exm:[], proc:[], labesp:{on:false,itens:[]}, resp:"", upd:null};
 }
 function precOf(b){ const v=b.disp&&b.disp.prec; return (v&&typeof v==="object")?v:{on:false,resp:false,cont:false}; }
 function precTxt(b){ const v=precOf(b); const a=[]; if(v.resp) a.push("RESPIRATÓRIA"); if(v.cont) a.push("CONTATO"); return a.join(" + "); }
@@ -469,10 +470,13 @@ function atbInfo(a,ref){               /* contagem do antibiótico: para ao cheg
   if(a.fim&&ref&&a.fim<=ref&&a.fim>=a.ini){ const n=daysSince(a.ini,a.fim); return {txt:"Finalizado · "+n+" D",fin:true,n}; }
   const d=daysSince(a.ini,ref); return {txt:(d&&d>0)?"D"+d:"",fin:false,n:d};
 }
+function labEspOn(b){ return !!(b.labesp&&b.labesp.on); }
+function labEspTxt(b){ return labEspOn(b)?(b.labesp.itens||[]).map(esc).join("; "):""; }
 function fixSvc(b){                /* somente os campos de cada passômetro */
   b.exm=Array.isArray(b.exm)?b.exm:[]; b.proc=Array.isArray(b.proc)?b.proc:[]; b.culturas=Array.isArray(b.culturas)?b.culturas:[];
   b.atb=Array.isArray(b.atb)?b.atb:[]; b.pend=Array.isArray(b.pend)?b.pend:[]; b.condutas=Array.isArray(b.condutas)?b.condutas:[];
   b.resp=b.resp||''; b.upd=b.upd||null;
+  if(!b.labesp||typeof b.labesp!=='object') b.labesp={on:false,itens:[]}; b.labesp.on=!!b.labesp.on; b.labesp.itens=Array.isArray(b.labesp.itens)?b.labesp.itens:[];
   b.imagem=(b.imagem||[]).map(x=>typeof x==='string'?{nome:x,data:'',achado:''}:x);
   return b;
 }
@@ -951,6 +955,18 @@ function renderEditor(){
   }
   renderCul();
 
+  // exames laboratoriais especiais (opcional: só entra na grade quando marcado)
+  const labCard=el("div",{class:"card"}); ed.append(labCard);
+  function renderLab(){
+    labCard.innerHTML=""; const L=b.labesp;
+    labCard.append(el("h3",{},"Exames Laboratoriais Especiais"));
+    labCard.append(el("button",{type:"button",class:"tog"+(L.on?" on":""),"aria-pressed":!!L.on,title:"Marque para incluir esta coluna no passômetro",
+      onclick:()=>{ L.on=!L.on; afterChange(); renderLab(); }},(L.on?"✔ ":"")+"Incluir no passômetro"));
+    if(L.on) labCard.append(el("div",{style:"margin-top:10px"},picker({key:"labEsp",placeholder:"Clique para ver os exames ou digite um novo",get:()=>L.itens,set:v=>L.itens=v})));
+    else labCard.append(el("p",{class:"hint",style:"margin:8px 0 0"},"Marque a caixa para incluir estes exames na grade do passômetro. Desmarcada, não aparece na impressão nem no Word."+(L.itens.length?" Os exames já escolhidos ficam guardados.":"")));
+  }
+  renderLab();
+
   // exames de imagem
   const imgCard=el("div",{class:"card"}); ed.append(imgCard);
   function renderImg(){
@@ -1045,18 +1061,19 @@ function docBody(st,logoSrc){
     `<div class="atb"><b>${esc(x.nome)}</b>${x.data?" ("+fmtDate(x.data)+")":""}${x.achado?": "+esc(x.achado):""}</div>`).join("");
   const list=a=>a.map(esc).join("; ");
   const reg=b=>(b.resp||b.upd)?`${esc(b.resp)||"—"}${b.upd?"<br>"+new Date(b.upd).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):""}`:"";
+  const vis=st.beds.filter(b=>!b.extra||b.ativo), anyLab=vis.some(labEspOn), NC=anyLab?10:9;
   const rows=st.beds.filter(b=>!b.extra||b.ativo).map(b=>{
     const lab=b.extra?`Extra ${b.id.slice(1)}${b.local?"<br>"+esc(b.local):""}`:b.id.slice(1).padStart(2,"0");
-    const has=b.nome||b.problemas.length||b.atb.length||(b.culturas||[]).length||b.imagem.length||b.pend.length||b.condutas.length||dev(b);
-    if(!has) return `<tr class="vago"><td class="b">${lab}</td><td colspan="8">Vago</td></tr>`;
+    const has=b.nome||precTxt(b)||b.problemas.length||b.atb.length||(b.culturas||[]).length||labEspTxt(b)||b.imagem.length||b.pend.length||b.condutas.length||dev(b);
+    if(!has) return `<tr class="vago"><td class="b">${lab}</td><td colspan="${NC-1}">Vago</td></tr>`;
     const id=`<span class="b">${esc(b.nome)||"—"}</span>${b.idade?"<br>"+esc(b.idade)+" anos":""}${b.admissao?"<br>Adm.: "+fmtDate(b.admissao,true):""}${b.plano?"<br>"+esc(b.plano):""}${precHtml(b)}`;
-    return `<tr><td class="b">${lab}</td><td>${id}</td><td>${list(b.problemas)}</td><td>${dev(b)}</td><td>${atb(b)}</td><td>${cul(b)}</td><td>${img(b)}</td><td>${list(b.pend)}</td><td>${list(b.condutas)}</td></tr>`;
+    return `<tr><td class="b">${lab}</td><td>${id}</td><td>${list(b.problemas)}</td><td>${dev(b)}</td><td>${atb(b)}</td><td>${cul(b)}</td>${anyLab?`<td>${labEspTxt(b)}</td>`:""}<td>${img(b)}</td><td>${list(b.pend)}</td><td>${list(b.condutas)}</td></tr>`;
   }).join("");
   const hdr=docHead(st,logoSrc,"Passômetro");
   return `<div class="pt">${hdr}
 <table><thead><tr>
-<th style="width:4%">Leito</th><th style="width:11%">Paciente</th><th style="width:12%">Problemas</th><th style="width:11%">Dispositivos</th>
-<th style="width:12%">Antibióticos</th><th style="width:14%">Culturas</th><th style="width:13%">Imagem</th><th style="width:10%">Pendências</th><th style="width:13%">Condutas</th>
+<th style="width:4%">Leito</th><th style="width:${anyLab?10:11}%">Paciente</th><th style="width:${anyLab?11:12}%">Problemas</th><th style="width:${anyLab?10:11}%">Dispositivos</th>
+<th style="width:${anyLab?11:12}%">Antibióticos</th><th style="width:${anyLab?12:14}%">Culturas</th>${anyLab?'<th style="width:10%">Laboratoriais</th>':""}<th style="width:${anyLab?12:13}%">Imagem</th><th style="width:10%">Pendências</th><th style="width:${anyLab?10:13}%">Condutas</th>
 </tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function doPrint(){
@@ -1126,7 +1143,7 @@ function logoModal(){
 
 /* ============ Transferência de leito ============ */
 function bedHasPatient(b){
-  return !!(b.nome||b.problemas.length||b.atb.length||(b.culturas||[]).length||b.imagem.length||b.pend.length||b.condutas.length||(b.exm||[]).length||(b.proc||[]).length||((b.disp&&b.disp.outros)||[]).length||DEVS.some(([k])=>devOn(b,k)));
+  return !!(b.nome||b.problemas.length||b.atb.length||(b.culturas||[]).length||b.imagem.length||b.pend.length||b.condutas.length||(b.exm||[]).length||(b.proc||[]).length||labEspTxt(b)||((b.disp&&b.disp.outros)||[]).length||DEVS.some(([k])=>devOn(b,k)));
 }
 function movePatient(a,b,swap){
   const ia=a.id, ib=b.id, now=Date.now();
@@ -1403,7 +1420,7 @@ function isPristine(n){
   if(n.startsWith("pac:")){ const id=n.slice(4); return pacPristine(pacOf(id),id); }
   const k=svcOfPart(n); if(!k||!n.startsWith(PFX[k].bed)) return false;
   const b=getPart(n); if(!b) return false;
-  return !(b.atb.length||b.culturas.length||b.imagem.length||b.pend.length||b.condutas.length||b.exm.length||(b.proc||[]).length||b.resp);
+  return !(b.atb.length||b.culturas.length||b.imagem.length||b.pend.length||b.condutas.length||b.exm.length||(b.proc||[]).length||(b.labesp&&(b.labesp.on||(b.labesp.itens||[]).length))||b.resp);
 }
 function unionList(a,b){
   const out=a.slice(); b.forEach(x=>{ if(!out.some(y=>norm(y)===norm(x))) out.push(x); });
