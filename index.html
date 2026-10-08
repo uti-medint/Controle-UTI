@@ -205,6 +205,11 @@ input.txt{width:100%;border:1px solid var(--line);border-radius:6px;padding:8px 
 @page xa5{size:A5 portrait;margin:0}
 .sheet-portrait{page:portrait1}
 
+.lab-box{display:block}
+.lab-ex{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) 34px;gap:10px;align-items:end;margin-bottom:8px}
+.lab-res{display:grid;grid-template-columns:160px minmax(0,1fr) 34px;gap:10px;align-items:center;margin-bottom:6px}
+.lab-res input.txt,.lab-ex input.txt{width:100%}
+.lab-trend{margin:6px 0 8px;font-weight:600}
 /* ===== Celular ===== */
 .m-only{display:none}
 @media(max-width:700px){
@@ -256,6 +261,10 @@ input.txt{width:100%;border:1px solid var(--line);border-radius:6px;padding:8px 
   .poc-strip{grid-template-columns:1fr}
   select{min-height:44px;max-width:100%}
   .poc-interp{max-height:26vh}
+  .lab-ex{grid-template-columns:minmax(0,1fr) 34px}
+  .lab-ex>div:nth-child(2){grid-column:1/2}
+  .lab-res{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) 34px}
+  .rowbox.lab-box{grid-template-columns:minmax(0,1fr)!important}
   .poc-wrap select{width:100%}
 }
 @media print{
@@ -440,7 +449,7 @@ function absorbLegacy(b){          /* dados antigos (identificação dentro do l
   if(pacPristine(p,b.id)) PAC_KEYS.forEach(k=>{ if(got[k]!==undefined) p[k]=got[k]; });
 }
 function newBed(id, extra){
-  return {id, extra, atb:[], culturas:[], imagem:[], pend:[], condutas:[], exm:[], proc:[], labesp:{on:false,itens:[]}, resp:"", upd:null};
+  return {id, extra, atb:[], culturas:[], imagem:[], pend:[], condutas:[], exm:[], proc:[], labesp:{on:false,exames:[]}, resp:"", upd:null};
 }
 function precOf(b){ const v=b.disp&&b.disp.prec; return (v&&typeof v==="object")?v:{on:false,resp:false,cont:false}; }
 function precTxt(b){ const v=precOf(b); const a=[]; if(v.resp) a.push("RESPIRATÓRIA"); if(v.cont) a.push("CONTATO"); return a.join(" + "); }
@@ -471,12 +480,40 @@ function atbInfo(a,ref){               /* contagem do antibiótico: para ao cheg
   const d=daysSince(a.ini,ref); return {txt:(d&&d>0)?"D"+d:"",fin:false,n:d};
 }
 function labEspOn(b){ return !!(b.labesp&&b.labesp.on); }
-function labEspTxt(b){ return labEspOn(b)?(b.labesp.itens||[]).map(esc).join("; "):""; }
+const LAB_MAX=5;      /* quantas datas aparecem na impressão (a tela guarda todas) */
+function labNum(v){        /* número do resultado; "0,45" e "1.5" valem, "negativo" não */
+  const t=String(v==null?"":v).trim(); if(!/^[<>≤≥~\s]*-?\d[\d.,]*$/.test(t)) return NaN;
+  const n=t.replace(/[<>≤≥~\s]/g,""); return parseFloat(n.includes(",")?n.replace(/\./g,"").replace(",","."):n);
+}
+function labSeq(e){      /* "08/10 0,12 → 09/10 0,45 ↓ 10/10 0,30" */
+  const r=(e.res||[]).filter(x=>x&&(x.data||String(x.valor||"").trim())).slice().sort((a,b)=>(a.data||"9999").localeCompare(b.data||"9999"));
+  const sh=r.slice(-LAB_MAX), mais=r.length>sh.length;
+  const f=x=>(x.data?fmtDate(x.data)+" ":"")+esc(String(x.valor||"").trim()||"—");
+  let out=mais?"… ":"";
+  sh.forEach((x,i)=>{
+    if(i>0){ const a=labNum(sh[i-1].valor), c=labNum(x.valor); let sep="→";
+      if(i===sh.length-1&&!isNaN(a)&&!isNaN(c)&&a!==c) sep=c>a?"↑":"↓";
+      out+=" "+sep+" "; }
+    out+=f(x);
+  });
+  return out;
+}
+function labEspTxt(b){
+  if(!labEspOn(b)) return "";
+  return (b.labesp.exames||[]).filter(e=>e&&e.nome).map(e=>{
+    const seq=labSeq(e);
+    return `<div class="atb"><b>${esc(e.nome)}</b>${e.unidade?" ("+esc(e.unidade)+")":""}${seq?": "+seq:""}</div>`;
+  }).join("");
+}
 function fixSvc(b){                /* somente os campos de cada passômetro */
   b.exm=Array.isArray(b.exm)?b.exm:[]; b.proc=Array.isArray(b.proc)?b.proc:[]; b.culturas=Array.isArray(b.culturas)?b.culturas:[];
   b.atb=Array.isArray(b.atb)?b.atb:[]; b.pend=Array.isArray(b.pend)?b.pend:[]; b.condutas=Array.isArray(b.condutas)?b.condutas:[];
   b.resp=b.resp||''; b.upd=b.upd||null;
-  if(!b.labesp||typeof b.labesp!=='object') b.labesp={on:false,itens:[]}; b.labesp.on=!!b.labesp.on; b.labesp.itens=Array.isArray(b.labesp.itens)?b.labesp.itens:[];
+  if(!b.labesp||typeof b.labesp!=='object') b.labesp={on:false,exames:[]};
+  b.labesp.on=!!b.labesp.on; b.labesp.exames=Array.isArray(b.labesp.exames)?b.labesp.exames:[];
+  if(Array.isArray(b.labesp.itens)&&b.labesp.itens.length){ b.labesp.itens.forEach(n=>{ if(n&&!b.labesp.exames.some(e=>e.nome===n)) b.labesp.exames.push({nome:n,unidade:"",res:[]}); }); }
+  delete b.labesp.itens;
+  b.labesp.exames=b.labesp.exames.map(e=>({nome:e.nome||"",unidade:e.unidade||"",res:Array.isArray(e.res)?e.res:[]}));
   b.imagem=(b.imagem||[]).map(x=>typeof x==='string'?{nome:x,data:'',achado:''}:x);
   return b;
 }
@@ -962,8 +999,30 @@ function renderEditor(){
     labCard.append(el("h3",{},"Exames Laboratoriais Especiais"));
     labCard.append(el("button",{type:"button",class:"tog"+(L.on?" on":""),"aria-pressed":!!L.on,title:"Marque para incluir esta coluna no passômetro",
       onclick:()=>{ L.on=!L.on; afterChange(); renderLab(); }},(L.on?"✔ ":"")+"Incluir no passômetro"));
-    if(L.on) labCard.append(el("div",{style:"margin-top:10px"},picker({key:"labEsp",placeholder:"Clique para ver os exames ou digite um novo",get:()=>L.itens,set:v=>L.itens=v})));
-    else labCard.append(el("p",{class:"hint",style:"margin:8px 0 0"},"Marque a caixa para incluir estes exames na grade do passômetro. Desmarcada, não aparece na impressão nem no Word."+(L.itens.length?" Os exames já escolhidos ficam guardados.":"")));
+    if(!L.on){
+      labCard.append(el("p",{class:"hint",style:"margin:8px 0 0"},"Marque a caixa para incluir estes exames na grade do passômetro. Desmarcada, não aparece na impressão nem no Word."+(L.exames.length?" Os exames já registrados ficam guardados.":"")));
+      return;
+    }
+    if(!L.exames.length) labCard.append(el("p",{class:"hint",style:"margin:10px 0 0"},"Escolha o exame e registre a data e o resultado. Use “+ Adicionar data e resultado” para acompanhar a variação."));
+    L.exames.forEach((e,i)=>{
+      const box=el("div",{class:"rowbox lab-box"});
+      box.append(el("div",{class:"lab-ex"},
+        el("div",{},el("label",{class:"lbl"},"Exame"),picker({key:"labEsp",single:true,placeholder:"Escolher ou digitar o exame",get:()=>e.nome,set:v=>{ e.nome=v; if(v&&!e.res.length){ e.res.push({data:todayISO(),valor:""}); setTimeout(renderLab,0); } afterChange(); }})),   /* redesenha depois, para o campo terminar de fechar */
+        el("div",{},el("label",{class:"lbl"},"Unidade"),el("input",{class:"txt",type:"text",placeholder:"ex.: ng/mL",value:e.unidade||"",oninput:ev=>{e.unidade=ev.target.value;afterChange();}})),
+        el("button",{class:"x-btn",type:"button","aria-label":"Remover exame",onclick:()=>{L.exames.splice(i,1);afterChange();renderLab();}},"×")));
+      e.res.forEach((r,k)=>{
+        box.append(el("div",{class:"lab-res"},
+          el("input",{class:"txt",type:"date","aria-label":"Data do resultado",value:r.data||"",oninput:ev=>{r.data=ev.target.value;afterChange();updTrend();}}),
+          el("input",{class:"txt",type:"text","aria-label":"Resultado",placeholder:"Resultado",value:r.valor||"",oninput:ev=>{r.valor=ev.target.value;afterChange();updTrend();}}),
+          el("button",{class:"x-btn",type:"button","aria-label":"Remover resultado",onclick:()=>{e.res.splice(k,1);afterChange();renderLab();}},"×")));
+      });
+      const tr=el("div",{class:"hint lab-trend"});
+      const updTrend=()=>{ const t=labSeq(e); tr.textContent=t?"Evolução: "+t.replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">"):""; };
+      updTrend();
+      box.append(tr,el("button",{class:"btn small",type:"button",onclick:()=>{e.res.push({data:todayISO(),valor:""});afterChange();renderLab();}},"+ Adicionar data e resultado"));
+      labCard.append(box);
+    });
+    labCard.append(el("button",{class:"btn",type:"button",style:"margin-top:6px",onclick:()=>{L.exames.push({nome:"",unidade:"",res:[]});afterChange();renderLab();}},"+ Adicionar exame especial"));
   }
   renderLab();
 
@@ -1420,7 +1479,7 @@ function isPristine(n){
   if(n.startsWith("pac:")){ const id=n.slice(4); return pacPristine(pacOf(id),id); }
   const k=svcOfPart(n); if(!k||!n.startsWith(PFX[k].bed)) return false;
   const b=getPart(n); if(!b) return false;
-  return !(b.atb.length||b.culturas.length||b.imagem.length||b.pend.length||b.condutas.length||b.exm.length||(b.proc||[]).length||(b.labesp&&(b.labesp.on||(b.labesp.itens||[]).length))||b.resp);
+  return !(b.atb.length||b.culturas.length||b.imagem.length||b.pend.length||b.condutas.length||b.exm.length||(b.proc||[]).length||(b.labesp&&(b.labesp.on||(b.labesp.exames||[]).length))||b.resp);
 }
 function unionList(a,b){
   const out=a.slice(); b.forEach(x=>{ if(!out.some(y=>norm(y)===norm(x))) out.push(x); });
