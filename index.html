@@ -2,7 +2,15 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f6b5e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Passômetro">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icons/favicon-64.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Passômetro – UTI IOG</title>
 <style>
 :root{
@@ -196,6 +204,60 @@ input.txt{width:100%;border:1px solid var(--line);border-radius:6px;padding:8px 
 @page xland{size:A4 landscape;margin:0}
 @page xa5{size:A5 portrait;margin:0}
 .sheet-portrait{page:portrait1}
+
+/* ===== Celular ===== */
+.m-only{display:none}
+@media(max-width:700px){
+  html,body{overscroll-behavior-y:none}
+  body{font-size:16px;padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+  input,textarea,select{font-size:16px!important}               /* evita o zoom automático do iPhone ao tocar num campo */
+  #app{height:100dvh}
+  header.top{padding:calc(8px + env(safe-area-inset-top)) 10px 8px;gap:8px}
+  header.top h1{font-size:18px}
+  header.top .btn{min-height:40px;padding:6px 12px}
+  #bPrint,#bWord,#bLogo,#bBackup,#hubLogoBtn,#userInfo{display:none!important}   /* impressão, Word, logo e backup ficam só no computador */
+  .field-inline{flex:1 1 140px}
+  .field-inline input.unit{width:100%}
+  .field-inline input{min-height:40px;flex:1;min-width:0}
+  .spacer{display:none}
+  main{display:block;position:relative;overflow:hidden}
+  nav.beds{width:100%;height:100%;border-right:0;padding:8px 10px 24px}
+  .bed-btn{padding:12px 14px;margin-bottom:6px;border-color:var(--line);background:#fff}
+  .bed-btn .l1{font-size:17px}
+  .bed-btn .l2{font-size:14px}
+  section.editor{height:100%;padding:10px 10px calc(70px + env(safe-area-inset-bottom))}
+  body:not(.m-ed) #app section.editor{display:none}
+  body.m-ed #app header.top>:not(#bMenu):not(#svcTitle):not(#savedMsg){display:none!important}   /* dentro do leito, o cabeçalho fica enxuto para sobrar tela */
+  body.m-ed #app header.top{padding-bottom:6px}
+  body.m-ed #app nav.beds{display:none}
+  .m-only{display:inline-block}
+  .bed-title{padding:6px 0;margin-bottom:8px}
+  .bed-title h2{font-size:21px}
+  .card{padding:12px 12px}
+  .btn,.tog,.x-btn{min-height:42px}
+  .tog{padding:8px 14px}
+  .tog.sm{min-height:38px}
+  .txt,.picker{min-height:44px}
+  .grid4,.rowbox,.rowbox.img-row,.rowbox.cul-row,.rowbox.exm-row,.rowbox.proc-row,.exm-detail,.atb-row,.out-row,.dev-sites .row{grid-template-columns:minmax(0,1fr)!important}
+  .rowbox .x-btn,.atb-row .x-btn,.out-row .x-btn{justify-self:end}
+  .xgrid,.xg4{grid-template-columns:minmax(0,1fr)!important}
+  .hub-wrap{padding:20px 14px}
+  .hub-grid{grid-template-columns:1fr}
+  .hub-card{min-height:0;padding:16px 18px}
+  .no-mobile{display:none!important}                              /* pedido de exames só no computador */
+  .overlay{padding:0;align-items:stretch}
+  .modal{width:100%;max-height:none;height:100%;border-radius:0}
+  .modal header{padding:calc(12px + env(safe-area-inset-top)) 14px 12px}
+  .modal .body{padding:12px 14px calc(24px + env(safe-area-inset-bottom))}
+  .toast{bottom:calc(20px + env(safe-area-inset-bottom));max-width:92vw;text-align:center}
+  .xwrap{padding:12px 10px 90px}
+  .net-banner{padding:8px 12px}
+  .prec-banner{font-size:16px}
+  .poc-strip{grid-template-columns:1fr}
+  select{min-height:44px;max-width:100%}
+  .poc-interp{max-height:26vh}
+  .poc-wrap select{width:100%}
+}
 @media print{
   body{background:#fff}
   #app,#hub,#pocusApp,#examApp,.overlay,.toast{display:none!important}
@@ -682,7 +744,7 @@ function renderNav(){
     const devs=devEntries(b,S.data).length;
     const inactive=b.extra&&!b.ativo;
     const btn=el("button",{class:"bed-btn"+(b.id===selected?" active":"")+(!has?" empty":"")+(inactive?" inactive":""),
-      onclick:()=>{selected=b.id; renderNav(); renderEditor(); }},
+      onclick:()=>{selected=b.id; document.body.classList.add("m-ed"); renderNav(); renderEditor(); }},
       el("div",{class:"l1"},bedLabel(b)+(b.extra&&b.local?" · "+b.local:""),
         el("small",{}, precTxt(b)?el("span",{class:"dot prec",title:"Precaução "+precTxt(b)}):"",devAlerts(b,S.data).length?el("span",{class:"dot alert",title:"Dispositivo com mais de 15 dias"}):"", b.atb.length?el("span",{class:"dot atb",title:"Antibiótico"}):"", devs?devs+" disp.":"")),
       el("div",{class:"l2"}, inactive?"Não utilizado":(b.nome||"Vago")+(b.idade?` · ${b.idade}a`:"")));
@@ -698,7 +760,7 @@ function renderNav(){
 function renderEditor(){
   const b=S.beds.find(x=>x.id===selected); const ed=$("#editor"); ed.innerHTML="";
   // título
-  const title=el("div",{class:"bed-title"},el("h2",{},bedLabel(b)));
+  const title=el("div",{class:"bed-title"},el("button",{class:"btn m-only",type:"button",onclick:()=>{ document.body.classList.remove("m-ed"); renderNav(); }},"← Leitos"),el("h2",{},bedLabel(b)));
   if(b.extra){
     title.append(
       el("label",{class:"toggle-row"},
@@ -1565,7 +1627,7 @@ function renderHub(){
   const lg=$("#hubLogo"); if(SHARED.logo){ lg.src=SHARED.logo; lg.hidden=false; } else { lg.hidden=true; lg.removeAttribute("src"); }
   $("#hubTitle").textContent=(SV.med&&SV.med.unit)||"UTI IOG";
   const g=$("#hubGrid"); g.innerHTML="";
-  const card=(ic,t,d,fn,soon)=>el("button",{class:"hub-card"+(soon?" soon":""),type:"button",onclick:fn},
+  const card=(ic,t,d,fn,soon,nm)=>el("button",{class:"hub-card"+(soon?" soon":"")+(nm?" no-mobile":""),type:"button",onclick:fn},
     el("div",{class:"hub-ic",html:ic}),
     el("div",{class:"hub-t"},t,soon?el("span",{class:"badge"},"Em breve"):null),
     el("div",{class:"hub-d"},d));
@@ -1573,9 +1635,10 @@ function renderHub(){
     card(ICONS.med,"Passômetro médico","Passagem de plantão médica dos leitos da UTI",()=>showView("med")),
     card(ICONS.enf,"Passômetro enfermagem","Passagem de plantão da enfermagem: dispositivos, pendências e exames de imagem",()=>showView("enf")),
     card(ICONS.pocus,"POCUS","Checklist de ultrassom à beira leito com interpretação automática",()=>showView("pocus")),
-    card(ICONS.lab,"Solicitação de exames","Laboratório e imagem, com guias IPASGO, UNIMED e particular",()=>showView("exames")),
+    card(ICONS.lab,"Solicitação de exames","Laboratório e imagem, com guias IPASGO, UNIMED e particular",()=>showView("exames"),false,true),
     card(ICONS.visita,"Visita multidisciplinar","Será montada em breve",()=>toast("Visita multidisciplinar: em construção. Será montada em breve."),true));
 }
+try{ if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol)) window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }catch(e){}
 /* ---- limpeza automática de históricos ---- */
 const DIAS_HIST=15;
 function ultimaViragem(now,soMeiaNoite){ const d=new Date(now); d.setMinutes(0,0,0); d.setHours(!soMeiaNoite&&d.getHours()>=12?12:0); return d.getTime(); }   /* último 00:00 (ou 12:00) */
@@ -1599,6 +1662,7 @@ function avisoExames(){
   openModal("Aviso importante",body);
 }
 function showView(v){
+  document.body.classList.remove("m-ed");   /* no celular, sempre começa pela lista de leitos */
   if(S&&S.svc&&(view==="med"||view==="enf")) SEL[S.svc]=selected;
   view=v;
   $("#hub").hidden=v!=="hub";
@@ -1741,7 +1805,7 @@ function ensureVal(it,vals){ return vals[it.id]||(vals[it.id]={st:it.op==="hidro
 function pocusItem(it,vals,onChange){
   const v=ensureVal(it,vals);
   const card=el("div",{class:"poc-item"});
-  card.append(el("div",{class:"nm"},it.nome),it.sub?el("div",{class:"rf"},it.sub):null,el("div",{class:"rf"},"Referência: "+it.ref));
+  card.append(...[el("div",{class:"nm"},it.nome),it.sub?el("div",{class:"rf"},it.sub):null,el("div",{class:"rf"},"Referência: "+it.ref)].filter(Boolean));   /* append(null) escreveria "null" na tela */
   const kids=[], btns=[];
   POC_OP[it.op].forEach(([k,l])=>{
     const b=el("button",{type:"button",class:"poc-opt "+k,onclick:()=>{
@@ -1778,10 +1842,10 @@ function renderPocus(){
   const head=el("header",{class:"top"},
     el("button",{class:"btn",type:"button",onclick:()=>showView("hub")},"← Menu"),
     el("h1",{},"POCUS"),el("div",{class:"spacer"}),msg,
-    el("button",{class:"btn",type:"button",onclick:logoModal},"Logo"),
+    el("button",{class:"btn no-mobile",type:"button",onclick:logoModal},"Logo"),
     el("button",{class:"btn",type:"button",onclick:pocusHist},"Histórico"),
-    el("button",{class:"btn",type:"button",onclick:()=>pocusPrint(true)},"Ficha em branco"),
-    el("button",{class:"btn",type:"button",onclick:()=>pocusPrint(false)},"Imprimir"),
+    el("button",{class:"btn no-mobile",type:"button",onclick:()=>pocusPrint(true)},"Ficha em branco"),
+    el("button",{class:"btn no-mobile",type:"button",onclick:()=>pocusPrint(false)},"Imprimir"),
     el("button",{class:"btn primary",type:"button",id:"pocSalvar",onclick:pocusSave},d.salvo?"Salvo ✓":"Salvar exame"));
   const inner=el("div",{class:"poc-inner"}); const wrap=el("div",{class:"poc-wrap"},inner);
   root.append(head,wrap);
