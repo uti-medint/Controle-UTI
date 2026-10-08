@@ -316,7 +316,7 @@ const LIST_NAMES = {
   pend:"Pendências", condutas:"Condutas", plano:"Planos de saúde",
   sCVC:"Sítios de CVC", sCDL:"Sítios de CDL", sDreno:"Sítios de dreno",
   achado:"Achados de imagem", sCultura:"Sítios de cultura", germe:"Germes identificados", perfil:"Perfis de antibiograma", medico:"Médicos / residentes",
-  npend:"Atualizações e Condutas (enfermagem)", sPA:"Sítios de punção arterial", procOutros:"Procedimentos (outros dispositivos)",
+  npend:"Atualizações, Condutas, Pendências e Observações (enfermagem)", sPA:"Sítios de punção arterial", procOutros:"Procedimentos (outros dispositivos)",
   sOutros:"Sítios (outros dispositivos)", procP:"Procedimentos pendentes",
   examLab:"Exames laboratoriais (livres)", examRx:"Radiografias (livres)", examTc:"Tomografias (livres)", examRm:"Ressonâncias (livres)", examLivre:"Solicitação livre (exames)"
 };
@@ -800,7 +800,6 @@ function renderEditor(){
   renderDevs();
 
   if(S.svc==="enf"){
-    ed.append(listCard("Atualizações e Condutas","npend","pend","Clique para ver as pendências ou digite uma nova"));
     const exCard=el("div",{class:"card"}); ed.append(exCard);
     function renderExm(){
       exCard.innerHTML=""; exCard.append(el("h3",{},"Exames de Imagem pendentes / realizados"));
@@ -847,6 +846,7 @@ function renderEditor(){
       prCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.proc.push({nome:"",feito:false,data:S.data,hora:"",medico:""});afterChange();renderProc();}},"+ Adicionar procedimento"));
     }
     renderProc();
+    ed.append(listCard("Atualizações, Condutas, Pendências e Observações","npend","pend","Atualizações, condutas, pendências ou observações: clique para ver a lista ou digite uma nova"));
     ed.append(el("p",{class:"hint",id:"updInfo",style:"margin:4px 2px"},updText(b)));
     return;
   }
@@ -961,11 +961,11 @@ function docBodyEnf(st,logoSrc){
     const has=b.nome||precTxt(b)||b.problemas.length||b.pend.length||(b.exm||[]).length||(b.proc||[]).length||dv;
     if(!has) return `<tr class="vago"><td class="b">${lab}</td><td colspan="6">Vago</td></tr>`;
     const id=`<span class="b">${esc(b.nome)||"—"}</span>${b.idade?"<br>"+esc(b.idade)+" anos":""}${b.admissao?"<br>Adm.: "+fmtDate(b.admissao,true):""}${b.plano?"<br>"+esc(b.plano):""}${precHtml(b)}`;
-    return `<tr><td class="b">${lab}</td><td>${id}</td><td>${list(b.problemas)}</td><td>${dv}</td><td>${list(b.pend)}</td><td>${exm(b)}</td><td>${proc(b)}</td></tr>`;
+    return `<tr><td class="b">${lab}</td><td>${id}</td><td>${list(b.problemas)}</td><td>${dv}</td><td>${exm(b)}</td><td>${proc(b)}</td><td>${list(b.pend)}</td></tr>`;
   }).join("");
   return `<div class="pt">${docHead(st,logoSrc,"Passômetro de Enfermagem")}
 <table><thead><tr>
-<th style="width:5%">Leito</th><th style="width:13%">Paciente</th><th style="width:15%">Problemas / Hipóteses Diagnósticas</th><th style="width:15%">Dispositivos</th><th style="width:16%">Atualizações e Condutas</th><th style="width:18%">Exames de Imagem pendentes / realizados</th><th style="width:18%">Procedimentos pendentes / realizados</th>
+<th style="width:5%">Leito</th><th style="width:13%">Paciente</th><th style="width:15%">Problemas / Hipóteses Diagnósticas</th><th style="width:15%">Dispositivos</th><th style="width:18%">Exames de Imagem pendentes / realizados</th><th style="width:18%">Procedimentos pendentes / realizados</th><th style="width:16%">Atualizações, Condutas, Pendências e Observações</th>
 </tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function docBody(st,logoSrc){
@@ -986,15 +986,15 @@ function docBody(st,logoSrc){
   const rows=st.beds.filter(b=>!b.extra||b.ativo).map(b=>{
     const lab=b.extra?`Extra ${b.id.slice(1)}${b.local?"<br>"+esc(b.local):""}`:b.id.slice(1).padStart(2,"0");
     const has=b.nome||b.problemas.length||b.atb.length||(b.culturas||[]).length||b.imagem.length||b.pend.length||b.condutas.length||dev(b);
-    if(!has) return `<tr class="vago"><td class="b">${lab}</td><td colspan="9">Vago</td></tr>`;
+    if(!has) return `<tr class="vago"><td class="b">${lab}</td><td colspan="8">Vago</td></tr>`;
     const id=`<span class="b">${esc(b.nome)||"—"}</span>${b.idade?"<br>"+esc(b.idade)+" anos":""}${b.admissao?"<br>Adm.: "+fmtDate(b.admissao,true):""}${b.plano?"<br>"+esc(b.plano):""}${precHtml(b)}`;
-    return `<tr><td class="b">${lab}</td><td>${id}</td><td>${list(b.problemas)}</td><td>${dev(b)}</td><td>${atb(b)}</td><td>${cul(b)}</td><td>${img(b)}</td><td>${list(b.pend)}</td><td>${list(b.condutas)}</td><td>${reg(b)}</td></tr>`;
+    return `<tr><td class="b">${lab}</td><td>${id}</td><td>${list(b.problemas)}</td><td>${dev(b)}</td><td>${atb(b)}</td><td>${cul(b)}</td><td>${img(b)}</td><td>${list(b.pend)}</td><td>${list(b.condutas)}</td></tr>`;
   }).join("");
   const hdr=docHead(st,logoSrc,"Passômetro");
   return `<div class="pt">${hdr}
 <table><thead><tr>
-<th style="width:4%">Leito</th><th style="width:10%">Paciente</th><th style="width:10%">Problemas</th><th style="width:10%">Dispositivos</th>
-<th style="width:11%">Antibióticos</th><th style="width:13%">Culturas</th><th style="width:12%">Imagem</th><th style="width:9%">Pendências</th><th style="width:12%">Condutas</th><th style="width:9%">Registro</th>
+<th style="width:4%">Leito</th><th style="width:11%">Paciente</th><th style="width:12%">Problemas</th><th style="width:11%">Dispositivos</th>
+<th style="width:12%">Antibióticos</th><th style="width:14%">Culturas</th><th style="width:13%">Imagem</th><th style="width:10%">Pendências</th><th style="width:13%">Condutas</th>
 </tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function doPrint(){
@@ -1168,9 +1168,27 @@ function restoreArchive(a){
   S.beds=S.beds.map(cur=>{ const o=Object.assign(newBed(cur.id,cur.extra),copy.find(x=>x.id===cur.id)||{}); PAC_KEYS.forEach(k=>{ delete o[k]; }); return fixBed(o); });
   S.data=a.data;
 }
-function archiveCurrent(){
-  S.archive.unshift({ts:Date.now(),data:S.data,beds:S.beds.map(b=>{ const c=JSON.parse(JSON.stringify(b)), q=pacOf(b.id); PAC_KEYS.forEach(k=>{ c[k]=JSON.parse(JSON.stringify(q[k])); }); return c; })});
-  S.archive=S.archive.slice(0,60);
+function archiveCurrent(st,ts){
+  st=st||S;
+  st.archive.unshift({ts:ts||Date.now(),data:st.data,beds:st.beds.map(b=>{ const c=JSON.parse(JSON.stringify(b)), q=pacOf(b.id); PAC_KEYS.forEach(k=>{ c[k]=JSON.parse(JSON.stringify(q[k])); }); return c; })});
+  st.archive=st.archive.slice(0,60);
+}
+/* Virada automática do dia: arquiva o passômetro da data anterior e passa para a data de hoje (igual a “Novo plantão”).
+   O carimbo do arquivo é fixo para cada data (23:59:59 do dia), então dois computadores não geram arquivos duplicados. */
+function autoPlantao(){
+  const hoje=todayISO(); let mudou=false;
+  SVCS.forEach(k=>{
+    const st=SV[k]; if(!st||!/^\d{4}-\d{2}-\d{2}$/.test(st.data||"")||st.data>=hoje) return;
+    if(st.beds.some(b=>bedHasPatient(b))&&!st.archive.some(a=>a.data===st.data)){
+      const [y,m,d]=st.data.split("-").map(Number);
+      archiveCurrent(st,new Date(y,m-1,d,23,59,59).getTime());
+    }
+    st.data=hoje; mudou=true;
+  });
+  if(!mudou) return;
+  if(view==="med"||view==="enf"){ $("#hData").value=S.data; }
+  save();
+  if(!(typeof editingNow==="function"&&editingNow())){ try{ rerenderActive(); }catch(e){} }
 }
 function histModal(){
   const body=el("div");
@@ -1366,6 +1384,7 @@ async function pushDirty(){
         const cur=r.current;
         if(cur&&JSON.stringify(cur.value)===JSON.stringify(getPart(n))){ versions[n]=cur.v; synced[n]=js; continue; }
         if(cur&&isPristine(n)){ applyRemote({part:n,v:cur.v,value:cur.value,by:cur.by}); continue; }
+        if(isImmutable(n)&&cur){ applyRemote({part:n,v:cur.v,value:cur.value,by:cur.by}); continue; }   /* arquivo/histórico já gravado por outro computador */
         if(n.startsWith("reg:")&&cur){ versions[n]=cur.v; regMerge(getPart(n),cur.value); regPromoteAll(); again=true; continue; }
         if(n.startsWith("list:")&&cur){ versions[n]=cur.v; S.lists[n.slice(5)]=unionList(S.lists[n.slice(5)],cur.value); again=true; continue; }
         if(cur){ pending[n]={ev:{part:n,v:cur.v,value:cur.value,by:cur.by},conflict:true}; renderBanner(); }
@@ -1516,7 +1535,7 @@ async function netStart(){
       changes.forEach(onChange);
     },err=>{ if(first){ first=false; reject(err); } else netError(err); });
   });
-  ensurePlanos(); regPromoteAll(); limparHistoricos(); setInterval(limparHistoricos,60000);
+  ensurePlanos(); regPromoteAll(); limparHistoricos(); setInterval(limparHistoricos,60000); autoPlantao(); setInterval(autoPlantao,30000);
   setInterval(()=>{ tickN++; if(netDown||tickN%2===0) pushDirty(); flushPending(); if(needRender&&!editingNow()){ needRender=false; rerenderActive(); } },3000);
   window.addEventListener("online",()=>{ setNet(true); pushDirty(); });
   window.addEventListener("offline",()=>setNet(false));
@@ -1559,12 +1578,16 @@ function renderHub(){
 }
 /* ---- limpeza automática de históricos ---- */
 const DIAS_HIST=15;
-function ultimaViragem(now){ const d=new Date(now); d.setMinutes(0,0,0); d.setHours(d.getHours()>=12?12:0); return d.getTime(); }   /* último 00:00 ou 12:00 */
+function ultimaViragem(now,soMeiaNoite){ const d=new Date(now); d.setMinutes(0,0,0); d.setHours(!soMeiaNoite&&d.getHours()>=12?12:0); return d.getTime(); }   /* último 00:00 (ou 12:00) */
 function pedTemLab(r){ const l=r&&r.d&&r.d.lab; return !!(l&&((l.sel&&l.sel.length)||l.gaso||(l.livres&&l.livres.length))); }
+function arqVence(a,now){                 /* plantão arquivado: some às 00:00 do 15º dia depois da data do passômetro */
+  let ini; if(a.data&&/^\d{4}-\d{2}-\d{2}$/.test(a.data)){ const [y,m,d]=a.data.split("-").map(Number); ini=new Date(y,m-1,d); } else { ini=new Date(a.ts); ini.setHours(0,0,0,0); }
+  const venc=new Date(ini.getFullYear(),ini.getMonth(),ini.getDate()+DIAS_HIST); return now>=venc.getTime();
+}
 function limparHistoricos(){
-  const now=Date.now(), lim=now-DIAS_HIST*86400000, vir=ultimaViragem(now); let mudou=false;
-  if(SHARED.ped){ const n=SHARED.ped.length; SHARED.ped=SHARED.ped.filter(r=>r.ts>=lim&&!(pedTemLab(r)&&r.ts<vir)); if(SHARED.ped.length!==n) mudou=true; }
-  SVCS.forEach(k=>{ const st=SV[k]; if(!st||!st.archive) return; const n=st.archive.length; st.archive=st.archive.filter(a=>a.ts>=lim); if(st.archive.length!==n) mudou=true; });
+  const now=Date.now(), v12=ultimaViragem(now), v00=ultimaViragem(now,true); let mudou=false;
+  if(SHARED.ped){ const n=SHARED.ped.length; SHARED.ped=SHARED.ped.filter(r=>r.ts>=(pedTemLab(r)?v12:v00)); if(SHARED.ped.length!==n) mudou=true; }   /* laboratório: 00:00 e 12:00 · demais: 00:00 */
+  SVCS.forEach(k=>{ const st=SV[k]; if(!st||!st.archive) return; const n=st.archive.length; st.archive=st.archive.filter(a=>!arqVence(a,now)); if(st.archive.length!==n) mudou=true; });
   if(mudou){ try{ pushDirty(); }catch(e){} if(view==="exames"&&!document.querySelector(".overlay")) renderExames(); }
 }
 function avisoExames(){
@@ -1572,7 +1595,7 @@ function avisoExames(){
     el("h2",{},"⚠ ATENÇÃO — evite pedidos duplicados"),
     el("div",{class:"xa"},el("span",{class:"n"},"1"),el("div",{},"Ao finalizar o pedido de exame de um paciente, clique em ",el("b",{},"“NOVO PEDIDO”")," no canto superior esquerdo da tela.")),
     el("div",{class:"xa"},el("span",{class:"n"},"2"),el("div",{},"Sempre confira quais exames estão sendo solicitados na caixa ",el("b",{},"“PEDIDO”")," no canto direito da tela.")),
-    el("p",{class:"hint",style:"margin:6px 0 0"},"Os pedidos de laboratório do histórico são apagados automaticamente às 00:00 e às 12:00."));
+    el("p",{class:"hint",style:"margin:6px 0 0"},"O histórico de pedidos é apagado automaticamente: laboratório às 00:00 e 12:00; imagem às 00:00."));
   openModal("Aviso importante",body);
 }
 function showView(v){
