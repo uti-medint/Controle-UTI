@@ -172,12 +172,15 @@ input.txt{width:100%;border:1px solid var(--line);border-radius:6px;padding:8px 
 .poc-strip{display:grid;grid-template-columns:1fr 1fr 1.6fr;gap:12px;margin-bottom:16px}
 @media(max-width:800px){.poc-strip{grid-template-columns:1fr}}
 .poc-title{margin:6px 0 10px;font-size:20px;color:var(--accent)}
-.poc-interp{position:sticky;top:0;z-index:5;max-height:38vh;overflow-y:auto;background:#f1f8f6;border:1px solid #b7d8d2;border-left:5px solid var(--accent);border-radius:10px;padding:10px 14px;margin-bottom:12px;box-shadow:0 4px 14px rgba(0,0,0,.06)}
-.poc-ih{font-weight:700;margin-bottom:4px}
-.poc-r{padding:6px 0;border-top:1px solid #d9eae7}
-.poc-r:first-of-type{border-top:none}
-.poc-r.alerta{background:#fff6e5;border-left:4px solid #e09b1a;padding-left:8px}
-.poc-r b{display:block;font-size:13px;color:#2f4a46}
+.poc-alert{position:sticky;top:0;z-index:5;max-height:30vh;overflow-y:auto;background:#fdecea;border:1px solid #f1b8b3;border-left:5px solid var(--danger);border-radius:10px;padding:10px 14px;margin-bottom:12px;color:#7a0000;box-shadow:0 2px 8px rgba(179,38,30,.12)}
+.poc-alert[hidden]{display:none}
+.poc-ah{font-weight:800;margin-bottom:4px}
+.poc-ar{padding:2px 0;font-size:14px}
+.poc-item.altd{border-left:5px solid var(--danger);background:#fffafa}
+.altb{display:inline-block;margin-left:8px;background:var(--danger);color:#fff;border-radius:12px;padding:1px 9px;font-size:12px;font-weight:700;vertical-align:1px}
+.altb[hidden]{display:none}
+.poc-prev{margin-top:6px;color:var(--muted);font-size:13px;border-top:1px dashed var(--line);padding-top:5px}
+.poc-prev.altd{color:var(--danger);font-weight:600}
 .poc-item{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px}
 .poc-item .nm{font-weight:700}
 .poc-item .rf{color:var(--muted);font-size:13px}
@@ -260,7 +263,7 @@ input.txt{width:100%;border:1px solid var(--line);border-radius:6px;padding:8px 
   .prec-banner{font-size:16px}
   .poc-strip{grid-template-columns:1fr}
   select{min-height:44px;max-width:100%}
-  .poc-interp{max-height:26vh}
+  .poc-alert{max-height:24vh}
   .lab-ex{grid-template-columns:minmax(0,1fr) 34px}
   .lab-ex>div:nth-child(2){grid-column:1/2}
   .lab-res{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) 34px}
@@ -1710,7 +1713,7 @@ function renderHub(){
   g.append(
     card(ICONS.med,"Passômetro médico","Passagem de plantão médica dos leitos da UTI",()=>showView("med")),
     card(ICONS.enf,"Passômetro enfermagem","Passagem de plantão da enfermagem: dispositivos, pendências e exames de imagem",()=>showView("enf")),
-    card(ICONS.pocus,"POCUS","Checklist de ultrassom à beira leito com interpretação automática",()=>showView("pocus")),
+    card(ICONS.pocus,"POCUS","Registro de ultrassom à beira leito, com comparação com o exame anterior",()=>showView("pocus")),
     card(ICONS.lab,"Solicitação de exames","Laboratório e imagem, com guias IPASGO, UNIMED e particular",()=>showView("exames"),false,true),
     card(ICONS.visita,"Visita multidisciplinar","Será montada em breve",()=>toast("Visita multidisciplinar: em construção. Será montada em breve."),true));
 }
@@ -1781,72 +1784,58 @@ const POC_BLOCOS=[
   {id:"mfv",nome:"DTC — Velocidade média (mFV) na ACM",ref:"Vasoespasmo: leve > 120, moderado > 150, grave > 200 cm/s",op:"nl",nums:["cm/s"],auto:g=>{const v=g.n("mfv",0);return isNaN(v)?null:(v>120?"alt":"nl");}},
   {id:"pi",nome:"DTC — Índice de pulsatilidade (PI)",ref:"Normal 0,5–1,2",op:"nl",nums:[""],auto:g=>{const v=g.n("pi",0);return isNaN(v)?null:((v<0.5||v>1.2)?"alt":"nl");}},
   {id:"lind",nome:"DTC — Índice de Lindegaard",ref:"Vasoespasmo > 3; grave > 6",op:"nl",nums:[""],auto:g=>{const v=g.n("lind",0);return isNaN(v)?null:(v>3?"alt":"nl");}}
- ],regras:[
-  {q:g=>g.s("onsdD")==="alt"||g.s("onsdE")==="alt",a:"ONSD > 5,0 mm (uni ou bilateral)",t:"Suspeitar de HIC (PIC > 20 mmHg)."},
-  {q:g=>g.s("mfv")==="alt"&&g.s("lind")==="alt",a:"mFV ACM > 120 cm/s com Lindegaard > 3",t:g=>{const v=g.n("mfv",0),l=g.n("lind",0);const sev=isNaN(v)?"":(v>200?" Gravidade pela mFV: grave.":(v>150?" Gravidade pela mFV: moderada.":" Gravidade pela mFV: leve."));return "Vasoespasmo confirmado."+sev+(l>6?" Lindegaard > 6: grave.":"");}},
-  {q:g=>g.s("mfv")==="alt"&&g.s("lind")==="nl",a:"mFV elevada com Lindegaard < 3",t:"Hiperemia global (não é vasoespasmo)."},
-  {q:g=>{const v=g.n("pi",0);return g.s("pi")==="alt"&&(isNaN(v)||v>1.2);},a:"PI > 1,2",t:"Resistência vascular distal aumentada, compatível com HIC."},
-  {q:g=>["onsdD","onsdE","mfv","pi","lind"].every(i=>g.s(i)==="nl"),a:"Todos os parâmetros normais",t:"Manter vigilância e reavaliação seriada."}
  ]},
  {id:2,curto:"Cirrótico",titulo:"BLOCO 2 — PACIENTE CIRRÓTICO",itens:[
   {id:"asc",nome:"Ascite presente",sub:"4 quadrantes: Morison, esplenorrenal, pelve",ref:"Ausente",op:"ap"},
-  {id:"asct",nome:"Ascite tensa",sub:"Atenção: pode falsear a VCI",ref:"Ausente",op:"ap"},
+  {id:"asct",nome:"Ascite tensa",ref:"Ausente",op:"ap"},
   {id:"lb",nome:"Linhas B ≥ 3 por espaço intercostal",ref:"Ausente / Linhas A",op:"nl"},
   {id:"der",nome:"Derrame pleural",ref:"Ausente",op:"ap"},
   {id:"vciD",nome:"VCI — diâmetro máximo",sub:"Janela subxifoide",ref:"1,5–2,0 cm",op:"nl",nums:["cm"],auto:g=>{const v=g.n("vciD",0);return isNaN(v)?null:((v<1.5||v>2)?"alt":"nl");}},
-  {id:"vciC",nome:"VCI — colabamento inspiratório > 50%",ref:"Variável",op:"ap",nums:["%"],auto:g=>{const v=g.n("vciC",0);return isNaN(v)?null:(v>50?"pres":"aus");}}
- ],regras:[
-  {q:g=>g.s("asct")==="pres",alerta:true,a:"Ascite tensa presente",t:"ATENÇÃO: pressão intra-abdominal elevada falseia a avaliação da VCI."},
-  {q:g=>g.s("vciC")==="pres"&&g.s("lb")==="nl",a:"VCI colabada + pulmão “seco” (Linhas A)",t:"Provável hipovolemia."},
-  {q:g=>g.s("vciC")==="pres"&&g.s("lb")==="alt",a:"VCI colabada + Linhas B difusas",t:"Congestão pulmonar apesar de VCI colabada."},
-  {q:g=>g.s("lb")==="alt",a:"Linhas B difusas e bilaterais",t:"Congestão pulmonar."},
-  {q:g=>g.s("der")==="pres",a:"Derrame pleural (hidrotórax hepático)",t:"Correlacionar com sintomas."}
+  {id:"vciC",nome:"VCI — colabamento inspiratório > 50%",ref:"Variável",op:"ap",semAlerta:true,nums:["%"],auto:g=>{const v=g.n("vciC",0);return isNaN(v)?null:(v>50?"pres":"aus");}}
  ]},
  {id:3,curto:"Choque",titulo:"BLOCO 3 — PACIENTE EM CHOQUE",itens:[
   {id:"perfil",nome:"Perfil de contratilidade (qualitativo)",sub:"PLAX / PSAX / A4C",ref:"Normodinâmico",op:"perfil"},
-  {id:"vd",nome:"VD dilatado",sub:"Sugere choque obstrutivo/TEP",ref:"Ausente",op:"ap"},
+  {id:"vd",nome:"VD dilatado",ref:"Ausente",op:"ap"},
   {id:"per",nome:"Derrame pericárdico com colapso de câmaras direitas",ref:"Ausente",op:"ap"},
   {id:"vti",nome:"VTI da VSVE basal",sub:"Janela A5C",ref:"18–22 cm",op:"nl",nums:["cm"],auto:g=>{const v=g.n("vti",0);return isNaN(v)?null:((v<18||v>22)?"alt":"nl");}},
-  {id:"plr",nome:"VTI pós-elevação passiva das pernas (PLR)",ref:"Aumento > 10–15% = fluido-responsivo",op:"plr",nums:["cm"],deps:["vti"],
+  {id:"plr",nome:"VTI pós-elevação passiva das pernas (PLR)",ref:"Aumento > 10–15%",op:"plr",nums:["cm"],deps:["vti"],
     auto:g=>{const a=g.n("vti",0),b=g.n("plr",0);if(isNaN(a)||isNaN(b)||a<=0)return null;const d=(b-a)/a*100;return d>15?"resp":(d<10?"nao":null);},
-    extra:g=>{const a=g.n("vti",0),b=g.n("plr",0);if(isNaN(a)||isNaN(b)||a<=0)return "Informe o VTI basal e o VTI pós-PLR para calcular a variação.";const d=(b-a)/a*100;return "Variação do VTI: "+(d>=0?"+":"")+d.toFixed(0)+"%"+(d>15?" (> 15%: fluido-responsivo)":(d<10?" (< 10%: não responsivo)":" (entre 10 e 15%: faixa limítrofe, avaliar clinicamente)"));}},
-  {id:"vci",nome:"VCI — diâmetro e colabamento",sub:"Marque “Alterado” se a VCI estiver < 2 cm e colabável",ref:"< 2 cm colabável = provável hipovolemia",op:"nl",nums:["cm","%"]}
- ],regras:[
-  {q:g=>g.s("perfil")==="hiper"&&g.s("vci")==="alt",a:"Perfil hiperdinâmico (“kissing walls”) + VCI colabada",t:"Choque distributivo."},
-  {q:g=>g.s("perfil")==="hipo",a:"Perfil hipodinâmico (contratilidade global reduzida)",t:"Choque cardiogênico."},
-  {q:g=>g.s("vd")==="pres",a:"VD dilatado com septo retificado",t:"Suspeitar de choque obstrutivo (TEP)."},
-  {q:g=>g.s("per")==="pres",a:"Derrame pericárdico + colapso de câmaras direitas",t:"Tamponamento cardíaco."},
-  {q:g=>g.s("plr")==="resp",a:"Aumento do VTI > 10–15% após PLR",t:"Paciente fluido-responsivo."},
-  {q:g=>g.s("plr")==="nao",a:"VTI sem incremento após PLR",t:"Não responsivo. Suspender expansão."}
+    extra:g=>{const a=g.n("vti",0),b=g.n("plr",0);if(isNaN(a)||isNaN(b)||a<=0)return "Informe o VTI basal e o VTI pós-PLR para calcular a variação.";const d=(b-a)/a*100;return "Variação do VTI: "+(d>=0?"+":"")+d.toFixed(0)+"%";}},
+  {id:"vci",nome:"VCI — diâmetro e colabamento",ref:"< 2 cm colabável",op:"nl",nums:["cm","%"]}
  ]},
  {id:4,curto:"Congesto",titulo:"BLOCO 4 — PACIENTE CONGESTO",itens:[
   {id:"lb",nome:"Linhas B difusas e bilaterais",sub:"Varredura em 8 zonas",ref:"Ausente / Linhas A",op:"nl",nums:["zonas"]},
   {id:"vcip",nome:"VCI pletórica",sub:"> 2,0 cm com colabamento < 20%",ref:"Ausente",op:"ap",nums:["cm","%"],auto:g=>{const a=g.n("vcip",0),b=g.n("vcip",1);if(isNaN(a)||isNaN(b))return null;return (a>2&&b<20)?"pres":"aus";}},
   {id:"bex",nome:"Bexigoma",sub:"> 300–400 ml, região suprapúbica",ref:"Ausente",op:"ap",nums:["ml"],auto:g=>{const v=g.n("bex",0);return isNaN(v)?null:(v>400?"pres":(v<300?"aus":null));}}
- ],regras:[
-  {q:g=>g.s("lb")==="alt"&&g.s("vcip")==="pres",a:"Linhas B difusas + VCI pletórica",t:"Congestão sistêmica e pulmonar confirmada."},
-  {q:g=>g.s("lb")==="alt"&&g.s("vcip")==="aus",a:"Linhas B difusas com VCI normal",t:"Congestão predominantemente pulmonar."},
-  {q:g=>g.s("vcip")==="pres"&&g.s("lb")==="nl",a:"VCI pletórica isolada (pulmão seco)",t:"Congestão venosa sistêmica."},
-  {q:g=>g.s("bex")==="pres",a:"Bexigoma presente",t:"Retenção urinária: falseia o balanço hídrico."}
  ]},
  {id:5,curto:"IRA / Oligúria",titulo:"BLOCO 5 — INSUFICIÊNCIA RENAL AGUDA / OLIGÚRIA",itens:[
   {id:"hid",nome:"Hidronefrose",sub:"Dilatação pielocalicial, rins D e E",ref:"Ausente",op:"hidro"},
   {id:"bex",nome:"Bexigoma",sub:"Volume residual elevado",ref:"Ausente",op:"ap",nums:["ml"]},
-  {id:"perf",nome:"Perfil hemodinâmico integrado",sub:"VCI + eco + pulmão",ref:"—",op:"rim"}
- ],regras:[
-  {q:g=>g.has("hid","D")||g.has("hid","E"),a:"Hidronefrose presente",t:"IRA pós-renal (obstrução alta)."},
-  {q:g=>g.s("bex")==="pres",a:"Bexigoma presente",t:"Obstrução baixa. Sondagem vesical de alívio/demora."},
-  {q:g=>g.s("perf")==="pre",a:"Perfil pré-renal (coração hiperdinâmico + VCI fina/colabável + pulmão seco)",t:""},
-  {q:g=>g.s("perf")==="card",a:"Perfil cardiorrenal (coração hipodinâmico + VCI pletórica + Linhas B)",t:""},
-  {q:g=>g.has("hid","aus")&&g.s("bex")==="aus"&&g.s("perf")==="ind",a:"Sem obstrução e sem alteração hemodinâmica clara",t:"Considerar causas intrínsecas."}
+  {id:"perf",nome:"Perfil hemodinâmico integrado",sub:"VCI + eco + pulmão",ref:"—",op:"rim",semAlerta:true}
  ]}
 ];
-const POC_RODAPE="Protocolo POCUS UTI · IOG. Ferramenta de apoio à decisão clínica — não substitui o julgamento médico.";
-function pocusInterp(B,vals){
-  const g=pA(vals||{});
-  return B.regras.filter(r=>{ try{ return r.q(g); }catch(e){ return false; } })
-    .map(r=>({a:r.a,t:(typeof r.t==="function"?r.t(g):r.t),alerta:!!r.alerta}));
+const POC_RODAPE="Protocolo POCUS UTI · IOG. Registro de achados: a interpretação e a conduta são de responsabilidade do médico assistente.";
+const POC_ALT=["alt","pres","hiper","hipo","D","E"];      /* opções que contam como achado alterado */
+function pocSel(it,v,k){ return Array.isArray(v&&v.st)?v.st.includes(k):(v&&v.st)===k; }
+function isAltItem(it,v){ return !it.semAlerta&&POC_OP[it.op].some(([k])=>POC_ALT.includes(k)&&pocSel(it,v,k)); }
+function resTxt(it,v){               /* resultado marcado + valores digitados, em texto */
+  v=v||{};
+  const sel=POC_OP[it.op].filter(([k])=>pocSel(it,v,k)).map(([k,l])=>l);
+  const nums=(it.nums||[]).map((u,i)=>{ const x=v.n&&v.n[i]; return x?(x+(u?" "+u:"")):""; }).filter(Boolean);
+  return [sel.join(" + "),nums.join(" / ")].filter(Boolean).join(" · ");
 }
+function pocusAlteracoes(blocos){    /* todos os achados alterados marcados no exame (apenas alerta, sem conduta) */
+  const out=[];
+  POC_BLOCOS.forEach(B=>{ const bl=blocos&&blocos[B.id]; if(!bl) return;
+    B.itens.forEach(it=>{ const v=bl.vals&&bl.vals[it.id]; if(v&&isAltItem(it,v)) out.push({bloco:B.curto,nome:it.nome,txt:resTxt(it,v)}); }); });
+  return out;
+}
+function pocusPrevBloco(pid,blocoId,antesDe){   /* último exame anterior do mesmo paciente que tenha este bloco, em qualquer data */
+  if(!pid) return null;
+  const r=SHARED.pocus.filter(x=>x.pid===pid&&x.ts<antesDe).sort((a,b)=>b.ts-a.ts).find(x=>{ const bl=recBlocos(x)[blocoId]; return bl&&blocoTemDados(bl.vals); });
+  return r?{ts:r.ts,vals:recBlocos(r)[blocoId].vals}:null;
+}
+function fmtDia(ts){ return new Date(ts).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit"}); }
 function leitoLabel(id){ const b=SV.med.beds.find(x=>x.id===id); return b?bedLabel(b)+(b.extra&&b.local?" · "+b.local:""):""; }
 function ensurePid(id){ const q=pacOf(id); if(!q.pid){ q.pid=uid(); save(); } return q.pid; }
 function iniciaisDe(nome){
@@ -1861,7 +1850,7 @@ function leitoDoRegistro(r){          /* acompanha o paciente quando ele muda de
 function devList(b,ref){
   return devEntries(b,ref).map(x=>({txt:x.l+(x.sit?" ("+x.sit+")":"")+(x.data?" · D"+x.d:""),alert:!!x.data&&x.d>ALERT_DIAS}));
 }
-function pacSnap(id){                 /* cópia dos dados do passômetro no momento do exame (sem o nome completo) */
+function pacSnap(id){                 /* cópia dos dados do passômetro no momento do exame (o nome vai à parte, no registro do exame) */
   const b=id?SV.med.beds.find(x=>x.id===id):null;
   if(!b||!bedHasPatient(b)) return null;
   return {idade:b.idade,plano:b.plano,admissao:b.admissao,problemas:b.problemas.slice(),disp:devList(b,todayISO())};
@@ -1869,7 +1858,7 @@ function pacSnap(id){                 /* cópia dos dados do passômetro no mome
 /* ---- rascunho: cada bloco guarda os próprios achados ---- */
 let pdraft=null;
 function pocusNew(keep){
-  return {atual:keep?keep.atual:0,leito:keep?keep.leito:"",pid:keep?keep.pid:"",iniciais:keep?keep.iniciais:"",iniAuto:keep?keep.iniAuto:true,
+  return {atual:keep?keep.atual:0,leito:keep?keep.leito:"",pid:keep?keep.pid:"",nome:keep?keep.nome:"",nomeAuto:keep?keep.nomeAuto:true,savedTs:0,
     examinador:keep?keep.examinador:(SHARED.ultimoResp||""),blocos:{},obs:"",salvo:false};
 }
 function blocoVals(d,id){ return (d.blocos[id]||(d.blocos[id]={vals:{}})).vals; }
@@ -1878,7 +1867,7 @@ function blocosPreenchidos(blocos){ return POC_BLOCOS.filter(B=>blocos&&blocos[B
 function pocusHasData(d){ return blocosPreenchidos(d.blocos).length>0; }
 function recBlocos(r){ return r.blocos?r.blocos:(r.bloco?{[r.bloco]:{vals:r.vals||{}}}:{}); }   /* aceita registros antigos de um só bloco */
 function ensureVal(it,vals){ return vals[it.id]||(vals[it.id]={st:it.op==="hidro"?[]:"",n:(it.nums||[]).map(()=>"")}); }
-function pocusItem(it,vals,onChange){
+function pocusItem(it,vals,onChange,prev){
   const v=ensureVal(it,vals);
   const card=el("div",{class:"poc-item"});
   card.append(...[el("div",{class:"nm"},it.nome),it.sub?el("div",{class:"rf"},it.sub):null,el("div",{class:"rf"},"Referência: "+it.ref)].filter(Boolean));   /* append(null) escreveria "null" na tela */
@@ -1900,9 +1889,13 @@ function pocusItem(it,vals,onChange){
   });
   const extra=el("div",{class:"rf",style:"margin-top:6px"});
   card.append(el("div",{class:"poc-opts"},...kids),extra);
+  const altBadge=el("span",{class:"altb",hidden:""},"⚠ Alterado"); card.querySelector(".nm").append(altBadge);
+  if(prev){ const pv=prev.vals[it.id], pt=pv?resTxt(it,pv):"";
+    if(pt) card.append(el("div",{class:"poc-prev"+(isAltItem(it,pv)?" altd":"")},"Anterior ("+fmtDia(prev.ts)+"): "+(isAltItem(it,pv)?"⚠ ":"")+pt)); }
   const paint=()=>{
     btns.forEach(([k,b])=>{ const on=Array.isArray(v.st)?v.st.includes(k):v.st===k; b.classList.toggle("on",on); b.setAttribute("aria-pressed",on); });
     extra.textContent=it.extra?it.extra(pA(vals)):"";
+    const al=isAltItem(it,v); card.classList.toggle("altd",al); altBadge.hidden=!al;
   };
   paint();
   return {node:card,paint};
@@ -1912,7 +1905,8 @@ function renderPocus(){
   if(!pdraft) pdraft=pocusNew(null);
   const d=pdraft;
   if(d.pid){ const nb=SV.med.beds.find(x=>x.pid===d.pid); if(nb&&nb.id!==d.leito) d.leito=nb.id; }          /* paciente mudou de leito */
-  if(d.leito&&d.iniAuto){ const bb=SV.med.beds.find(x=>x.id===d.leito); if(bb&&bb.nome) d.iniciais=iniciaisDe(bb.nome); }
+  if(d.leito&&d.nomeAuto){ const bb=SV.med.beds.find(x=>x.id===d.leito); if(bb&&bb.nome) d.nome=bb.nome; }
+  if(d.leito&&!d.pid){ const bb=SV.med.beds.find(x=>x.id===d.leito); if(bb&&bedHasPatient(bb)) d.pid=ensurePid(bb.id); }
   const msg=el("span",{class:"saved netmsg"}); const sm=$("#savedMsg"); msg.textContent=sm.textContent; if(sm.classList.contains("bad")) msg.classList.add("bad");
   const touch=()=>{ d.salvo=false; const sb=document.getElementById("pocSalvar"); if(sb) sb.textContent="Salvar exame"; };
   const head=el("header",{class:"top"},
@@ -1940,13 +1934,13 @@ function renderPocus(){
   const selL=el("select",{class:"txt","aria-label":"Leito"},el("option",{value:""},"Escolher leito…"),
     ...bedOpts.map(b=>el("option",{value:b.id},bedLabel(b)+(b.extra&&b.local?" · "+b.local:"")+" — "+(bedHasPatient(b)?(b.nome||"paciente"):"vago"))));
   selL.value=d.leito;
-  const iniIn=el("input",{class:"txt",type:"text",value:d.iniciais,placeholder:"Iniciais",oninput:e=>{d.iniciais=e.target.value;d.iniAuto=false;touch();}});
+  const iniIn=el("input",{class:"txt",type:"text",value:d.nome,placeholder:"Nome do paciente",oninput:e=>{d.nome=e.target.value;d.nomeAuto=false;touch();}});
   const pacBox=el("div",{class:"poc-pac"});
   const paintPac=()=>{
     pacBox.innerHTML="";
     const b=d.leito?SV.med.beds.find(x=>x.id===d.leito):null;
     if(!b){ pacBox.append(el("div",{class:"rf"},"Escolha o leito para trazer identificação, problemas e dispositivos do passômetro.")); return; }
-    if(!bedHasPatient(b)){ pacBox.append(el("div",{class:"rf"},"Leito vago no passômetro. Digite as iniciais se quiser registrar o exame mesmo assim.")); return; }
+    if(!bedHasPatient(b)){ pacBox.append(el("div",{class:"rf"},"Leito vago no passômetro. Digite o nome do paciente se quiser registrar o exame mesmo assim.")); return; }
     pacBox.append(el("div",{class:"nm"},[b.nome||"(sem nome)",b.idade?b.idade+" anos":"",b.plano||"",b.admissao?"Adm. "+fmtDate(b.admissao,true):""].filter(Boolean).join(" · ")));
     pacBox.append(el("div",{class:"lb2"},"Problemas"));
     pacBox.append(b.problemas.length?el("div",{class:"poc-chips"},...b.problemas.map(x=>el("span",{class:"chip",style:"padding-right:10px"},x))):el("div",{class:"rf"},"Nenhum problema registrado."));
@@ -1960,13 +1954,13 @@ function renderPocus(){
   selL.addEventListener("change",e=>{
     d.leito=e.target.value; const b=d.leito?SV.med.beds.find(x=>x.id===d.leito):null;
     d.pid=(b&&bedHasPatient(b))?ensurePid(b.id):"";
-    if(!d.iniciais||d.iniAuto){ d.iniciais=(b&&b.nome)?iniciaisDe(b.nome):""; d.iniAuto=true; iniIn.value=d.iniciais; }
-    paintPac(); touch();
+    if(!d.nome||d.nomeAuto){ d.nome=(b&&b.nome)?b.nome:""; d.nomeAuto=true; iniIn.value=d.nome; }
+    d.savedTs=0; touch(); renderPocus();
   });
   paintPac();
   inner.append(el("div",{class:"poc-strip"},
     el("div",{},el("label",{class:"lbl"},"Leito"),selL),
-    el("div",{},el("label",{class:"lbl"},"Paciente / iniciais"),iniIn),
+    el("div",{},el("label",{class:"lbl"},"Paciente"),iniIn),
     el("div",{},el("label",{class:"lbl"},"Examinador"),picker({key:"medico",single:true,placeholder:"Escolher ou digitar",get:()=>d.examinador,set:v=>{d.examinador=v;if(v)SHARED.ultimoResp=v;touch();}}))),
     pacBox);
 
@@ -1974,24 +1968,25 @@ function renderPocus(){
   if(!B){ inner.append(el("p",{class:"hint",style:"font-size:15px"},"Escolha o bloco conforme o perfil clínico do paciente: neurocrítico, cirrótico, choque, congesto ou insuficiência renal aguda/oligúria. Você pode preencher mais de um bloco no mesmo exame.")); inner.append(el("p",{class:"hint"},POC_RODAPE)); return; }
   const vals=blocoVals(d,B.id);
 
-  /* 3. interpretação (fixa no topo) + itens */
-  const interp=el("div",{class:"poc-interp"});
-  const paintInterp=()=>{
-    interp.innerHTML=""; interp.append(el("div",{class:"poc-ih"},"Interpretação"));
-    const rs=pocusInterp(B,vals);
-    if(!rs.length) interp.append(el("div",{class:"rf",style:"color:var(--muted);font-size:13px"},"Marque os achados: as interpretações do fluxograma aparecem aqui."));
-    rs.forEach(r=>interp.append(el("div",{class:"poc-r"+(r.alerta?" alerta":"")},el("b",{},r.a),r.t?el("div",{},r.t):null)));
+  /* 3. alerta de achados alterados (apenas sinaliza, sem conduta) + itens */
+  const alertBox=el("div",{class:"poc-alert",hidden:""});
+  const paintAlert=()=>{
+    const al=pocusAlteracoes(d.blocos); alertBox.innerHTML=""; alertBox.hidden=!al.length; if(!al.length) return;
+    alertBox.append(el("div",{class:"poc-ah"},"⚠ Achados alterados neste exame ("+al.length+")"),
+      ...al.map(x=>el("div",{class:"poc-ar"},el("b",{},x.bloco+" · "+x.nome),x.txt?" — "+x.txt:"")));
   };
-  inner.append(el("h2",{class:"poc-title"},B.titulo),interp);
+  inner.append(el("h2",{class:"poc-title"},B.titulo),alertBox);
+  const prev=pocusPrevBloco(d.pid,B.id,d.savedTs||Infinity);
+  if(prev) inner.append(el("p",{class:"hint",style:"margin:-4px 0 10px"},"Comparação com o último exame deste paciente que teve este bloco: "+fmtDia(prev.ts)+"."));
   const paints=[];
   const onChange=(it,isNum)=>{
     if(isNum) B.itens.forEach(x=>{
       if(x.auto&&(x.id===it.id||(x.deps||[]).includes(it.id))){ const r=x.auto(pA(vals)); if(r) ensureVal(x,vals).st=r; }
     });
-    paints.forEach(f=>f()); paintInterp(); touch();
+    paints.forEach(f=>f()); paintAlert(); touch();
   };
-  B.itens.forEach(it=>{ const o=pocusItem(it,vals,onChange); paints.push(o.paint); inner.append(o.node); });
-  paintInterp();
+  B.itens.forEach(it=>{ const o=pocusItem(it,vals,onChange,prev); paints.push(o.paint); inner.append(o.node); });
+  paintAlert();
 
   /* 4. observações e ações */
   const ta=el("textarea",{class:"txt",rows:"3",placeholder:"Observações do exame",oninput:e=>{d.obs=e.target.value;touch();}}); ta.value=d.obs;
@@ -2003,9 +1998,9 @@ function renderPocus(){
       el("button",{class:"btn danger",type:"button",onclick:()=>{ if((!pocusHasData(d)&&!d.obs)||confirm("Começar um novo exame? Todos os blocos e a identificação deste rascunho serão limpos (o que já foi salvo continua no histórico).")){ pdraft=pocusNew(null); renderPocus(); } }},"Novo exame")),
     el("p",{class:"hint",style:"margin-top:14px"},POC_RODAPE));
 }
-function pocusRecord(d){
+function pocusRecord(d,paraImprimir){
   const bb=d.leito?SV.med.beds.find(x=>x.id===d.leito):null;
-  const rec={ts:Date.now(),por:netUser||"",leito:d.leito,pid:(bb&&bedHasPatient(bb))?bb.pid:"",iniciais:d.iniciais,examinador:d.examinador,obs:d.obs,blocos:{},snap:pacSnap(d.leito)};
+  const rec={ts:(paraImprimir&&d.savedTs)||Date.now(),por:netUser||"",leito:d.leito,pid:(bb&&bedHasPatient(bb))?bb.pid:"",nome:d.nome,examinador:d.examinador,obs:d.obs,blocos:{},snap:pacSnap(d.leito)};
   blocosPreenchidos(d.blocos).forEach(B=>{ rec.blocos[B.id]={vals:JSON.parse(JSON.stringify(d.blocos[B.id].vals))}; });
   return rec;
 }
@@ -2014,16 +2009,17 @@ function pocusSave(){
   if(!d||!pocusHasData(d)){ toast("Marque ao menos um achado antes de salvar"); return; }
   const bb=d.leito?SV.med.beds.find(x=>x.id===d.leito):null;
   if(bb&&bedHasPatient(bb)) d.pid=ensurePid(bb.id);
-  const rec=pocusRecord(d);
+  const rec=pocusRecord(d,false);
+  if(d.savedTs){ const k=SHARED.pocus.findIndex(x=>x.ts===d.savedTs); if(k>=0) SHARED.pocus.splice(k,1); }   /* salvar de novo o mesmo exame atualiza, não duplica */
   SHARED.pocus.unshift(rec); if(SHARED.pocus.length>150) SHARED.pocus.length=150;
-  d.salvo=true; save();
+  d.savedTs=rec.ts; d.salvo=true; save();
   const sb=document.getElementById("pocSalvar"); if(sb) sb.textContent="Salvo ✓";
   toast("Exame salvo no histórico do POCUS ("+Object.keys(rec.blocos).length+" bloco(s))");
 }
 /* ---- impressão: tudo em uma folha A4 ---- */
 const POC_CSS=`
 .pocs{font-family:Arial,Helvetica,sans-serif;color:#14211f;line-height:1.25;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.pocs.s1{font-size:11pt}.pocs.s2{font-size:10pt}.pocs.s3{font-size:8.8pt}
+.pocs.s1{font-size:11pt}.pocs.s2{font-size:10pt}.pocs.s3{font-size:8.8pt}.pocs.s4{font-size:8pt}
 .pocs *{box-sizing:border-box}
 .pocs .ph{display:flex;align-items:center;gap:10pt;border-bottom:2.5pt solid #0f6b5e;padding-bottom:5pt;margin-bottom:6pt}
 .pocs .ph img{display:block;max-width:120pt;object-fit:contain}
@@ -2055,9 +2051,12 @@ const POC_CSS=`
 .pocs .bx{display:inline-block;width:.85em;height:.85em;border:1pt solid #333;vertical-align:-.12em;margin-right:.3em;background:#fff}
 .pocs .bx.on{border:.45em solid #0f6b5e}
 .pocs .ck.warn .bx.on{border-color:#c25a00}
-.pocs .ip{background:#f1f8f6;border-top:.5pt solid #b7d8d2;padding:3pt 6pt;font-size:.88em}
-.pocs .ip ul{margin:1pt 0 0 1.1em;padding:0}
-.pocs .ip li.al{color:#8a5a00}
+.pocs .grid.fl{grid-template-columns:1fr;gap:4pt}
+.pocs .bk th{padding:1.5pt 5pt;font-size:.82em;text-align:left;background:#eef6f4;color:#33504b;border-bottom:.5pt solid #cfdedb}
+.pocs td.pv{color:#3f524f}
+.pocs td.hj{font-weight:bold}
+.pocs td.al{color:#a30000;font-weight:bold;background:#fdecea}
+.pocs .alb{border:1.5pt solid #b00000;background:#fdecea;color:#7a0000;padding:3pt 6pt;border-radius:4pt;margin:3pt 0 0;font-size:.95em}
 .pocs .mu{color:#5a6f6c}
 .pocs .obs{margin-top:6pt;border:1pt solid #9db7b2;border-radius:4pt;padding:4pt 6pt;font-size:.95em;min-height:26pt}
 .pocs .ft{margin-top:5pt;font-size:.75em;color:#5a6f6c;text-align:center}
@@ -2067,37 +2066,46 @@ function pocusSheet(r,blank){
   const quando=dt?dt.toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"___/___/______";
   const bl=blank?{}:recBlocos(r);
   const ids=blank?POC_BLOCOS.map(B=>B.id):blocosPreenchidos(bl).map(B=>B.id);
-  const n=ids.length, g0=pA({});
+  const n=ids.length;
   const bx=on=>`<i class="bx${on?" on":""}"></i>`;
-  const blocks=ids.map(id=>{
-    const B=POC_BLOCOS.find(x=>x.id===id), vals=(bl[id]&&bl[id].vals)||{};
-    const rows=B.itens.map(it=>{
-      const v=vals[it.id]||{};
-      const opts=POC_OP[it.op].map(([k,l])=>{
-        const on=Array.isArray(v.st)?v.st.includes(k):v.st===k;
-        const warn=on&&["alt","pres","hiper","hipo","D","E","card"].includes(k);
-        return `<span class="ck${on?" on":""}${warn?" warn":""}">${bx(on)}${esc(l)}</span>`;
+  let blocks;
+  if(blank){
+    blocks=ids.map(id=>{
+      const B=POC_BLOCOS.find(x=>x.id===id);
+      const rows=B.itens.map(it=>{
+        const opts=POC_OP[it.op].map(([k,l])=>`<span class="ck">${bx(false)}${esc(l)}</span>`).join("");
+        const nums=(it.nums||[]).map(u=>"____"+(u?" "+esc(u):"")).join(" / ");
+        return `<tr><td class="n">${esc(it.nome)}<small>Ref.: ${esc(it.ref)}</small></td><td class="o">${opts}</td><td class="v">${nums}</td></tr>`;
       }).join("");
-      const nums=(it.nums||[]).map((u,i)=>{ const x=v.n&&v.n[i]; return (x?`<b>${esc(x)}</b>`:"____")+(u?" "+esc(u):""); }).join(" / ");
-      return `<tr><td class="n">${esc(it.nome)}${(n<=2&&it.sub)?`<small>${esc(it.sub)}</small>`:""}<small>Ref.: ${esc(it.ref)}</small></td><td class="o">${opts}</td><td class="v">${nums}</td></tr>`;
+      return `<section class="bk"><h2>${esc(B.titulo)}</h2><table><tbody>${rows}</tbody></table></section>`;
     }).join("");
-    let foot;
-    if(blank){
-      foot=`<div class="ip"><b>Fluxograma</b><ul>${B.regras.map(x=>{ const t=typeof x.t==="function"?x.t(g0):x.t; return `<li><b>${esc(x.a)}</b>${t?" → "+esc(t):""}</li>`; }).join("")}</ul></div>`;
-    } else {
-      const rs=pocusInterp(B,vals);
-      foot=`<div class="ip"><b>Interpretação</b>${rs.length?`<ul>${rs.map(x=>`<li class="${x.alerta?"al":""}"><b>${esc(x.a)}</b>${x.t?" → "+esc(x.t):""}</li>`).join("")}</ul>`:` <span class="mu">nenhuma regra do fluxograma acionada.</span>`}</div>`;
-    }
-    return `<section class="bk"><h2>${esc(B.titulo)}</h2><table><tbody>${rows}</tbody></table>${foot}</section>`;
-  }).join("");
+  } else {
+    blocks=ids.map(id=>{
+      const B=POC_BLOCOS.find(x=>x.id===id), vals=(bl[id]&&bl[id].vals)||{};
+      const prev=pocusPrevBloco(r.pid,id,r.ts||Date.now());
+      const cel=(it,v)=>{ const t=resTxt(it,v), al=isAltItem(it,v); return {html:t?(al?"⚠ ":"")+esc(t):"—",al}; };
+      const rows=B.itens.map(it=>{
+        const h=cel(it,vals[it.id]);
+        const pv=prev?cel(it,prev.vals[it.id]):null;
+        return `<tr><td class="n">${esc(it.nome)}${(n<=2&&it.sub)?`<small>${esc(it.sub)}</small>`:""}<small>Ref.: ${esc(it.ref)}</small></td>`
+          +(pv?`<td class="pv${pv.al?" al":""}">${pv.html}</td>`:"")+`<td class="hj${h.al?" al":""}">${h.html}</td></tr>`;
+      }).join("");
+      const cols=prev?'<col style="width:44%"><col style="width:26%"><col style="width:30%">':'<col style="width:50%"><col style="width:50%">';
+      const head=prev?`<thead><tr><th></th><th>Anterior · ${fmtDia(prev.ts)}</th><th>Hoje · ${fmtDia(r.ts||Date.now())}</th></tr></thead>`:`<thead><tr><th></th><th>Hoje · ${fmtDia(r.ts||Date.now())}</th></tr></thead>`;
+      return `<section class="bk"><h2>${esc(B.titulo)}</h2><table><colgroup>${cols}</colgroup>${head}<tbody>${rows}</tbody></table></section>`;
+    }).join("");
+  }
+  const alts=blank?[]:pocusAlteracoes(bl);
+  const alb=alts.length?`<div class="alb"><b>⚠ Achados alterados assinalados (${alts.length}):</b> ${alts.map(x=>`${esc(x.bloco)}: ${esc(x.nome)}${x.txt?" ("+esc(x.txt)+")":""}`).join("; ")}.</div>`:"";
   const sn=blank?null:(r.snap||null);
   const cell=(l,v)=>`<div><small>${l}</small><b>${v||"&nbsp;"}</b></div>`;
-  const pat=`<div class="pat">${cell("Paciente",blank?"":esc(r.iniciais))}${cell("Idade",sn&&sn.idade?esc(sn.idade)+" anos":"")}${cell("Leito",blank?"":esc(leitoDoRegistro(r)))}${cell("Data / hora",esc(quando))}${cell("Examinador",blank?"":esc(r.examinador))}</div>`;
+  const pat=`<div class="pat">${cell("Paciente",blank?"":esc(r.nome||r.iniciais||""))}${cell("Idade",sn&&sn.idade?esc(sn.idade)+" anos":"")}${cell("Leito",blank?"":esc(leitoDoRegistro(r)))}${cell("Data / hora",esc(quando))}${cell("Examinador",blank?"":esc(r.examinador))}</div>`;
   const prob=(sn&&sn.problemas&&sn.problemas.length)?`<p class="pl"><b>Problemas:</b> ${sn.problemas.map(esc).join("; ")}</p>`:"";
   const dv=(sn&&sn.disp&&sn.disp.length)?`<p class="pl"><b>Dispositivos:</b> ${sn.disp.map(x=>x.alert?`<span class="dv-al">⚠ ${esc(x.txt)}</span>`:esc(x.txt)).join("; ")}</p>`:"";
   const logo=SHARED.logo?`<img src="${SHARED.logo}" style="height:34pt" alt="">`:"";
   const head=`<div class="ph">${logo}<div><h1>POCUS à beira-leito</h1><div class="sub">${esc(SV.med.unit)}</div></div></div>`;
-  return `<style>${POC_CSS}</style><div class="sheet-portrait pocs s${Math.min(n,3)}">${head}${pat}${prob}${dv}<div class="grid n${n}">${blocks}</div><div class="obs"><b>Observações:</b> ${(!blank&&r.obs)?esc(r.obs).replace(/\n/g,"<br>"):""}</div><div class="ft">${esc(POC_RODAPE)}</div></div>`;
+  const cls=blank?`s${Math.min(n,3)}`:`s${Math.min(n,4)}`;
+  return `<style>${POC_CSS}</style><div class="sheet-portrait pocs ${cls}">${head}${pat}${prob}${dv}${alb}<div class="grid ${blank?"n"+n:"fl"}">${blocks}</div><div class="obs"><b>Observações:</b> ${(!blank&&r.obs)?esc(r.obs).replace(/\n/g,"<br>"):""}</div><div class="ft">${esc(POC_RODAPE)}</div></div>`;
 }
 function fitSheet(pa){                /* garante uma única folha: reduz a escala se o conteúdo passar da página */
   const sh=pa.querySelector(".pocs"); if(!sh) return;
@@ -2106,7 +2114,7 @@ function fitSheet(pa){                /* garante uma única folha: reduz a escal
   sh.style.zoom="";
   const maxH=Math.floor(277/25.4*96)-8;
   const h=sh.scrollHeight;
-  if(h>maxH) sh.style.zoom=Math.max(0.5,maxH/h).toFixed(3);
+  if(h>maxH) sh.style.zoom=Math.max(0.4,maxH/h).toFixed(3);
   if(keep===null) pa.removeAttribute("style"); else pa.setAttribute("style",keep);
 }
 function printHtml(h){ const pa=$("#printArea"); pa.innerHTML=h; fitSheet(pa); window.print(); }
@@ -2114,7 +2122,7 @@ function pocusPrint(blank){
   const d=pdraft;
   if(blank){ printHtml(pocusSheet({},true)); return; }
   if(!d||!pocusHasData(d)){ toast("Marque ao menos um achado antes de imprimir"); return; }
-  printHtml(pocusSheet(pocusRecord(d),false));
+  { const bb=d.leito?SV.med.beds.find(x=>x.id===d.leito):null; if(bb&&bedHasPatient(bb)) d.pid=ensurePid(bb.id); printHtml(pocusSheet(pocusRecord(d,true),false)); }
 }
 function pocusHist(){
   const body=el("div");
@@ -2125,7 +2133,7 @@ function pocusHist(){
       const nomes=blocosPreenchidos(recBlocos(r)).map(x=>x.curto).join(" + ")||"POCUS";
       const when=new Date(r.ts).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});
       body.append(el("div",{class:"list-item",style:"padding:8px 0"},
-        el("div",{style:"flex:1"},el("b",{},nomes+" · "+(leitoDoRegistro(r)||"sem leito")+(r.iniciais?" · "+r.iniciais:"")),
+        el("div",{style:"flex:1"},el("b",{},nomes+" · "+(leitoDoRegistro(r)||"sem leito")+((r.nome||r.iniciais)?" · "+(r.nome||r.iniciais):"")),
           el("div",{class:"hint",style:"margin:0"},when+(r.examinador?" · "+r.examinador:""))),
         el("button",{class:"btn small",onclick:()=>printHtml(pocusSheet(r,false))},"Imprimir"),
         el("button",{class:"btn small danger",onclick:()=>{ if(confirm("Excluir este exame do histórico?")){ SHARED.pocus.splice(i,1); save(); draw(); } }},"Excluir")));
@@ -2179,7 +2187,7 @@ function xPedidos(d){
   const ps=[];
   const labL=[].concat(X_ROT,X_CULT,X_ADM).filter(x=>d.lab.sel.includes(x)).concat(d.lab.livres||[]);
   if(labL.length) ps.push({tipo:"lab",titulo:"Exames laboratoriais",linhas:labL,rel:false});
-  if(d.lab.gaso) ps.push({tipo:"gaso",titulo:"Gasometria",linhas:["Gasometria "+(d.lab.tipo==="venosa"?"venosa":"arterial")],rel:false});
+  if(d.lab.gaso) ps.push({tipo:"gaso",titulo:"Gasometria",linhas:["Gasometria "+(d.lab.tipo==="venosa"?"venosa":d.lab.tipo==="venosa_central"?"venosa de acesso central":"arterial")],rel:false});
   const im=d.img.filter(i=>i.nome);
   if(im.length) ps.push({tipo:"img",titulo:"Exames de imagem",linhas:im.map(exLinha),rel:im.some(precisaRel),relTxt:d.relImg,sup:textoSuporte(im)});
   const lv=d.livre.filter(i=>i.nome);
@@ -2388,7 +2396,8 @@ function xLab(main){
   main.append(el("div",{class:"pack"},el("h4",{},"Gasometria (sai em pedido separado)"),
     xTog("Gasometria",L.gaso,()=>{ L.gaso=!L.gaso; renderExames(); }),
     xTog("Arterial",L.gaso&&L.tipo==="arterial",()=>{ L.tipo="arterial"; renderExames(); }),
-    xTog("Venosa",L.gaso&&L.tipo==="venosa",()=>{ L.tipo="venosa"; renderExames(); })));
+    xTog("Venosa",L.gaso&&L.tipo==="venosa",()=>{ L.tipo="venosa"; renderExames(); }),
+    xTog("Venosa acesso central",L.gaso&&L.tipo==="venosa_central",()=>{ L.tipo="venosa_central"; renderExames(); })));
   main.append(sec("Culturas",X_CULT),sec("Somente na admissão",X_ADM));
   main.append(el("div",{class:"pack"},el("h4",{},"Outros exames (livre)"),
     picker({key:"examLab",placeholder:"Digite o exame e tecle Enter",get:()=>L.livres,set:v=>{L.livres=v;xSide();}})));
