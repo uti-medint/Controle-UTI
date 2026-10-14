@@ -2660,12 +2660,12 @@ function culResToggles(c,onch){
 }
 /* ---- perfis de antibiograma (caixas fixas) e painéis moleculares ---- */
 const CUL_PERFIS=[
-  {g:"Resistência",r:true,itens:["ESBL – Resistência a betalactâmicos","AmpC","KPC","NDM","OXA-48","Resistente a carbapenêmicos","MRSA","VRE","Resistente a vancomicina","Resistente a polimixina","Resistente a fluconazol"]},
+  {g:"Resistência",r:true,itens:["ESBL – Resistência a cefalosporinas/penicilinas","AmpC","KPC","Metalo-betalactamase","OXA-48","Resistente a carbapenêmicos","MRSA","VRE – Enterococo resistente a vancomicina","Resistente a vancomicina","Resistente a polimixina","Resistente a fluconazol"]},
   {g:"Classificação",r:true,itens:["MDR (multirresistente)","XDR (extensivamente resistente)","PDR (pan-resistente)"]},
   {g:"Sensibilidade",r:false,itens:["Pan-sensível","MSSA","Sensível a carbapenêmicos","Sensível a polimixina","Sensível a ceftazidima-avibactam"]}];
 const CUL_PERFIL_SET=new Set(CUL_PERFIS.flatMap(x=>x.itens));
 const CUL_MR_SET=new Set(CUL_PERFIS.filter(x=>x.r).flatMap(x=>x.itens));
-const CUL_PERFIL_ANTIGO={"esbl":"ESBL – Resistência a betalactâmicos","carbapenemase (resistente a carbapenemicos)":"Resistente a carbapenêmicos","carbapenemase":"Resistente a carbapenêmicos",
+const CUL_PERFIL_ANTIGO={"esbl":"ESBL – Resistência a cefalosporinas/penicilinas","esbl – resistencia a betalactamicos":"ESBL – Resistência a cefalosporinas/penicilinas","ndm":"Metalo-betalactamase","vre":"VRE – Enterococo resistente a vancomicina","carbapenemase (resistente a carbapenemicos)":"Resistente a carbapenêmicos","carbapenemase":"Resistente a carbapenêmicos",
   "pseudomonas resistente a carbapenemicos":"Resistente a carbapenêmicos","multirresistente (mdr)":"MDR (multirresistente)","mdr":"MDR (multirresistente)",
   "extensivamente resistente (xdr)":"XDR (extensivamente resistente)","xdr":"XDR (extensivamente resistente)","pdr":"PDR (pan-resistente)","pan-resistente (pdr)":"PDR (pan-resistente)"};
 const CUL_SITIOS_NOVOS=["Painel molecular de líquor","Painel molecular de secreção traqueal","Painel molecular urinário","Painel molecular de ferida operatória",
