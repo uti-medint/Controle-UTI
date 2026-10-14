@@ -819,7 +819,8 @@ function renderEditor(){
   title.append(el("span",{class:"spacer",style:"flex:1"}),
     (bedHasPatient(b)&&!(b.extra&&!b.ativo))?el("button",{class:"btn small",type:"button",onclick:()=>transferModal(b)},"Transferir de leito"):null,
     el("button",{class:"btn small danger",onclick:()=>{
-      if(confirm(`Limpar todos os dados do ${bedLabel(b)} nos DOIS passômetros (médico e enfermagem)? Use na alta ou saída do paciente. Os exames de POCUS já salvos continuam no histórico.`)) clearBedModal(b);
+      if(confirm(`Limpar todos os dados do ${bedLabel(b)} nos DOIS passômetros (médico e enfermagem)? Use na alta ou saída do paciente. Os exames de POCUS já salvos continuam no histórico.`)){
+        clearBedAll(b.id); afterChange(); renderEditor(); }
     }},"Limpar leito"));
   ed.append(title);
   if(b.extra&&!b.ativo){ ed.append(el("div",{class:"card"},el("p",{class:"hint",style:"margin:0"},"Marque “Leito extra em uso” para preencher este leito.")));return; }
@@ -1276,24 +1277,6 @@ function clearBedAll(id){
     const nb=newBed(id,bd.extra); SVC_KEYS.forEach(f=>{ bd[f]=nb[f]; }); bd.upd=Date.now();
   });
   const p=pacOf(id), d=defaultPac(id); PAC_MOVE.forEach(f=>{ p[f]=d[f]; });
-}
-/* Segunda confirmação do "Limpar leito": só libera o botão depois de digitar LIMPAR. */
-function clearBedModal(b){
-  const WORD="LIMPAR"; let close;
-  const inp=el("input",{class:"txt",type:"text",autocomplete:"off",autocapitalize:"characters",placeholder:WORD,"aria-label":"Digite "+WORD+" para confirmar"});
-  const go=el("button",{class:"btn danger",type:"button",disabled:""},"Limpar definitivamente");
-  const ok=()=>inp.value.trim().toUpperCase()===WORD;
-  inp.addEventListener("input",()=>{ go.disabled=!ok(); });
-  inp.addEventListener("keydown",e=>{ if(e.key==="Enter"&&ok()) go.click(); });
-  go.addEventListener("click",()=>{ if(!ok()) return;
-    clearBedAll(b.id); afterChange(); close(); toast(`${bedLabel(b)} limpo`); });
-  const body=el("div",{},
-    el("div",{class:"alert-banner",style:"margin:0 0 12px"},
-      `Atenção: todos os dados do ${bedLabel(b)}${b.nome?" ("+b.nome+")":""} serão apagados nos DOIS passômetros (médico e enfermagem). Esta ação não pode ser desfeita.`),
-    el("label",{class:"lbl"},`Para confirmar, digite ${WORD}:`),inp,
-    el("div",{style:"margin-top:16px;display:flex;gap:10px"},go));
-  close=openModal("Confirmar limpeza do leito",body);
-  setTimeout(()=>inp.focus(),0);
 }
 function transferModal(src){
   const opts=S.beds.filter(x=>x.id!==src.id);
