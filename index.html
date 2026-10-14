@@ -326,6 +326,7 @@ input.txt{width:100%;border:1px solid var(--line);border-radius:6px;padding:8px 
 .cres.pos{background:#fbe4e2;color:var(--danger)}.cres.neg{background:#e3f2e4;color:#2e7d32}.cres.pend{background:#fff3d6;color:#8a6100}.cres.cont{background:#eceff0;color:var(--muted)}
 .cmr{display:inline-block;font-size:12px;background:#eef2f1;border-radius:4px;padding:1px 6px;margin:1px 3px 1px 0}
 .cmr.r{background:var(--atb-soft);color:var(--atb);font-weight:700}
+.cman{font-size:11.5px;color:#8a6100;margin-top:2px}
 .ckpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px}
 .ckpi{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 16px}
 .ckpi .n{font-size:28px;font-weight:700}.ckpi .l{color:var(--muted);font-size:13px}
@@ -2703,7 +2704,12 @@ function culDoMes(m){
 }
 function culOrigem(adm,data){ if(!adm||!data) return ""; return daysSince(adm,data)>=3?"IRAS":"≤ 48 h"; }
 const CUL_MR=/esbl|kpc|carbapenemase|resistente|mrsa|vre|mdr|xdr|pdr|multirr|ampc|ndm|oxa-?48/;
-function culEhMR(c){ return (c.perfil||[]).some(t=>{ const n=norm(t); return CUL_MR.test(n)&&!/^(sensivel|pan)/.test(n); }); }
+function culTagMR(t){ const n=norm(t); return CUL_MR.test(n)&&!/^(sensivel|pan)/.test(n); }
+/* Resultado digitado à mão (germe ou perfil fora das listas): no relatório entra só o germe, sem o perfil. */
+function culNaLista(k,v){ return (SHARED.lists[k]||[]).some(x=>norm(x)===norm(v)); }
+function culManual(c){ return !!((c.germe&&!culNaLista("germe",c.germe))||(c.perfil||[]).some(t=>!culNaLista("perfil",t))); }
+function culPerfilRel(c){ return culManual(c)?[]:(c.perfil||[]); }
+function culEhMR(c){ return culPerfilRel(c).some(culTagMR); }
 function culNome(p,completo){
   const n=String(p.nome||"").trim(); if(!n) return "(sem nome)";
   if(completo) return n;
@@ -2717,12 +2723,12 @@ function culStats(m){
   const germes={}, sitios={};
   pos.forEach(x=>{ const g=(x.c.germe||"Germe não informado").trim(), k=norm(g);
     const e=germes[k]||(germes[k]={nome:g,n:0,tags:{},mr:0}); e.n++; if(culEhMR(x.c)) e.mr++;
-    (x.c.perfil||[]).forEach(t=>{ e.tags[t]=(e.tags[t]||0)+1; }); });
+    culPerfilRel(x.c).forEach(t=>{ e.tags[t]=(e.tags[t]||0)+1; }); });
   all.forEach(x=>{ const s=(x.c.sitio||"Sítio não informado").trim(), k=norm(s);
     const e=sitios[k]||(sitios[k]={nome:s,n:0,pend:0,neg:0,pos:0,cont:0}); e.n++; e[x.r]++; });
   const iras=pos.filter(x=>culOrigem(x.p.admissao,x.c.data)==="IRAS").length, prec=pos.filter(x=>culOrigem(x.p.admissao,x.c.data)==="≤ 48 h").length;
-  const mr=pos.filter(x=>culEhMR(x.c));
-  return {pts,all,cnt,pos,mr,iras,prec,
+  const mr=pos.filter(x=>culEhMR(x.c)), manual=pos.filter(x=>culManual(x.c)).length;
+  return {pts,all,cnt,pos,mr,iras,prec,manual,
     germes:Object.values(germes).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome)),
     sitios:Object.values(sitios).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome)),
     pacPos:new Set(pos.map(x=>x.p)).size};
@@ -2769,7 +2775,8 @@ function culTabela(cs,adm,herdada){
     t.append(el("tr",{class:herdada?"her":""},
       el("td",{},c.data?fmtDate(c.data):"—"),el("td",{},c.sitio||"—"),el("td",{},culResBadge(c)),
       el("td",{},c.germe?el("i",{},c.germe):"—"),
-      el("td",{},...((c.perfil||[]).length?(c.perfil||[]).map(x=>el("span",{class:"cmr"+(culEhMR({perfil:[x]})?" r":"")},x)):["—"])),
+      el("td",{},...((c.perfil||[]).length?(c.perfil||[]).map(x=>el("span",{class:"cmr"+(culTagMR(x)?" r":"")},x)):["—"]),
+        culManual(c)?el("div",{class:"cman"},"digitado à mão · no relatório entra só o germe"):null),
       el("td",{class:"hint"},culOrigem(adm,c.data))));
   });
   return t;
@@ -2869,12 +2876,12 @@ function culRelatorioTela(inner,m){
   const pc=el("div",{class:"card",style:"overflow-x:auto"},el("h3",{},"Perfil de resistência por germe"));
   const t=el("table",{class:"ctab"}); t.append(el("tr",{},...["Germe","Isolados","Multirresistentes","Perfis encontrados"].map(h=>el("th",{},h))));
   s.germes.forEach(x=>t.append(el("tr",{},el("td",{},el("i",{},x.nome)),el("td",{},String(x.n)),el("td",{},x.mr?x.mr+" ("+pct(x.mr,x.n)+")":"0"),
-    el("td",{},...(Object.keys(x.tags).length?Object.entries(x.tags).sort((a,b)=>b[1]-a[1]).map(([tg,v])=>el("span",{class:"cmr"+(culEhMR({perfil:[tg]})?" r":"")},tg+" "+v+" ("+pct(v,x.n)+")")):["—"])))));
+    el("td",{},...(Object.keys(x.tags).length?Object.entries(x.tags).sort((a,b)=>b[1]-a[1]).map(([tg,v])=>el("span",{class:"cmr"+(culTagMR(tg)?" r":"")},tg+" "+v+" ("+pct(v,x.n)+")")):["—"])))));
   pc.append(s.germes.length?t:el("p",{class:"hint"},"Nenhuma cultura positiva.")); inner.append(pc);
   inner.append(el("div",{class:"card"},el("h3",{},"Origem das culturas positivas"),
     el("p",{style:"margin:0"},"Provável IRAS (coleta após 48 h da admissão): ",el("b",{},String(s.iras))," · Coletadas nas primeiras 48 h: ",el("b",{},String(s.prec)),
       (s.pos.length-s.iras-s.prec)?" · Sem data de admissão: "+(s.pos.length-s.iras-s.prec):""),
-    el("p",{class:"hint",style:"margin:6px 0 0"},s.pacPos+" paciente(s) com cultura positiva no mês.")));
+    el("p",{class:"hint",style:"margin:6px 0 0"},s.pacPos+" paciente(s) com cultura positiva no mês."+(s.manual?` ${s.manual} cultura(s) positiva(s) com resultado digitado à mão: entra só o germe, sem o perfil de resistência.`:""))));
 }
 /* ---- impressão ---- */
 const CUL_PRINT_CSS=`
@@ -2927,7 +2934,7 @@ function culPrintHtml(m,o){
   const s=culStats(m), n=s.all.length, atual=m===culMesAtual(), nm=p=>esc(culNome(p,o.nomes));
   const ini=m+"-01", fim=atual?todayISO():culUltimoDia(m);
   const logo=SHARED.logo?`<img src="${SHARED.logo}" alt="">`:"";
-  const tags=c=>(c.perfil||[]).map(t=>`<span class="tg${culEhMR({perfil:[t]})?" r":""}">${esc(t)}</span>`).join("")||"—";
+  const tags=c=>culPerfilRel(c).map(t=>`<span class="tg${culTagMR(t)?" r":""}">${esc(t)}</span>`).join("")||"—";
   const resB=c=>{ const r=culRes(c); return `<span class="res ${r}">${culResLabel(r)}</span>`; };
   let h=`<div class="cr sheet-portrait"><style>${CUL_PRINT_CSS}</style>
 <div class="hd">${logo}<div class="tt"><h1>Relatório mensal de culturas</h1><div class="un">${esc((SV.med&&SV.med.unit)||"UTI")} · <b>${culMesNome(m,true)}</b></div></div>
@@ -2940,8 +2947,9 @@ function culPrintHtml(m,o){
 <div><h2>Resultado por sítio</h2><table><thead><tr><th>Sítio</th><th class="num">Total</th><th class="num">Pos.</th><th class="num">Neg.</th><th class="num">Cont.</th><th class="num">Pend.</th><th class="num">% Pos.</th></tr></thead><tbody>
 ${s.sitios.map(x=>`<tr><td>${esc(x.nome)}</td><td class="num">${x.n}</td><td class="num"><b>${x.pos}</b></td><td class="num">${x.neg}</td><td class="num">${x.cont}</td><td class="num">${x.pend}</td><td class="num"><b>${pct(x.pos,x.n)}</b></td></tr>`).join("")}</tbody></table>
 <p class="note">Origem das positivas: <b>${s.iras}</b> provável IRAS (coleta após 48 h da admissão) · <b>${s.prec}</b> nas primeiras 48 h${(s.pos.length-s.iras-s.prec)?" · "+(s.pos.length-s.iras-s.prec)+" sem data de admissão":""}.</p></div></div>`;
+    const notaMan=s.manual?`<p class="note">${s.manual} cultura(s) positiva(s) com resultado digitado à mão (fora das listas): consta apenas o germe, sem o perfil de resistência/sensibilidade.</p>`:"";
     if(s.germes.length) h+=`<h2>Perfil de resistência por germe</h2><table><thead><tr><th style="width:28%">Germe</th><th class="num" style="width:9%">Isolados</th><th class="num" style="width:13%">Multirresist.</th><th>Perfis de antibiograma encontrados</th></tr></thead><tbody>
-${s.germes.map(x=>`<tr><td><i>${esc(x.nome)}</i></td><td class="num">${x.n}</td><td class="num">${x.mr?`<b>${x.mr}</b> (${pct(x.mr,x.n)})`:"0"}</td><td>${Object.entries(x.tags).sort((a,b)=>b[1]-a[1]).map(([t,v])=>`<span class="tg${culEhMR({perfil:[t]})?" r":""}">${esc(t)} · ${v} (${pct(v,x.n)})</span>`).join("")||"—"}</td></tr>`).join("")}</tbody></table>`;
+${s.germes.map(x=>`<tr><td><i>${esc(x.nome)}</i></td><td class="num">${x.n}</td><td class="num">${x.mr?`<b>${x.mr}</b> (${pct(x.mr,x.n)})`:"0"}</td><td>${Object.entries(x.tags).sort((a,b)=>b[1]-a[1]).map(([t,v])=>`<span class="tg${culTagMR(t)?" r":""}">${esc(t)} · ${v} (${pct(v,x.n)})</span>`).join("")||"—"}</td></tr>`).join("")}</tbody></table>${notaMan}`;
     if(s.mr.length) h+=`<h2>Pacientes com germe multirresistente (controle de isolamento)</h2><table><thead><tr><th>Paciente</th><th>Leito</th><th>Situação</th><th>Coleta</th><th>Sítio</th><th>Germe</th><th>Perfil</th></tr></thead><tbody>
 ${s.mr.map(x=>`<tr><td><b>${nm(x.p)}</b></td><td>${esc(x.p.leito||"")}</td><td>${x.p.tipo==="int"?"Internado":"Alta "+fmtDate(x.p.alta)}</td><td>${x.c.data?fmtDate(x.c.data):"—"}</td><td>${esc(x.c.sitio||"")}</td><td><i>${esc(x.c.germe||"")}</i></td><td>${tags(x.c)}</td></tr>`).join("")}</tbody></table>`;
   }
@@ -3006,7 +3014,7 @@ function culAvisoImpressao(){
 function culCsv(){
   const m=culState.mes||culMesAtual();
   const rows=[["mes","paciente","leito","situacao","admissao","alta","coleta","sitio","resultado","germe","perfil","multirresistente","origem"]];
-  culDoMes(m).forEach(p=>p.cs.forEach(c=>rows.push([m,p.nome||"",p.leito||"",p.tipo==="int"?"internado":"alta",p.admissao||"",p.alta||"",c.data||"",c.sitio||"",culResLabel(culRes(c)),c.germe||"",(c.perfil||[]).join(", "),culEhMR(c)?"sim":"não",culOrigem(p.admissao,c.data)])));
+  culDoMes(m).forEach(p=>p.cs.forEach(c=>rows.push([m,p.nome||"",p.leito||"",p.tipo==="int"?"internado":"alta",p.admissao||"",p.alta||"",c.data||"",c.sitio||"",culResLabel(culRes(c)),c.germe||"",culPerfilRel(c).join(", "),culEhMR(c)?"sim":"não",culOrigem(p.admissao,c.data)])));
   const txt=rows.map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(";")).join("\r\n");
   download("culturas_"+m+".csv",new Blob(["﻿"+txt],{type:"text/csv"}));
 }
