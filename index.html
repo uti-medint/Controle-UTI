@@ -141,8 +141,8 @@ input.txt{width:100%;border:1px solid var(--line);border-radius:6px;padding:8px 
 .saved.bad{color:var(--danger);font-weight:600}
 .net-banner{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#fff6e5;border-bottom:1px solid #f0cf8a;color:#6b4300;padding:8px 20px;font-weight:600}
 .net-banner[hidden]{display:none}
-#app[hidden],#hub[hidden],#pocusApp[hidden],#examApp[hidden]{display:none!important}
-#hub,#pocusApp,#examApp{display:flex;flex-direction:column;height:100vh}
+#app[hidden],#hub[hidden],#pocusApp[hidden],#examApp[hidden],#culApp[hidden]{display:none!important}
+#hub,#pocusApp,#examApp,#culApp{display:flex;flex-direction:column;height:100vh}
 .hub-wrap{flex:1;overflow-y:auto;padding:36px 24px;max-width:980px;width:100%;margin:0 auto}
 .hub-wrap h2{margin:0 0 18px;font-size:22px;letter-spacing:-.01em}
 .hub-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
@@ -273,7 +273,7 @@ input.txt{width:100%;border:1px solid var(--line);border-radius:6px;padding:8px 
 }
 @media print{
   body{background:#fff}
-  #app,#hub,#pocusApp,#examApp,.overlay,.toast{display:none!important}
+  #app,#hub,#pocusApp,#examApp,#culApp,.overlay,.toast{display:none!important}
   #printArea{display:block}
 }
 
@@ -295,6 +295,53 @@ input.txt{width:100%;border:1px solid var(--line);border-radius:6px;padding:8px 
 .xprev .xs{box-shadow:0 2px 8px rgba(0,0,0,.35);break-after:auto}
 .warn{background:var(--atb-soft);border:1px solid #efd5c0;border-radius:10px;padding:10px 12px}
 @media(max-width:900px){.xgrid{grid-template-columns:1fr}.xg4{grid-template-columns:1fr 1fr}.xside{position:static}}
+/* controle de culturas */
+.cwrap{flex:1;overflow-y:auto;padding:18px 24px 70px}
+.cinner{max-width:1100px;margin:0 auto}
+.cul-res{grid-column:1/-1;display:flex;align-items:center;flex-wrap:wrap;gap:2px}
+.cul-res .lbl{margin:0 8px 0 0!important}
+.tog.cr-pos.on{background:var(--danger);border-color:var(--danger)}
+.tog.cr-neg.on{background:#2e7d32;border-color:#2e7d32}
+.tog.cr-pend.on{background:#b07d00;border-color:#b07d00}
+.tog.cr-cont.on{background:#6b7b79;border-color:#6b7b79}
+.cul-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:12px}
+.cul-bar select{width:auto;font-weight:600}
+.cul-warn{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between;background:#fff3d6;border:1px solid #ecd28a;color:#5c4300;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:14px}
+.cpill{font-size:12px;font-weight:700;border-radius:10px;padding:2px 9px}
+.cpill.open{background:#e3f2e4;color:#2e7d32}.cpill.closed{background:#eceff0;color:var(--muted)}
+.ctabs{display:flex;gap:8px;margin-bottom:14px}
+.csec{font-size:15px;margin:18px 0 8px;color:var(--accent);text-transform:uppercase;letter-spacing:.03em}
+.csec-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:8px}
+.csec-row .csec{margin:10px 0}
+.ccard{overflow-x:auto}
+.ccard.alta{border-left:4px solid #9fb1ae}
+.chead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.csub{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin:8px 0 2px}
+.ctab{width:100%;border-collapse:collapse;font-size:14px}
+.ctab.fix{table-layout:fixed;min-width:640px}
+.ctab th{font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);font-weight:600;text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+.ctab td{padding:6px 8px;border-bottom:1px solid #e7eceb;vertical-align:top}
+.ctab tr.her td{color:var(--muted);background:#f7f9f8}
+.cres{font-weight:700;font-size:12px;border-radius:6px;padding:2px 8px;white-space:nowrap}
+.cres.pos{background:#fbe4e2;color:var(--danger)}.cres.neg{background:#e3f2e4;color:#2e7d32}.cres.pend{background:#fff3d6;color:#8a6100}.cres.cont{background:#eceff0;color:var(--muted)}
+.cmr{display:inline-block;font-size:12px;background:#eef2f1;border-radius:4px;padding:1px 6px;margin:1px 3px 1px 0}
+.cmr.r{background:var(--atb-soft);color:var(--atb);font-weight:700}
+.ckpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px}
+.ckpi{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 16px}
+.ckpi .n{font-size:28px;font-weight:700}.ckpi .l{color:var(--muted);font-size:13px}
+.ckpi.pos .n{color:var(--danger)}.ckpi.neg .n{color:#2e7d32}.ckpi.pen .n{color:#8a6100}.ckpi.mr .n{color:var(--atb)}
+.ctwo{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cbar{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:14px}
+.cbl{width:42%;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctrack,.cstack{flex:1;display:flex;background:#eef2f1;border-radius:4px;height:16px;overflow:hidden}
+.cfill{display:block;height:100%;background:var(--accent)}
+.cbv{width:42px;text-align:right;font-weight:600}
+.s-pos{background:var(--danger)}.s-neg{background:#7cb98a}.s-pend{background:#e0b84a}.s-cont{background:#aab6b4}
+.clegend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+.clegend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.cform{display:grid;grid-template-columns:2fr 1fr;gap:10px}
+@media(max-width:900px){.ctwo{grid-template-columns:1fr}}
+@media(max-width:700px){.cwrap{padding:12px 10px 90px}.cform{grid-template-columns:1fr}.cbl{width:38%}.ctab{font-size:13px}}
 </style>
 </head>
 <body>
@@ -315,6 +362,7 @@ input.txt{width:100%;border:1px solid var(--line);border-radius:6px;padding:8px 
 </div>
 <div id="pocusApp" hidden></div>
 <div id="examApp" hidden></div>
+<div id="culApp" hidden></div>
 <div id="app" hidden>
   <header class="top">
     <button class="btn" id="bMenu">← Menu</button>
@@ -540,7 +588,7 @@ function freshBeds(){
 /* Dois serviços (med = médico, enf = enfermagem) com leitos e histórico próprios.
    Listas, logo, exames POCUS e último responsável são compartilhados (SHARED). */
 const SVCS=["med","enf"];
-const SHARED={lists:{},logo:"",logoRatio:0,ultimoResp:"",pocus:[],pac:{},reg:{},ped:[]};
+const SHARED={lists:{},logo:"",logoRatio:0,ultimoResp:"",pocus:[],pac:{},reg:{},ped:[],cul:[],culmeta:{impresso:"",por:""}};
 const SV={};
 const SEL={med:"L1",enf:"L1"};
 let S, selected="L1", view="hub";
@@ -569,13 +617,15 @@ function buildAll(raw){
   SHARED.pac=(raw.pac&&typeof raw.pac==='object')?raw.pac:{};
   Object.keys(SHARED.pac).forEach(id=>{ const q=SHARED.pac[id]; if(q&&typeof q==='object') q.disp=Object.assign(defaultDisp(),q.disp||{}); });
   SHARED.reg=(raw.reg&&typeof raw.reg==='object')?raw.reg:{};
+  SHARED.cul=Array.isArray(raw.cul)?raw.cul.map(fixCulRec):[];
+  SHARED.culmeta=Object.assign({impresso:"",por:""},raw.culmeta||{});
   ensurePlanos();
   SV.med=normalizeService(legacy?raw:raw.med,"med");
   SV.enf=normalizeService(raw.enf,"enf");
 }
 function snapService(st){ return {unit:st.unit,data:st.data,beds:st.beds,archive:st.archive}; }
 function snapshotAll(){
-  return {v:2,med:snapService(SV.med),enf:snapService(SV.enf),lists:SHARED.lists,logo:SHARED.logo,logoRatio:SHARED.logoRatio,pocus:SHARED.pocus,pac:SHARED.pac,reg:SHARED.reg,ped:SHARED.ped};
+  return {v:2,med:snapService(SV.med),enf:snapService(SV.enf),lists:SHARED.lists,logo:SHARED.logo,logoRatio:SHARED.logoRatio,pocus:SHARED.pocus,pac:SHARED.pac,reg:SHARED.reg,ped:SHARED.ped,cul:SHARED.cul,culmeta:SHARED.culmeta};
 }
 function load(){
   try{ const raw=localStorage.getItem(STORE_KEY); buildAll(raw?JSON.parse(raw):null); }
@@ -819,8 +869,9 @@ function renderEditor(){
   title.append(el("span",{class:"spacer",style:"flex:1"}),
     (bedHasPatient(b)&&!(b.extra&&!b.ativo))?el("button",{class:"btn small",type:"button",onclick:()=>transferModal(b)},"Transferir de leito"):null,
     el("button",{class:"btn small danger",onclick:()=>{
-      if(confirm(`Limpar todos os dados do ${bedLabel(b)} nos DOIS passômetros (médico e enfermagem)? Use na alta ou saída do paciente. Os exames de POCUS já salvos continuam no histórico.`)){
-        clearBedAll(b.id); afterChange(); renderEditor(); }
+      const nCul=culHasData(b.id);
+      if(confirm(`Limpar todos os dados do ${bedLabel(b)} nos DOIS passômetros (médico e enfermagem)? Use na alta ou saída do paciente. Os exames de POCUS já salvos continuam no histórico.`+(nCul?`\n\nAs culturas deste paciente continuam salvas no Controle de culturas.`:""))){
+        if(nCul) culArquivarAlta(b.id); clearBedAll(b.id); afterChange(); renderEditor(); if(nCul) toast("Culturas guardadas no Controle de culturas"); }
     }},"Limpar leito"));
   ed.append(title);
   if(b.extra&&!b.ativo){ ed.append(el("div",{class:"card"},el("p",{class:"hint",style:"margin:0"},"Marque “Leito extra em uso” para preencher este leito.")));return; }
@@ -987,12 +1038,14 @@ function renderEditor(){
     culCard.innerHTML=""; culCard.append(el("h3",{},"Culturas"));
     if(!b.culturas.length) culCard.append(el("p",{class:"hint"},"Nenhuma cultura registrada."));
     b.culturas.forEach((c,i)=>{
+      const rt=culResToggles(c,()=>afterChange());
       culCard.append(el("div",{class:"rowbox cul-row"},
         el("div",{},el("label",{class:"lbl"},"Data da cultura"),el("input",{class:"txt",type:"date",value:c.data||"",oninput:e=>{c.data=e.target.value;afterChange();}})),
         el("div",{},el("label",{class:"lbl"},"Sítio"),picker({key:"sCultura",single:true,placeholder:"Escolher sítio",get:()=>c.sitio,set:v=>c.sitio=v})),
-        el("div",{},el("label",{class:"lbl"},"Germe identificado"),picker({key:"germe",single:true,placeholder:"Aguardando resultado",get:()=>c.germe,set:v=>c.germe=v})),
+        el("div",{},el("label",{class:"lbl"},"Germe identificado"),picker({key:"germe",single:true,placeholder:"Aguardando resultado",get:()=>c.germe,set:v=>{ c.germe=v; if(v&&(!c.res||c.res==="pend")) c.res="pos"; rt.sync(); }})),
         el("div",{},el("label",{class:"lbl"},"Perfil de antibiograma"),picker({key:"perfil",placeholder:"Escolher perfil ou digitar",get:()=>c.perfil,set:v=>c.perfil=v})),
-        el("button",{class:"x-btn",type:"button","aria-label":"Remover cultura",onclick:()=>{b.culturas.splice(i,1);afterChange();renderCul();}},"×")));
+        el("button",{class:"x-btn",type:"button","aria-label":"Remover cultura",onclick:()=>{b.culturas.splice(i,1);afterChange();renderCul();}},"×"),
+        rt));
     });
     culCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.culturas.push({data:S.data,sitio:"",germe:"",perfil:[]});afterChange();renderCul();}},"+ Adicionar cultura"));
   }
@@ -1147,7 +1200,7 @@ function docBody(st,logoSrc){
     return `<div class="atb"><b>${esc(a.nome)}</b>${esc(per)}</div>`;
   }).join("");
   const cul=b=>(b.culturas||[]).filter(c=>c.sitio||c.germe).map(c=>
-    `<div class="atb">${c.data?fmtDate(c.data)+" ":""}<b>${esc(c.sitio||"Cultura")}</b>: ${c.germe?esc(c.germe):"<i>aguardando</i>"}${(c.perfil&&c.perfil.length)?" – "+esc(c.perfil.join(", ")):""}</div>`).join("");
+    `<div class="atb">${c.data?fmtDate(c.data)+" ":""}<b>${esc(c.sitio||"Cultura")}</b>: ${culRes(c)==="neg"?"<i>negativa</i>":culRes(c)==="cont"?esc(c.germe||"")+" <i>(contaminante)</i>":c.germe?esc(c.germe):"<i>aguardando</i>"}${(c.perfil&&c.perfil.length)?" – "+esc(c.perfil.join(", ")):""}</div>`).join("");
   const img=b=>(b.imagem||[]).map(x=>typeof x==="string"?{nome:x}:x).filter(x=>x.nome).map(x=>
     `<div class="atb"><b>${esc(x.nome)}</b>${x.data?" ("+fmtDate(x.data)+")":""}${x.achado?": "+esc(x.achado):""}</div>`).join("");
   const ic=b=>(b.interc||[]).filter(x=>x.nome).map(x=>{ return `<div class="atb">${x.data?"<b>"+fmtDate(x.data)+"</b> ":""}${esc(x.nome)}</div>`; }).join("");
@@ -1322,7 +1375,7 @@ function transferModal(src){
 function openModal(title,bodyNode,extraBtns){
   const ov=el("div",{class:"overlay",onmousedown:e=>{if(e.target===ov)close();}});
   const close=()=>{ ov.remove();
-    if(view==="med"||view==="enf"){ renderNav(); renderEditor(); } else if(view==="pocus") renderPocus(); else if(view==="exames") renderExames(); else if(view==="hub") renderHub(); };
+    if(view==="med"||view==="enf"){ renderNav(); renderEditor(); } else if(view==="pocus") renderPocus(); else if(view==="exames") renderExames(); else if(view==="cult") renderCulturas(); else if(view==="hub") renderHub(); };
   ov.append(el("div",{class:"modal",role:"dialog","aria-label":title},
     el("header",{},el("h3",{},title),el("div",{},extraBtns||"",el("button",{class:"btn",onclick:close},"Fechar"))),
     el("div",{class:"body"},bodyNode)));
@@ -1468,10 +1521,10 @@ function isOpen(n){
 }
 function rerenderActive(){
   if(editingNow()){ needRender=true; return; }
-  if(view==="pocus") renderPocus(); else if(view==="med"||view==="enf") renderEditor();
+  if(view==="pocus") renderPocus(); else if(view==="med"||view==="enf") renderEditor(); else if(view==="cult") renderCulturas();
 }
 function partNames(){
-  const out=["logo",...Object.keys(SHARED.lists).map(k=>"list:"+k),...SHARED.pocus.map(r=>"pocus:"+r.ts),...SHARED.ped.map(r=>"ped:"+r.ts),...SV.med.beds.map(b=>"pac:"+b.id),...Object.keys(Object.assign({[RID]:1},SHARED.reg)).map(r=>"reg:"+r)];
+  const out=["logo",...Object.keys(SHARED.lists).map(k=>"list:"+k),...SHARED.pocus.map(r=>"pocus:"+r.ts),...SHARED.ped.map(r=>"ped:"+r.ts),...SV.med.beds.map(b=>"pac:"+b.id),...Object.keys(Object.assign({[RID]:1},SHARED.reg)).map(r=>"reg:"+r),...SHARED.cul.map(r=>"cul:"+r.ts),"culmeta"];
   SVCS.forEach(k=>{ const st=SV[k], p=PFX[k]; out.push(p.meta,...st.archive.map(a=>p.arch+a.ts),...st.beds.map(b=>p.bed+b.id)); });
   return out;
 }
@@ -1482,6 +1535,8 @@ function getPart(n){
   if(n.startsWith("reg:")) return SHARED.reg[n.slice(4)]||(SHARED.reg[n.slice(4)]={});
   if(n.startsWith("pocus:")) return SHARED.pocus.find(r=>String(r.ts)===n.slice(6));
   if(n.startsWith("ped:")) return SHARED.ped.find(r=>String(r.ts)===n.slice(4));
+  if(n.startsWith("cul:")) return SHARED.cul.find(r=>String(r.ts)===n.slice(4));
+  if(n==="culmeta") return SHARED.culmeta;
   const k=svcOfPart(n); if(!k) return undefined;
   const st=SV[k], p=PFX[k];
   if(n===p.meta) return {unit:st.unit,data:st.data};
@@ -1499,6 +1554,11 @@ function applyPart(n,v){
     if(i>=0) SHARED.ped[i]=r; else SHARED.ped.push(r);
     SHARED.ped.sort((a,b)=>b.ts-a.ts); return;
   }
+  if(n.startsWith("cul:")){
+    const r=fixCulRec(Object.assign({},v)), i=SHARED.cul.findIndex(x=>x.ts===r.ts);
+    if(i>=0) SHARED.cul[i]=r; else SHARED.cul.push(r); return;
+  }
+  if(n==="culmeta"){ SHARED.culmeta=Object.assign({impresso:"",por:""},v||{}); return; }
   if(n.startsWith("pocus:")){
     const r=Object.assign({},v), i=SHARED.pocus.findIndex(x=>x.ts===r.ts);
     if(i>=0) SHARED.pocus[i]=r; else SHARED.pocus.push(r);
@@ -1520,6 +1580,8 @@ function labelOf(n){
   if(n.startsWith("pocus:")) return "Histórico do POCUS";
   if(n.startsWith("ped:")) return "Histórico de pedidos de exames";
   if(n.startsWith("reg:")) return "Registro de textos";
+  if(n.startsWith("cul:")){ const r=getPart(n); return "Controle de culturas"+(r&&r.nome?" ("+r.nome+")":""); }
+  if(n==="culmeta") return "Controle de culturas (impressão)";
   if(n.startsWith("pac:")){ const b=SV.med.beds.find(x=>x.id===n.slice(4)); return "Identificação, problemas e dispositivos do "+(b?bedLabel(b):n); }
   if(n==="logo") return "Logo";
   const k=svcOfPart(n), tag=k==="enf"?" (enfermagem)":"";
@@ -1539,7 +1601,7 @@ function unionList(a,b){
   return out.sort((x,y)=>x.localeCompare(y,"pt-BR",{sensitivity:"base"}));
 }
 function editingNow(){
-  const a=document.activeElement; return !!(a&&($("#editor").contains(a)||$("#pocusApp").contains(a)||$("#examApp").contains(a))&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+  const a=document.activeElement; return !!(a&&($("#editor").contains(a)||$("#pocusApp").contains(a)||$("#examApp").contains(a)||$("#culApp").contains(a))&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
 }
 function setNet(up,stamp){ setNet0(up,stamp); mirrorMsg(); }
 function setNet0(up,stamp){
@@ -1569,8 +1631,10 @@ async function pushDirty(){
       const js=serialize(n);
       if(synced[n]===js) continue;
       if(n.startsWith("pac:")&&versions[n]===undefined&&isPristine(n)){ synced[n]=js; continue; }   /* leito vazio e nunca gravado */
+      if(n==="culmeta"&&versions[n]===undefined&&!SHARED.culmeta.impresso){ synced[n]=js; continue; }
       let r;
-      try{ r=await FB.put(n,versions[n]||0,getPart(n),netUser,CID); }catch(e){ netError(e); return; }
+      try{ r=await FB.put(n,versions[n]||0,getPart(n),netUser,CID); }
+      catch(e){ if(/^cul/.test(n)&&e&&e.code==="permission-denied"){ culNegado(); synced[n]=js; continue; } netError(e); return; }
       if(r.conflict){
         const cur=r.current;
         if(cur&&JSON.stringify(cur.value)===JSON.stringify(getPart(n))){ versions[n]=cur.v; synced[n]=js; continue; }
@@ -1584,8 +1648,8 @@ async function pushDirty(){
       versions[n]=r.v; synced[n]=js; sent=true;
     }
     for(const n of Object.keys(synced)){           /* histórico apagado localmente */
-      if(isImmutable(n)&&!names.includes(n)){
-        try{ await FB.remove(n); delete synced[n]; delete versions[n]; sent=true; }catch(e){ netError(e); return; }
+      if((isImmutable(n)||n.startsWith("cul:"))&&!names.includes(n)){
+        try{ await FB.remove(n); delete synced[n]; delete versions[n]; sent=true; }catch(e){ if(n.startsWith("cul:")&&e&&e.code==="permission-denied"){ culNegado(); delete synced[n]; continue; } netError(e); return; }
       }
     }
     setNet(true,sent);
@@ -1599,6 +1663,7 @@ function applyRemote(ev){
     if(ev.part===PFX[S.svc].meta){ $("#hUnit").value=S.unit; $("#hData").value=S.data; }
     if(ev.part===PFX[S.svc].meta||isOpen(ev.part)) rerenderActive();
   } else if(view==="pocus"&&(ev.part.startsWith("pac:")||ev.part.startsWith("pocus:"))) rerenderActive();
+  else if(view==="cult"&&/^(cul|pac:|bed:)/.test(ev.part)) rerenderActive();
   else if(view==="hub") renderHub();
 }
 function onRemote(ev){
@@ -1623,10 +1688,11 @@ function onRemote(ev){
 }
 function onChange(c){
   if(c.type==="removed"){
-    const m=c.part.match(/^(arch:|narch:|pocus:|ped:)(\d+)$/);
+    const m=c.part.match(/^(arch:|narch:|pocus:|ped:|cul:)(\d+)$/);
     if(m){
       const ts=Number(m[2]);
-      if(m[1]==="pocus:") SHARED.pocus=SHARED.pocus.filter(r=>r.ts!==ts);
+      if(m[1]==="cul:"){ SHARED.cul=SHARED.cul.filter(r=>r.ts!==ts); if(view==="cult") rerenderActive(); }
+      else if(m[1]==="pocus:") SHARED.pocus=SHARED.pocus.filter(r=>r.ts!==ts);
       else if(m[1]==="ped:") SHARED.ped=SHARED.ped.filter(r=>r.ts!==ts);
       else { const st=SV[m[1]==="arch:"?"med":"enf"]; st.archive=st.archive.filter(a=>a.ts!==ts); }
       delete synced[c.part]; delete versions[c.part];
@@ -1749,6 +1815,7 @@ const ICONS={
   pocus:'<svg viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg>',
   lab:'<svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/><path d="M8 15h8"/></svg>',
   img:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="12" cy="12" r="4"/><path d="M12 8v8M8 12h8"/></svg>',
+  cult:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="9" cy="10" r="1.6"/><circle cx="14.6" cy="9" r="1.1"/><circle cx="13.4" cy="14.6" r="1.9"/><circle cx="8.6" cy="14.8" r="1"/></svg>',
   livre:'<svg viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/></svg>',
   visita:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.5 3-6 6-6s6 2.5 6 6"/><path d="M15.5 14.5c3 0 5.5 2 5.5 5.5"/></svg>'
 };
@@ -1763,6 +1830,7 @@ function renderHub(){
   g.append(
     card(ICONS.med,"Passômetro médico","Passagem de plantão médica dos leitos da UTI",()=>showView("med")),
     card(ICONS.enf,"Passômetro enfermagem","Passagem de plantão da enfermagem: dispositivos, pendências e exames de imagem",()=>showView("enf")),
+    card(ICONS.cult,"Controle de culturas","Culturas dos internados, consolidado mensal, germes e perfil de resistência",()=>showView("cult")),
     card(ICONS.pocus,"POCUS","Registro de ultrassom à beira leito, com comparação com o exame anterior",()=>showView("pocus")),
     card(ICONS.lab,"Solicitação de exames","Laboratório e imagem, com guias IPASGO, UNIMED e particular",()=>showView("exames"),false,true),
     card(ICONS.visita,"Visita multidisciplinar","Será montada em breve",()=>toast("Visita multidisciplinar: em construção. Será montada em breve."),true));
@@ -1780,6 +1848,7 @@ function limparHistoricos(){
   const now=Date.now(), v12=ultimaViragem(now), v00=ultimaViragem(now,true); let mudou=false;
   if(SHARED.ped){ const n=SHARED.ped.length; SHARED.ped=SHARED.ped.filter(r=>r.ts>=(pedTemLab(r)?v12:v00)); if(SHARED.ped.length!==n) mudou=true; }   /* laboratório: 00:00 e 12:00 · demais: 00:00 */
   SVCS.forEach(k=>{ const st=SV[k]; if(!st||!st.archive) return; const n=st.archive.length; st.archive=st.archive.filter(a=>!arqVence(a,now)); if(st.archive.length!==n) mudou=true; });
+  if(culLimpar()) mudou=true;
   if(mudou){ try{ pushDirty(); }catch(e){} if(view==="exames"&&!document.querySelector(".overlay")) renderExames(); }
 }
 function avisoExames(){
@@ -1798,6 +1867,7 @@ function showView(v){
   $("#app").hidden=!(v==="med"||v==="enf");
   $("#pocusApp").hidden=v!=="pocus";
   $("#examApp").hidden=v!=="exames";
+  $("#culApp").hidden=v!=="cult";
   if(v==="med"||v==="enf"){
     S=SV[v]; selected=SEL[v];
     $("#svcTitle").textContent=v==="enf"?"Passômetro de enfermagem":"Passômetro médico";
@@ -1806,6 +1876,7 @@ function showView(v){
   } else if(v==="hub") renderHub();
   else if(v==="pocus") renderPocus();
   else if(v==="exames"){ renderExames(); avisoExames(); }
+  else if(v==="cult"){ culState.tab="lista"; culState.mes=culMesAtual(); renderCulturas(); culAvisoImpressao(); }
   renderBanner();
   window.scrollTo(0,0);
 }
@@ -2560,6 +2631,386 @@ function xHist(){
   draw(); openModal("Histórico de pedidos de exames",body);
 }
 
+/* ============ Controle de culturas ============ */
+/* Culturas dos internados vêm direto dos leitos do passômetro médico (tudo é herdado enquanto o paciente estiver internado).
+   Na alta ("Limpar leito"), a identificação e as culturas vão para SHARED.cul (uma parte "cul:<ts>" por paciente), onde
+   ainda podem ser editadas. O relatório de cada mês fica disponível até o dia 14 do mês seguinte; no dia 15, os registros
+   de alta daquele mês são apagados. */
+const CUL_RES=[["pend","Pendente"],["neg","Negativa"],["pos","Positiva"],["cont","Contaminante"]];
+const CUL_DIA_LIMPEZA=15, CUL_AVISO_DIAS=3;
+const MESES=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const culState={tab:"lista",mes:"",edit:null,nomes:true,completa:true};
+let culNegadoAvisado=false;
+function culNegado(){ if(culNegadoAvisado) return; culNegadoAvisado=true; alert("O servidor recusou a gravação do Controle de culturas (permissão). Os demais módulos continuam funcionando. Peça ao responsável pelo sistema para liberar as partes “cul” no Firebase."); }
+function culRes(c){
+  if(c&&CUL_RES.some(([k])=>k===c.res)) return c.res;
+  if(!c||!c.germe) return "pend";
+  return /negativ|sem crescimento|esteril/.test(norm(c.germe))?"neg":"pos";
+}
+function culResLabel(r){ return (CUL_RES.find(x=>x[0]===r)||["","—"])[1]; }
+function culResToggles(c,onch){
+  const box=el("div",{class:"cul-res"});
+  const draw=()=>{ box.innerHTML="";
+    box.append(el("span",{class:"lbl"},"Resultado"),...CUL_RES.map(([k,l])=>el("button",{type:"button",class:"tog sm cr-"+k+(culRes(c)===k?" on":""),
+      onclick:()=>{ c.res=k; draw(); onch(); }},l))); };
+  box.sync=draw; draw(); return box;
+}
+function fixCulRec(r){
+  r=r||{};
+  r.culturas=(Array.isArray(r.culturas)?r.culturas:[]).map(c=>Object.assign({data:"",sitio:"",germe:"",perfil:[]},c||{},{perfil:Array.isArray(c&&c.perfil)?c.perfil:[]}));
+  ["nome","idade","admissao","alta","leito","plano","por"].forEach(k=>{ if(r[k]==null) r[k]=""; });
+  return r;
+}
+function culValidas(list){ return (list||[]).filter(c=>c&&(c.sitio||c.germe)); }
+function culHasData(id){ const bd=SV.med.beds.find(x=>x.id===id); return bd?culValidas(bd.culturas).length:0; }
+function culArquivarAlta(id){
+  const bd=SV.med.beds.find(x=>x.id===id); if(!bd) return;
+  const p=pacOf(id); let ts=Date.now(); while(SHARED.cul.some(r=>r.ts===ts)) ts++;
+  SHARED.cul.push(fixCulRec({ts,alta:todayISO(),leito:bedLabel(bd)+(bd.extra&&p.local?" · "+p.local:""),nome:p.nome||"",idade:p.idade||"",
+    admissao:p.admissao||"",plano:p.plano||"",por:netUser||"",culturas:JSON.parse(JSON.stringify(culValidas(bd.culturas)))}));
+  save();
+}
+/* ---- meses ---- */
+function culMesAtual(){ return todayISO().slice(0,7); }
+function culMesDesloc(m,n){ const [y,mm]=m.split("-").map(Number); const d=new Date(y,mm-1+n,1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
+function culMesNome(m,cap){ const [y,mm]=m.split("-").map(Number); const t=MESES[mm-1]+"/"+y; return cap?t[0].toUpperCase()+t.slice(1):t; }
+function culApagaEm(m){ return culMesDesloc(m,1)+"-"+String(CUL_DIA_LIMPEZA).padStart(2,"0"); }
+function culUltimoDia(m){ const [y,mm]=m.split("-").map(Number); return m+"-"+String(new Date(y,mm,0).getDate()).padStart(2,"0"); }
+function culMeses(){ const a=culMesAtual(), ant=culMesDesloc(a,-1); return todayISO()<culApagaEm(ant)?[a,ant]:[a]; }
+function culLimpar(){            /* dia 15: some o histórico de alta do mês anterior */
+  const hoje=todayISO(), n=SHARED.cul.length;
+  SHARED.cul=SHARED.cul.filter(r=>{ const m=(r.alta||new Date(r.ts).toISOString()).slice(0,7); return hoje<culApagaEm(m); });
+  return SHARED.cul.length!==n;
+}
+/* ---- pacientes e culturas de um mês ---- */
+function culPacientes(){
+  const out=[];
+  SV.med.beds.forEach(b=>{ if(b.extra&&!b.ativo) return; const cs=culValidas(b.culturas); if(!cs.length) return;
+    out.push({tipo:"int",id:b.id,nome:b.nome,idade:b.idade,leito:bedLabel(b)+(b.extra&&b.local?" · "+b.local:""),admissao:b.admissao,alta:"",culturas:cs}); });
+  SHARED.cul.forEach(r=>out.push({tipo:"alta",rec:r,nome:r.nome,idade:r.idade,leito:r.leito,admissao:r.admissao,alta:r.alta,culturas:culValidas(r.culturas)}));
+  return out;
+}
+function culDoMes(m){
+  const atual=m===culMesAtual(), ini=m+"-01";
+  return culPacientes().map(p=>{
+    const mesRef=p.tipo==="alta"?(p.alta||"").slice(0,7):culMesAtual();
+    const cs=p.culturas.filter(c=>c.data?c.data.slice(0,7)===m:mesRef===m);
+    const her=(atual&&p.tipo==="int")?p.culturas.filter(c=>c.data&&c.data<ini):[];
+    const altaNoMes=p.tipo==="alta"&&(p.alta||"").slice(0,7)===m;
+    return Object.assign({},p,{cs,her,altaNoMes});
+  }).filter(p=>p.cs.length||p.her.length||p.altaNoMes)
+    .sort((a,b)=>(a.tipo===b.tipo?0:a.tipo==="int"?-1:1)||String(a.leito).localeCompare(String(b.leito),"pt-BR",{numeric:true}));
+}
+function culOrigem(adm,data){ if(!adm||!data) return ""; return daysSince(adm,data)>=3?"IRAS":"≤ 48 h"; }
+const CUL_MR=/esbl|kpc|carbapenemase|resistente|mrsa|vre|mdr|xdr|pdr|multirr|ampc|ndm|oxa-?48/;
+function culEhMR(c){ return (c.perfil||[]).some(t=>{ const n=norm(t); return CUL_MR.test(n)&&!/^(sensivel|pan)/.test(n); }); }
+function culNome(p,completo){
+  const n=String(p.nome||"").trim(); if(!n) return "(sem nome)";
+  if(completo) return n;
+  return n.split(/\s+/).filter(w=>!/^(de|da|do|das|dos|e)$/i.test(w)).map(w=>w[0].toUpperCase()+".").join(" ");
+}
+function culStats(m){
+  const pts=culDoMes(m), all=[];
+  pts.forEach(p=>p.cs.forEach(c=>all.push({p,c,r:culRes(c)})));
+  const cnt={pend:0,neg:0,pos:0,cont:0}; all.forEach(x=>cnt[x.r]++);
+  const pos=all.filter(x=>x.r==="pos");
+  const germes={}, sitios={};
+  pos.forEach(x=>{ const g=(x.c.germe||"Germe não informado").trim(), k=norm(g);
+    const e=germes[k]||(germes[k]={nome:g,n:0,tags:{},mr:0}); e.n++; if(culEhMR(x.c)) e.mr++;
+    (x.c.perfil||[]).forEach(t=>{ e.tags[t]=(e.tags[t]||0)+1; }); });
+  all.forEach(x=>{ const s=(x.c.sitio||"Sítio não informado").trim(), k=norm(s);
+    const e=sitios[k]||(sitios[k]={nome:s,n:0,pend:0,neg:0,pos:0,cont:0}); e.n++; e[x.r]++; });
+  const iras=pos.filter(x=>culOrigem(x.p.admissao,x.c.data)==="IRAS").length, prec=pos.filter(x=>culOrigem(x.p.admissao,x.c.data)==="≤ 48 h").length;
+  const mr=pos.filter(x=>culEhMR(x.c));
+  return {pts,all,cnt,pos,mr,iras,prec,
+    germes:Object.values(germes).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome)),
+    sitios:Object.values(sitios).sort((a,b)=>b.n-a.n||a.nome.localeCompare(b.nome)),
+    pacPos:new Set(pos.map(x=>x.p)).size};
+}
+const pct=(a,b)=>b?Math.round(a*100/b)+"%":"—";
+/* ---- tela ---- */
+function renderCulturas(){
+  const root=$("#culApp"); const old=root.querySelector(".cwrap"); const st=old?old.scrollTop:0; root.innerHTML="";
+  const meses=culMeses(); if(!meses.includes(culState.mes)) culState.mes=meses[0];
+  const m=culState.mes, atual=m===culMesAtual();
+  const mesSel=el("select",{class:"txt","aria-label":"Mês",onchange:e=>{ culState.mes=e.target.value; culState.edit=null; renderCulturas(); }},
+    ...meses.map(x=>el("option",Object.assign({value:x},x===m?{selected:""}:{}),culMesNome(x,true)+(x===culMesAtual()?" (atual)":""))));
+  root.append(el("header",{class:"top"},
+    el("button",{class:"btn",type:"button",onclick:()=>showView("hub")},"← Menu"),
+    el("h1",{},"Controle de culturas"),
+    el("div",{class:"spacer"}),
+    el("span",{class:"saved netmsg"}),
+    el("button",{class:"btn no-mobile",type:"button",onclick:culCsv},"Exportar planilha"),
+    el("button",{class:"btn primary no-mobile",type:"button",onclick:()=>culPrintModal(m)},"Imprimir relatório")));
+  mirrorMsg();
+  const wrap=el("div",{class:"cwrap"}), inner=el("div",{class:"cinner"}); wrap.append(inner); root.append(wrap);
+
+  const ant=meses[1];
+  if(ant) inner.append(el("div",{class:"cul-warn"},
+    el("div",{},el("b",{},`Relatório de ${culMesNome(ant)} disponível até ${fmtDate(culMesDesloc(ant,1)+"-"+String(CUL_DIA_LIMPEZA-1).padStart(2,"0"),true)}. `),
+      `No dia ${CUL_DIA_LIMPEZA}, o histórico dos pacientes que tiveram alta em ${culMesNome(ant)} será apagado. Imprima antes dessa data.`),
+    el("button",{class:"btn small no-mobile",type:"button",onclick:()=>culPrintModal(ant)},"Imprimir "+MESES[Number(ant.slice(5))-1])));
+  const ult=SHARED.culmeta.impresso;
+  inner.append(el("div",{class:"cul-bar"},
+    el("label",{class:"lbl",style:"margin:0"},"Mês"),mesSel,
+    el("span",{class:"cpill "+(atual?"open":"closed")},atual?"Em andamento":"Mês encerrado"),
+    el("span",{class:"spacer"}),
+    el("span",{class:"hint",style:"margin:0"},ult?`Último relatório impresso em ${fmtDate(ult,true)}${SHARED.culmeta.por?" por "+SHARED.culmeta.por:""}`:"Nenhum relatório impresso ainda")));
+  inner.append(el("div",{class:"ctabs"},
+    ...[["lista","Culturas do mês"],["rel","Relatório"]].map(([k,l])=>el("button",{type:"button",class:"tog"+(culState.tab===k?" on":""),onclick:()=>{ culState.tab=k; renderCulturas(); }},l))));
+  if(culState.tab==="rel") culRelatorioTela(inner,m); else culListaTela(inner,m);
+  wrap.scrollTop=st;
+}
+function culResBadge(c){ const r=culRes(c); return el("span",{class:"cres "+r},culResLabel(r)); }
+function culTabela(cs,adm,herdada){
+  const t=el("table",{class:"ctab fix"});
+  t.append(el("tr",{},...[["Coleta",11],["Sítio",19],["Resultado",13],["Germe",24],["Perfil de antibiograma",24],["Origem",9]].map(([h,w])=>el("th",{style:"width:"+w+"%"},h))));
+  cs.slice().sort((a,b)=>(a.data||"").localeCompare(b.data||"")).forEach(c=>{
+    t.append(el("tr",{class:herdada?"her":""},
+      el("td",{},c.data?fmtDate(c.data):"—"),el("td",{},c.sitio||"—"),el("td",{},culResBadge(c)),
+      el("td",{},c.germe?el("i",{},c.germe):"—"),
+      el("td",{},...((c.perfil||[]).length?(c.perfil||[]).map(x=>el("span",{class:"cmr"+(culEhMR({perfil:[x]})?" r":"")},x)):["—"])),
+      el("td",{class:"hint"},culOrigem(adm,c.data))));
+  });
+  return t;
+}
+function culListaTela(inner,m){
+  const pts=culDoMes(m), atual=m===culMesAtual();
+  const ints=pts.filter(p=>p.tipo==="int"), altas=pts.filter(p=>p.tipo==="alta");
+  inner.append(el("h2",{class:"csec"},"Pacientes internados"));
+  if(!ints.length) inner.append(el("p",{class:"hint"},atual?"Nenhum paciente internado com cultura registrada.":"Nenhuma cultura deste mês entre os pacientes internados."));
+  ints.forEach(p=>{
+    const card=el("div",{class:"card ccard"});
+    card.append(el("div",{class:"chead"},
+      el("div",{},el("b",{},p.leito+" · "+(p.nome||"(sem nome)")),el("div",{class:"hint",style:"margin:0"},[p.idade?p.idade+" anos":"",p.admissao?"Admissão "+fmtDate(p.admissao,true)+" · D"+daysSince(p.admissao,todayISO()):""].filter(Boolean).join(" · "))),
+      el("button",{class:"btn small",type:"button",onclick:()=>{ SEL.med=p.id; showView("med"); if(window.matchMedia("(max-width:700px)").matches) document.body.classList.add("m-ed"); }},"Editar no passômetro")));
+    if(p.her.length){ card.append(el("div",{class:"csub"},"Herdadas de meses anteriores (não entram na contagem deste mês)"),culTabela(p.her,p.admissao,true)); }
+    if(p.cs.length){ if(p.her.length) card.append(el("div",{class:"csub"},"Coletadas em "+culMesNome(m))); card.append(culTabela(p.cs,p.admissao)); }
+    inner.append(card);
+  });
+  inner.append(el("div",{class:"csec-row"},el("h2",{class:"csec"},"Pacientes que tiveram alta"),
+    el("button",{class:"btn",type:"button",onclick:()=>culNovaAltaModal(m)},"+ Registrar paciente de alta")));
+  if(!altas.length) inner.append(el("p",{class:"hint"},"Nenhum paciente de alta com cultura neste mês. Ao clicar em “Limpar leito” no passômetro, as culturas do paciente aparecem aqui."));
+  altas.forEach(p=>{
+    const r=p.rec, ed=culState.edit===r.ts, card=el("div",{class:"card ccard alta"});
+    card.append(el("div",{class:"chead"},
+      el("div",{},el("b",{},(r.leito?r.leito+" · ":"")+(r.nome||"(sem nome)")),
+        el("div",{class:"hint",style:"margin:0"},[r.idade?r.idade+" anos":"",r.admissao?"Admissão "+fmtDate(r.admissao,true):"",r.alta?"Alta "+fmtDate(r.alta,true):""].filter(Boolean).join(" · "))),
+      el("div",{style:"display:flex;gap:6px;flex-wrap:wrap"},
+        el("button",{class:"btn small"+(ed?" primary":""),type:"button",onclick:()=>{ culState.edit=ed?null:r.ts; if(ed) save(); renderCulturas(); }},ed?"Concluir":"Editar culturas"),
+        ed?el("button",{class:"btn small danger",type:"button",onclick:()=>{ if(!confirm(`Excluir o registro de ${r.nome||"paciente sem nome"} e todas as culturas dele?`)) return;
+          SHARED.cul=SHARED.cul.filter(x=>x!==r); culState.edit=null; save(); renderCulturas(); }},"Excluir registro"):null)));
+    if(ed) culEditor(card,r);
+    else if(p.cs.length) card.append(culTabela(p.cs,r.admissao));
+    else card.append(el("p",{class:"hint",style:"margin:0"},"Nenhuma cultura registrada. Clique em “Editar culturas” para lançar."));
+    inner.append(card);
+  });
+}
+function culEditor(card,r){
+  const box=el("div"); card.append(box);
+  const ch=()=>{ save(); };
+  function draw(){
+    box.innerHTML="";
+    if(!r.culturas.length) box.append(el("p",{class:"hint"},"Nenhuma cultura registrada."));
+    r.culturas.forEach((c,i)=>{
+      const rt=culResToggles(c,ch);
+      box.append(el("div",{class:"rowbox cul-row"},
+        el("div",{},el("label",{class:"lbl"},"Data da cultura"),el("input",{class:"txt",type:"date",value:c.data||"",oninput:e=>{c.data=e.target.value;ch();}})),
+        el("div",{},el("label",{class:"lbl"},"Sítio"),picker({key:"sCultura",single:true,placeholder:"Escolher sítio",get:()=>c.sitio,set:v=>c.sitio=v})),
+        el("div",{},el("label",{class:"lbl"},"Germe identificado"),picker({key:"germe",single:true,placeholder:"Aguardando resultado",get:()=>c.germe,set:v=>{ c.germe=v; if(v&&(!c.res||c.res==="pend")) c.res="pos"; rt.sync(); }})),
+        el("div",{},el("label",{class:"lbl"},"Perfil de antibiograma"),picker({key:"perfil",placeholder:"Escolher perfil ou digitar",get:()=>c.perfil,set:v=>c.perfil=v})),
+        el("button",{class:"x-btn",type:"button","aria-label":"Remover cultura",onclick:()=>{r.culturas.splice(i,1);ch();draw();}},"×"),
+        rt));
+    });
+    box.append(el("button",{class:"btn",type:"button",onclick:()=>{ r.culturas.push({data:r.alta||todayISO(),sitio:"",germe:"",perfil:[],res:"pend"}); ch(); draw(); }},"+ Adicionar cultura"));
+  }
+  draw();
+}
+function culNovaAltaModal(m){
+  const meses=culMeses();
+  const f={nome:el("input",{class:"txt",type:"text"}),idade:el("input",{class:"txt",type:"text",inputmode:"numeric"}),leito:el("input",{class:"txt",type:"text",placeholder:"Ex.: Leito 05"}),
+    admissao:el("input",{class:"txt",type:"date"}),alta:el("input",{class:"txt",type:"date",value:m===culMesAtual()?todayISO():culUltimoDia(m),min:meses[meses.length-1]+"-01",max:todayISO()})};
+  const row=(l,i)=>el("div",{},el("label",{class:"lbl"},l),i);
+  let close;
+  const go=el("button",{class:"btn primary",type:"button",onclick:()=>{
+    const alta=f.alta.value, nome=f.nome.value.trim();
+    if(!nome){ alert("Informe o nome do paciente."); return; }
+    if(!alta||!meses.includes(alta.slice(0,7))){ alert("A data de alta precisa estar em "+meses.map(x=>culMesNome(x)).join(" ou ")+"."); return; }
+    if(f.admissao.value&&f.admissao.value>alta){ alert("A admissão não pode ser depois da alta."); return; }
+    let ts=Date.now(); while(SHARED.cul.some(r=>r.ts===ts)) ts++;
+    SHARED.cul.push(fixCulRec({ts,nome,idade:f.idade.value.trim(),leito:f.leito.value.trim(),admissao:f.admissao.value,alta,por:netUser||"",culturas:[{data:alta,sitio:"",germe:"",perfil:[],res:"pend"}]}));
+    culState.mes=alta.slice(0,7); culState.tab="lista"; culState.edit=ts; save(); close();
+  }},"Registrar e lançar culturas");
+  const body=el("div",{},
+    el("p",{class:"hint"},"Para pacientes que já tiveram alta e cujas culturas não estavam no passômetro (ou o resultado saiu depois da alta)."),
+    el("div",{class:"cform"},row("Nome do paciente",f.nome),row("Idade",f.idade),row("Leito",f.leito),row("Admissão na UTI",f.admissao),row("Alta",f.alta)),
+    el("div",{style:"margin-top:16px"},go));
+  close=openModal("Registrar paciente de alta",body);
+}
+function culBarras(itens,max,cls){
+  return el("div",{},...itens.map(x=>el("div",{class:"cbar"},el("span",{class:"cbl"},x.l),
+    el("span",{class:"ctrack"},el("span",{class:"cfill "+(cls||""),style:`width:${max?Math.max(4,Math.round(x.n*100/max)):0}%`})),el("span",{class:"cbv"},String(x.n)))));
+}
+function culRelatorioTela(inner,m){
+  const s=culStats(m), n=s.all.length;
+  if(!n){ inner.append(el("div",{class:"card"},el("p",{class:"hint",style:"margin:0"},"Nenhuma cultura coletada em "+culMesNome(m)+"."))); return; }
+  const k=(v,l,c)=>el("div",{class:"ckpi "+(c||"")},el("div",{class:"n"},String(v)),el("div",{class:"l"},l));
+  inner.append(el("div",{class:"ckpis"},k(n,"Culturas coletadas"),k(s.cnt.pos,"Positivas ("+pct(s.cnt.pos,n)+")","pos"),k(s.cnt.neg,"Negativas ("+pct(s.cnt.neg,n)+")","neg"),
+    k(s.cnt.cont,"Contaminantes"),k(s.cnt.pend,"Pendentes","pen"),k(s.mr.length,"Germes multirresistentes","mr")));
+  const g=s.germes.slice(0,10);
+  inner.append(el("div",{class:"ctwo"},
+    el("div",{class:"card"},el("h3",{},"Germes mais isolados"),g.length?culBarras(g.map(x=>({l:el("i",{},x.nome),n:x.n})),g[0].n):el("p",{class:"hint"},"Nenhuma cultura positiva.")),
+    el("div",{class:"card"},el("h3",{},"Resultado por sítio"),
+      ...s.sitios.map(x=>el("div",{class:"cbar"},el("span",{class:"cbl"},x.nome+" ("+x.n+")"),
+        el("span",{class:"cstack"},...["pos","neg","cont","pend"].map(r=>x[r]?el("span",{class:"s-"+r,style:`width:${x[r]*100/x.n}%`,title:culResLabel(r)+": "+x[r]}):null)),
+        el("span",{class:"cbv"},pct(x.pos,x.n)))),
+      el("div",{class:"clegend"},...[["pos","Positiva"],["neg","Negativa"],["cont","Contaminante"],["pend","Pendente"]].map(([r,l])=>el("span",{},el("i",{class:"s-"+r}),l))),
+      el("p",{class:"hint",style:"margin:6px 0 0"},"% = positividade do sítio"))));
+  const pc=el("div",{class:"card",style:"overflow-x:auto"},el("h3",{},"Perfil de resistência por germe"));
+  const t=el("table",{class:"ctab"}); t.append(el("tr",{},...["Germe","Isolados","Multirresistentes","Perfis encontrados"].map(h=>el("th",{},h))));
+  s.germes.forEach(x=>t.append(el("tr",{},el("td",{},el("i",{},x.nome)),el("td",{},String(x.n)),el("td",{},x.mr?x.mr+" ("+pct(x.mr,x.n)+")":"0"),
+    el("td",{},...(Object.keys(x.tags).length?Object.entries(x.tags).sort((a,b)=>b[1]-a[1]).map(([tg,v])=>el("span",{class:"cmr"+(culEhMR({perfil:[tg]})?" r":"")},tg+" "+v+" ("+pct(v,x.n)+")")):["—"])))));
+  pc.append(s.germes.length?t:el("p",{class:"hint"},"Nenhuma cultura positiva.")); inner.append(pc);
+  inner.append(el("div",{class:"card"},el("h3",{},"Origem das culturas positivas"),
+    el("p",{style:"margin:0"},"Provável IRAS (coleta após 48 h da admissão): ",el("b",{},String(s.iras))," · Coletadas nas primeiras 48 h: ",el("b",{},String(s.prec)),
+      (s.pos.length-s.iras-s.prec)?" · Sem data de admissão: "+(s.pos.length-s.iras-s.prec):""),
+    el("p",{class:"hint",style:"margin:6px 0 0"},s.pacPos+" paciente(s) com cultura positiva no mês.")));
+}
+/* ---- impressão ---- */
+const CUL_PRINT_CSS=`
+.cr{font-family:Calibri,Arial,sans-serif;color:#111;font-size:9.5pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.cr *{box-sizing:border-box}
+.cr .hd{display:flex;align-items:center;gap:12pt;border-bottom:2.5pt solid #0f6b5e;padding-bottom:6pt;margin-bottom:8pt}
+.cr .hd img{height:40px;width:auto}
+.cr .hd .tt{flex:1}
+.cr .hd h1{font-size:16pt;margin:0;color:#0f6b5e;letter-spacing:-.2pt}
+.cr .hd .un{font-size:10pt;color:#333}
+.cr .hd .mt{text-align:right;font-size:8.5pt;color:#333;line-height:1.35}
+.cr .hd .st{display:inline-block;font-weight:bold;border-radius:8pt;padding:1pt 7pt;font-size:8pt;margin-bottom:2pt}
+.cr .st.parc{background:#fff3d6;color:#7a5600;border:1px solid #e6c56a}
+.cr .st.fech{background:#e1f0ed;color:#0b574c;border:1px solid #9cc9bf}
+.cr .kp{display:grid;grid-template-columns:repeat(6,1fr);gap:5pt;margin-bottom:9pt}
+.cr .kp div{border:1px solid #c9d4d2;border-radius:5pt;padding:5pt 7pt;border-top:3pt solid #0f6b5e}
+.cr .kp b{display:block;font-size:17pt;line-height:1.1}
+.cr .kp span{font-size:7.5pt;color:#444}
+.cr .kp .pos{border-top-color:#b3261e}.cr .kp .pos b{color:#b3261e}
+.cr .kp .neg{border-top-color:#2e7d32}.cr .kp .neg b{color:#2e7d32}
+.cr .kp .pen{border-top-color:#c99a1a}
+.cr .kp .mr{border-top-color:#a8470a}.cr .kp .mr b{color:#a8470a}
+.cr h2{font-size:10.5pt;margin:10pt 0 4pt;color:#0f6b5e;text-transform:uppercase;letter-spacing:.4pt;border-bottom:1px solid #9cc9bf;padding-bottom:2pt;break-after:avoid;page-break-after:avoid}
+.cr .two{display:grid;grid-template-columns:1fr 1fr;gap:12pt}
+.cr table{width:100%;border-collapse:collapse}
+.cr th{background:#e1f0ed;color:#0b3f37;font-size:7.5pt;text-transform:uppercase;letter-spacing:.2pt;text-align:left;padding:3pt 4pt;border-bottom:1.2pt solid #0f6b5e}
+.cr td{padding:2.5pt 4pt;border-bottom:.6pt solid #d4dcda;vertical-align:top;font-size:8.5pt}
+.cr tr{break-inside:avoid;page-break-inside:avoid}
+.cr thead{display:table-header-group}
+.cr .num{text-align:right;white-space:nowrap}
+.cr .bar{display:flex;align-items:center;gap:5pt;margin:2.5pt 0;font-size:8.5pt}
+.cr .bar .l{width:44%;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cr .bar .t{flex:1;height:9pt;background:#eef2f1;border-radius:2pt;overflow:hidden}
+.cr .bar .f{display:block;height:100%;background:#0f6b5e}
+.cr .bar .v{width:18pt;text-align:right;font-weight:bold}
+.cr .res{font-weight:bold;font-size:7.5pt;border-radius:3pt;padding:0 4pt;white-space:nowrap}
+.cr .res.pos{background:#fbe4e2;color:#b3261e}.cr .res.neg{background:#e3f2e4;color:#2e7d32}.cr .res.pend{background:#fff3d6;color:#7a5600}.cr .res.cont{background:#eceff0;color:#555}
+.cr .tg{display:inline-block;font-size:7pt;border:1px solid #c9d4d2;border-radius:3pt;padding:0 3pt;margin:0 2pt 1pt 0}
+.cr .tg.r{background:#fbeadd;border-color:#e2b48f;color:#7a3205;font-weight:bold}
+.cr tr.pac td{background:#f2f6f5;font-weight:bold;border-top:1pt solid #9fb1ae;font-size:8.5pt}
+.cr tr.pac td small{font-weight:normal;color:#444}
+.cr tr.her td{color:#555;font-style:italic}
+.cr .note{font-size:8pt;color:#444;margin:3pt 0 0}
+.cr .ass{display:grid;grid-template-columns:2fr 1fr 1fr;gap:18pt;margin-top:22pt;font-size:8.5pt;break-inside:avoid}
+.cr .ass div{border-top:1px solid #333;padding-top:3pt;text-align:center}
+.cr .obs{border:1px solid #c9d4d2;border-radius:4pt;min-height:44pt;padding:4pt 6pt;font-size:8pt;color:#666;margin-top:10pt;break-inside:avoid}
+.cr .ft{margin-top:8pt;font-size:7.5pt;color:#666;display:flex;justify-content:space-between;border-top:1px solid #d4dcda;padding-top:3pt}
+`;
+function culPrintHtml(m,o){
+  const s=culStats(m), n=s.all.length, atual=m===culMesAtual(), nm=p=>esc(culNome(p,o.nomes));
+  const ini=m+"-01", fim=atual?todayISO():culUltimoDia(m);
+  const logo=SHARED.logo?`<img src="${SHARED.logo}" alt="">`:"";
+  const tags=c=>(c.perfil||[]).map(t=>`<span class="tg${culEhMR({perfil:[t]})?" r":""}">${esc(t)}</span>`).join("")||"—";
+  const resB=c=>{ const r=culRes(c); return `<span class="res ${r}">${culResLabel(r)}</span>`; };
+  let h=`<div class="cr sheet-portrait"><style>${CUL_PRINT_CSS}</style>
+<div class="hd">${logo}<div class="tt"><h1>Relatório mensal de culturas</h1><div class="un">${esc((SV.med&&SV.med.unit)||"UTI")} · <b>${culMesNome(m,true)}</b></div></div>
+<div class="mt"><span class="st ${atual?"parc":"fech"}">${atual?"PARCIAL – mês em andamento":"MÊS ENCERRADO"}</span><br>Período: ${fmtDate(ini,true)} a ${fmtDate(fim,true)}<br>Impresso em ${new Date().toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}${netUser?" por "+esc(netUser):""}</div></div>`;
+  h+=`<div class="kp"><div><b>${n}</b><span>Culturas coletadas</span></div><div class="pos"><b>${s.cnt.pos}</b><span>Positivas (${pct(s.cnt.pos,n)})</span></div><div class="neg"><b>${s.cnt.neg}</b><span>Negativas (${pct(s.cnt.neg,n)})</span></div><div><b>${s.cnt.cont}</b><span>Contaminantes</span></div><div class="pen"><b>${s.cnt.pend}</b><span>Pendentes</span></div><div class="mr"><b>${s.mr.length}</b><span>Multirresistentes</span></div></div>`;
+  if(!n){ h+=`<p>Nenhuma cultura coletada no período.</p>`; }
+  else{
+    const g=s.germes.slice(0,10), mx=g.length?g[0].n:0;
+    h+=`<div class="two"><div><h2>Germes mais isolados</h2>${g.length?g.map(x=>`<div class="bar"><span class="l">${esc(x.nome)}</span><span class="t"><span class="f" style="width:${Math.max(4,Math.round(x.n*100/mx))}%"></span></span><span class="v">${x.n}</span></div>`).join(""):"<p class='note'>Nenhuma cultura positiva.</p>"}</div>
+<div><h2>Resultado por sítio</h2><table><thead><tr><th>Sítio</th><th class="num">Total</th><th class="num">Pos.</th><th class="num">Neg.</th><th class="num">Cont.</th><th class="num">Pend.</th><th class="num">% Pos.</th></tr></thead><tbody>
+${s.sitios.map(x=>`<tr><td>${esc(x.nome)}</td><td class="num">${x.n}</td><td class="num"><b>${x.pos}</b></td><td class="num">${x.neg}</td><td class="num">${x.cont}</td><td class="num">${x.pend}</td><td class="num"><b>${pct(x.pos,x.n)}</b></td></tr>`).join("")}</tbody></table>
+<p class="note">Origem das positivas: <b>${s.iras}</b> provável IRAS (coleta após 48 h da admissão) · <b>${s.prec}</b> nas primeiras 48 h${(s.pos.length-s.iras-s.prec)?" · "+(s.pos.length-s.iras-s.prec)+" sem data de admissão":""}.</p></div></div>`;
+    if(s.germes.length) h+=`<h2>Perfil de resistência por germe</h2><table><thead><tr><th style="width:28%">Germe</th><th class="num" style="width:9%">Isolados</th><th class="num" style="width:13%">Multirresist.</th><th>Perfis de antibiograma encontrados</th></tr></thead><tbody>
+${s.germes.map(x=>`<tr><td><i>${esc(x.nome)}</i></td><td class="num">${x.n}</td><td class="num">${x.mr?`<b>${x.mr}</b> (${pct(x.mr,x.n)})`:"0"}</td><td>${Object.entries(x.tags).sort((a,b)=>b[1]-a[1]).map(([t,v])=>`<span class="tg${culEhMR({perfil:[t]})?" r":""}">${esc(t)} · ${v} (${pct(v,x.n)})</span>`).join("")||"—"}</td></tr>`).join("")}</tbody></table>`;
+    if(s.mr.length) h+=`<h2>Pacientes com germe multirresistente (controle de isolamento)</h2><table><thead><tr><th>Paciente</th><th>Leito</th><th>Situação</th><th>Coleta</th><th>Sítio</th><th>Germe</th><th>Perfil</th></tr></thead><tbody>
+${s.mr.map(x=>`<tr><td><b>${nm(x.p)}</b></td><td>${esc(x.p.leito||"")}</td><td>${x.p.tipo==="int"?"Internado":"Alta "+fmtDate(x.p.alta)}</td><td>${x.c.data?fmtDate(x.c.data):"—"}</td><td>${esc(x.c.sitio||"")}</td><td><i>${esc(x.c.germe||"")}</i></td><td>${tags(x.c)}</td></tr>`).join("")}</tbody></table>`;
+  }
+  if(o.completa){
+    const pts=s.pts.filter(p=>p.cs.length||(o.herdadas&&p.her.length));
+    if(pts.length){
+      h+=`<h2>Lista de culturas por paciente</h2><table><thead><tr><th style="width:10%">Coleta</th><th style="width:20%">Sítio</th><th style="width:11%">Resultado</th><th style="width:24%">Germe</th><th>Perfil</th><th style="width:8%">Origem</th></tr></thead><tbody>`;
+      pts.forEach(p=>{
+        h+=`<tr class="pac"><td colspan="6">${nm(p)} <small>· ${esc(p.leito||"")}${p.admissao?" · adm. "+fmtDate(p.admissao,true):""} · ${p.tipo==="int"?"internado":"alta "+fmtDate(p.alta,true)}</small></td></tr>`;
+        const row=(c,her)=>`<tr${her?' class="her"':""}><td>${c.data?fmtDate(c.data,her):"—"}</td><td>${esc(c.sitio||"")}${her?" <small>(mês anterior)</small>":""}</td><td>${resB(c)}</td><td><i>${esc(c.germe||"—")}</i></td><td>${tags(c)}</td><td>${culOrigem(p.admissao,c.data)}</td></tr>`;
+        if(o.herdadas) p.her.slice().sort((a,b)=>(a.data||"").localeCompare(b.data||"")).forEach(c=>h+=row(c,true));
+        p.cs.slice().sort((a,b)=>(a.data||"").localeCompare(b.data||"")).forEach(c=>h+=row(c,false));
+      });
+      h+=`</tbody></table>`;
+      if(o.herdadas&&pts.some(p=>p.her.length)) h+=`<p class="note">Linhas em itálico: culturas de meses anteriores de pacientes que continuam internados (não entram na contagem do mês).</p>`;
+    }
+  }
+  h+=`<div class="obs">Observações / condutas da CCIH:</div>
+<div class="ass"><div>Médico(a) responsável</div><div>CCIH</div><div>Data</div></div>
+<div class="ft"><span>Controle de culturas · ${esc((SV.med&&SV.med.unit)||"UTI")}</span><span>Histórico de ${culMesNome(m)} disponível no sistema até ${fmtDate(culMesDesloc(m,1)+"-"+String(CUL_DIA_LIMPEZA-1).padStart(2,"0"),true)}</span></div></div>`;
+  return h;
+}
+function culPrintModal(m){
+  const meses=culMeses(); m=meses.includes(m)?m:meses[0];
+  const sel=el("select",{class:"txt"},...meses.map(x=>el("option",Object.assign({value:x},x===m?{selected:""}:{}),culMesNome(x,true))));
+  const ck=(lbl,key)=>el("label",{class:"toggle-row",style:"margin:8px 0"},el("input",Object.assign({type:"checkbox",onchange:e=>{culState[key]=e.target.checked;}},culState[key]?{checked:""}:{})),lbl);
+  if(culState.herdadas===undefined) culState.herdadas=true;
+  let close;
+  const body=el("div",{},
+    el("label",{class:"lbl"},"Mês do relatório"),sel,
+    ck("Mostrar nomes completos (desmarque para imprimir só as iniciais)","nomes"),
+    ck("Incluir a lista de culturas por paciente","completa"),
+    ck("Incluir culturas de meses anteriores dos pacientes ainda internados","herdadas"),
+    el("p",{class:"hint"},"Folha A4 em pé. O relatório contém dados de pacientes: guarde-o em local seguro."),
+    el("button",{class:"btn primary",type:"button",onclick:()=>{ const mm=sel.value; close(); culImprimir(mm); }},"Imprimir"));
+  close=openModal("Imprimir relatório de culturas",body);
+}
+function culImprimir(m){
+  const pa=$("#printArea"); pa.innerHTML=culPrintHtml(m,{nomes:culState.nomes,completa:culState.completa,herdadas:culState.herdadas!==false});
+  window.print();
+  SHARED.culmeta={impresso:todayISO(),por:netUser||""}; save();
+  if(view==="cult") renderCulturas();
+}
+function culAvisoImpressao(){
+  if(window.matchMedia("(max-width:700px)").matches) return;      /* impressão só no computador */
+  const hoje=todayISO(), ult=SHARED.culmeta.impresso;
+  const dias=ult?daysSince(ult,hoje)-1:Infinity;
+  if(dias<CUL_AVISO_DIAS) return;
+  try{ if(localStorage.getItem("cul_aviso_dia")===hoje) return; localStorage.setItem("cul_aviso_dia",hoje); }catch(e){}
+  const ant=culMeses()[1];
+  let close;
+  const body=el("div",{},
+    el("p",{style:"margin-top:0"},ult?`O último relatório de culturas foi impresso há ${dias} dia${dias===1?"":"s"} (${fmtDate(ult,true)}${SHARED.culmeta.por?", por "+SHARED.culmeta.por:""}).`:"Nenhum relatório de culturas foi impresso ainda."),
+    el("p",{},`Para não perder informações, imprima o relatório a cada ${CUL_AVISO_DIAS} dias.`),
+    ant?el("div",{class:"cul-warn",style:"margin:0 0 12px"},el("div",{},el("b",{},`Atenção: `),`o histórico de ${culMesNome(ant)} será apagado em ${fmtDate(culApagaEm(ant),true)}. Imprima o relatório fechado de ${culMesNome(ant)} antes dessa data.`)):null,
+    el("div",{style:"display:flex;gap:8px;flex-wrap:wrap"},
+      ant?el("button",{class:"btn primary",type:"button",onclick:()=>{ close(); culPrintModal(ant); }},"Imprimir "+culMesNome(ant)):null,
+      el("button",{class:"btn"+(ant?"":" primary"),type:"button",onclick:()=>{ close(); culPrintModal(culMesAtual()); }},"Imprimir "+culMesNome(culMesAtual())+" (parcial)"),
+      el("button",{class:"btn",type:"button",onclick:()=>close()},"Lembrar depois")));
+  close=openModal("Lembrete: imprimir relatório de culturas",body);
+}
+function culCsv(){
+  const m=culState.mes||culMesAtual();
+  const rows=[["mes","paciente","leito","situacao","admissao","alta","coleta","sitio","resultado","germe","perfil","multirresistente","origem"]];
+  culDoMes(m).forEach(p=>p.cs.forEach(c=>rows.push([m,p.nome||"",p.leito||"",p.tipo==="int"?"internado":"alta",p.admissao||"",p.alta||"",c.data||"",c.sitio||"",culResLabel(culRes(c)),c.germe||"",(c.perfil||[]).join(", "),culEhMR(c)?"sim":"não",culOrigem(p.admissao,c.data)])));
+  const txt=rows.map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(";")).join("\r\n");
+  download("culturas_"+m+".csv",new Blob(["﻿"+txt],{type:"text/csv"}));
+}
+
 /* ============ Inicialização ============ */
 async function init(){
   const fb=await window.fbReady;
@@ -2582,7 +3033,7 @@ async function init(){
     if(!confirm("Não foi possível conectar ao serviço online (sem internet?).\n\nUsar o modo local, somente neste computador e sem sincronização?")){
       document.body.innerHTML="<p style='padding:30px;font:16px sans-serif'>Sem conexão. Recarregue a página (F5) quando a internet voltar.</p>"; return;
     }
-    load();
+    load(); if(culLimpar()) save();
   }
   $("#hUnit").addEventListener("input",e=>{S.unit=e.target.value;save();});
   $("#hData").addEventListener("input",e=>{ if(e.target.value){S.data=e.target.value; save(); renderEditor();} });
