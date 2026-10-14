@@ -1126,13 +1126,7 @@ function renderEditor(){
   ed.append(listCard("Pendências","pend","pend","Clique para ver as pendências ou digite uma nova"));
   ed.append(listCard("Condutas","condutas","condutas","Clique para ver as condutas ou digite uma nova"));
 
-  // registro da alteração
-  const respRow=el("div",{class:"resp-row"},
-    picker({key:"medico",single:true,placeholder:"Escolher ou digitar o nome",get:()=>b.resp,set:v=>{b.resp=v; if(v) S.ultimoResp=v;}}));
-  if(S.ultimoResp && !b.resp) respRow.append(el("button",{class:"btn small",type:"button",onclick:()=>{b.resp=S.ultimoResp;afterChange();renderEditor();}},"Usar "+S.ultimoResp));
-  ed.append(el("div",{class:"card"},el("h3",{},"Registro da alteração"),
-    el("label",{class:"lbl"},"Médico / Residente que atualizou este leito"),respRow,
-    el("p",{class:"hint",id:"updInfo",style:"margin:8px 0 0"},updText(b))));
+  ed.append(el("p",{class:"hint",id:"updInfo",style:"margin:4px 2px"},updText(b)));
 }
 
 /* ============ Documento do passômetro (impressão e Word) ============ */
@@ -1229,7 +1223,7 @@ function docBody(st,logoSrc){
     n++;
     const dd=b.admissao?daysSince(b.admissao,ref):null;
     const id=`<span class="b">${esc(b.nome)||"—"}</span>${b.idade?"<br>"+esc(b.idade)+" anos":""}${b.admissao?"<br>Adm.: "+fmtDate(b.admissao,true)+(dd>0?" · <b>D"+dd+"</b>":""):""}${b.plano?"<br>"+esc(b.plano):""}${precHtml(b)}${(b.admissao&&b.admissao===ref)?'<span class="tag">ADMISSÃO HOJE</span>':""}`
-      +((b.resp||b.upd)?`<div class="upd">Atualizado: ${esc(b.resp)||"—"}${b.upd?" · "+new Date(b.upd).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):""}</div>`:"");
+      +(b.upd?`<div class="upd">Atualizado: ${new Date(b.upd).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</div>`:"");
     return `<tr${n%2?"":' class="z"'}><td class="b">${lab}</td><td>${id}</td>`
       +`<td>${cell([["PROBLEMAS",list(b.problemas)],["DISPOSITIVOS",dev(b)]])}</td>`
       +`<td>${cell([["ANTIBIÓTICOS",atb(b)],["CULTURAS",cul(b)],["LABORATORIAIS",labEspTxt(b)],["IMAGEM",img(b)]])}</td>`
@@ -2666,12 +2660,12 @@ function culResToggles(c,onch){
 }
 /* ---- perfis de antibiograma (caixas fixas) e painéis moleculares ---- */
 const CUL_PERFIS=[
-  {g:"Resistência",r:true,itens:["ESBL","AmpC","KPC","NDM","OXA-48","Resistente a carbapenêmicos","MRSA","VRE","Resistente a polimixina","Resistente a fluconazol"]},
+  {g:"Resistência",r:true,itens:["ESBL – Resistência a betalactâmicos","AmpC","KPC","NDM","OXA-48","Resistente a carbapenêmicos","MRSA","VRE","Resistente a vancomicina","Resistente a polimixina","Resistente a fluconazol"]},
   {g:"Classificação",r:true,itens:["MDR (multirresistente)","XDR (extensivamente resistente)","PDR (pan-resistente)"]},
   {g:"Sensibilidade",r:false,itens:["Pan-sensível","MSSA","Sensível a carbapenêmicos","Sensível a polimixina","Sensível a ceftazidima-avibactam"]}];
 const CUL_PERFIL_SET=new Set(CUL_PERFIS.flatMap(x=>x.itens));
 const CUL_MR_SET=new Set(CUL_PERFIS.filter(x=>x.r).flatMap(x=>x.itens));
-const CUL_PERFIL_ANTIGO={"carbapenemase (resistente a carbapenemicos)":"Resistente a carbapenêmicos","carbapenemase":"Resistente a carbapenêmicos",
+const CUL_PERFIL_ANTIGO={"esbl":"ESBL – Resistência a betalactâmicos","carbapenemase (resistente a carbapenemicos)":"Resistente a carbapenêmicos","carbapenemase":"Resistente a carbapenêmicos",
   "pseudomonas resistente a carbapenemicos":"Resistente a carbapenêmicos","multirresistente (mdr)":"MDR (multirresistente)","mdr":"MDR (multirresistente)",
   "extensivamente resistente (xdr)":"XDR (extensivamente resistente)","xdr":"XDR (extensivamente resistente)","pdr":"PDR (pan-resistente)","pan-resistente (pdr)":"PDR (pan-resistente)"};
 const CUL_SITIOS_NOVOS=["Painel molecular de líquor","Painel molecular de secreção traqueal","Painel molecular urinário","Painel molecular de ferida operatória",
