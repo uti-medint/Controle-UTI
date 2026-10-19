@@ -794,7 +794,8 @@ function picker(opts){
       const chip=el("span",{class:"chip",title:"Duplo clique para editar"},v,el("button",{type:"button","aria-label":"Remover "+v,
         onmousedown:e=>e.preventDefault(),
         onclick:e=>{ e.stopPropagation(); const a=opts.get().slice(); a.splice(i,1); opts.set(a); renderChips(); renderDD(); }},"×"));
-      chip.addEventListener("dblclick",e=>{ e.preventDefault(); e.stopPropagation(); editChip(chip,i,v); });
+      let t0=0;            // duplo clique / duplo toque (no celular o dblclick nem sempre dispara)
+      chip.addEventListener("click",e=>{ const t=Date.now(); if(t-t0<450){ e.preventDefault(); e.stopPropagation(); t0=0; editChip(chip,i,v); } else t0=t; });
       chips.append(chip);
     });
   }
