@@ -1079,9 +1079,9 @@ function renderEditor(){
   // culturas
   const culCard=el("div",{class:"card"}); ed.append(culCard);
   function renderCul(){
-    culCard.innerHTML=""; culCard.append(el("h3",{},"Culturas"));
+    culCard.innerHTML=""; culCard.append(el("h3",{},"Culturas")); culOrdenar(b.culturas);
     if(!b.culturas.length) culCard.append(el("p",{class:"hint"},"Nenhuma cultura registrada."));
-    b.culturas.forEach((c,i)=>culCard.append(culRowEditor(c,()=>afterChange(),()=>{b.culturas.splice(i,1);afterChange();renderCul();})));
+    b.culturas.forEach((c,i)=>culCard.append(culRowEditor(c,()=>afterChange(),()=>{b.culturas.splice(i,1);afterChange();renderCul();},culReordena(b.culturas,renderCul))));
     culCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.culturas.push(culNova(S.data));afterChange();renderCul();culAvisoLista();}},"+ Adicionar cultura"));
     if(!b.culturas.some(culCovid)) culCard.append(" ",el("button",{class:"btn",type:"button",onclick:()=>{ const c=culNova(b.admissao||S.data); c.sitio=learn("sCultura",CUL_COVID)||CUL_COVID;
       b.culturas.push(c); afterChange(); renderCul(); }},"+ RT-PCR COVID-19 (admissão)"));
@@ -1230,7 +1230,7 @@ function docBody(st,logoSrc){
     const per=a.ini||a.fim?` (${fmtDate(a.ini)||"?"} a ${fmtDate(a.fim)||"?"}${ai.fin?", finalizado · "+ai.n+" D":(d>0?", D"+d:"")})`:"";
     return `<div class="atb"><b>${esc(a.nome)}</b>${esc(per)}</div>`;
   }).join("");
-  const cul=b=>culValidas(b.culturas).map(c=>{ const g=culGermeTxt(c), per=(culViral(c)?[]:(c.perfil||[]).concat(culOutroTxt(c)?[culOutroTxt(c)]:[]));
+  const cul=b=>culValidas(b.culturas).slice().sort(culCmpData).map(c=>{ const g=culGermeTxt(c), per=(culViral(c)?[]:(c.perfil||[]).concat(culOutroTxt(c)?[culOutroTxt(c)]:[]));
     if(culCovid(c)) return `<div class="atb">${c.data?fmtDate(c.data)+" ":""}<b>${esc(c.sitio)}</b>: ${culRes(c)==="pend"?"<i>aguardando</i>":culResLabel(culRes(c),c).toLowerCase()}</div>`;
     return `<div class="atb">${c.data?fmtDate(c.data)+" ":""}<b>${esc(c.sitio||"Cultura")}</b>: ${culRes(c)==="neg"?(culViral(c)?"<i>não detectado</i>":"<i>negativa</i>"):culRes(c)==="cont"?esc(g)+" <i>(contaminante)</i>":g?esc(g):"<i>aguardando</i>"}${per.length?" – "+esc(per.join(", ")):""}</div>`; }).join("");
   const img=b=>(b.imagem||[]).map(x=>typeof x==="string"?{nome:x}:x).filter(x=>x.nome).map(x=>
@@ -2737,6 +2737,10 @@ function culAvisoLista(){
   body.append(el("div",{style:"margin-top:14px"},ok));
   close=openModal("Atenção ao lançar culturas",body);
 }
+/* culturas sempre em ordem de data de coleta (sem data no fim); reordena ao redesenhar, não enquanto digita */
+const culCmpData=(a,b)=>((a&&a.data)||"9999").localeCompare((b&&b.data)||"9999");
+function culOrdenar(list){ if(Array.isArray(list)) list.sort(culCmpData); return list; }
+function culReordena(list,redraw){ return ()=>{ const a=list.slice(); culOrdenar(list); if(list.some((x,i)=>x!==a[i])) redraw(); }; }   /* ao sair do campo de data */
 function culNova(data){ return {data:data||"",sitio:"",germe:"",perfil:[],virus:[],outro:"",outroOn:false,res:"pend"}; }
 function culCaixas(titulo,itens,arr,onch,mr){
   return el("div",{class:"cul-grp"},el("div",{class:"cul-gt"},titulo),el("div",{class:"cul-cks"},...itens.map(x=>{
@@ -2745,7 +2749,7 @@ function culCaixas(titulo,itens,arr,onch,mr){
       const i=arr.indexOf(x); if(e.target.checked&&i<0) arr.push(x); else if(!e.target.checked&&i>=0) arr.splice(i,1);
       e.target.parentNode.classList.toggle("on",e.target.checked); onch(); }},on?{checked:""}:{})),x); })));
 }
-function culRowEditor(c,onch,onRemove){
+function culRowEditor(c,onch,onRemove,onData){
   culFix(c);
   const germeBox=el("div"), perf=el("div",{class:"cul-perf"});
   const rt=culResToggles(c,()=>{ onch(); drawPerf(); });
@@ -2780,7 +2784,7 @@ function culRowEditor(c,onch,onRemove){
       outros("Outros","Descreva (situação específica; não entra no relatório)","Outros"));
   }
   const row=el("div",{class:"rowbox cul-row"},
-    el("div",{},el("label",{class:"lbl"},"Data da cultura"),el("input",{class:"txt",type:"date",value:c.data||"",oninput:e=>{c.data=e.target.value;onch();}})),
+    el("div",{},el("label",{class:"lbl"},"Data da cultura"),el("input",{class:"txt",type:"date",value:c.data||"",oninput:e=>{c.data=e.target.value;onch();},onblur:()=>{ if(onData) setTimeout(onData,0); }})),
     el("div",{},el("label",{class:"lbl"},"Sítio / exame"),picker({key:"sCultura",single:true,placeholder:"Escolher sítio ou painel",get:()=>c.sitio,
       set:v=>{ c.sitio=v; if(culCovid(c)&&!CUL_RES_COVID.some(([k])=>k===c.res)) c.res="pend"; rt.sync(); drawGerme(); drawPerf(); }})),
     germeBox,
@@ -2970,9 +2974,9 @@ function culEditor(card,r,onch){
   const box=el("div"); card.append(box);
   const ch=()=>{ if(onch) onch(); save(); };
   function draw(){
-    box.innerHTML="";
+    box.innerHTML=""; culOrdenar(r.culturas);
     if(!r.culturas.length) box.append(el("p",{class:"hint"},"Nenhuma cultura registrada."));
-    r.culturas.forEach((c,i)=>box.append(culRowEditor(c,ch,()=>{r.culturas.splice(i,1);ch();draw();})));
+    r.culturas.forEach((c,i)=>box.append(culRowEditor(c,ch,()=>{r.culturas.splice(i,1);ch();draw();},culReordena(r.culturas,draw))));
     box.append(el("button",{class:"btn",type:"button",onclick:()=>{ r.culturas.push(culNova(r.alta||todayISO())); ch(); draw(); culAvisoLista(); }},"+ Adicionar cultura"));
   }
   draw();
