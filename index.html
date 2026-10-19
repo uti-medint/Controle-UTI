@@ -2923,15 +2923,31 @@ function culListaTela(inner,m){
   const ints=pts.filter(p=>p.tipo==="int"), altas=pts.filter(p=>p.tipo==="alta");
   inner.append(el("h2",{class:"csec"},"Pacientes internados"));
   if(!ints.length) inner.append(el("p",{class:"hint"},atual?"Nenhum paciente internado com cultura registrada.":"Nenhuma cultura deste mês entre os pacientes internados."));
-  ints.forEach(p=>{
-    const card=el("div",{class:"card ccard"});
+  /* internados: as culturas são editadas aqui mesmo, direto no leito do passômetro médico */
+  const intCard=(bd,p)=>{
+    const ed=culState.edit==="int:"+bd.id, card=el("div",{class:"card ccard"});
     card.append(el("div",{class:"chead"},
       el("div",{},el("b",{},p.leito+" · "+(p.nome||"(sem nome)")),el("div",{class:"hint",style:"margin:0"},[p.idade?p.idade+" anos":"",p.admissao?"Admissão "+fmtDate(p.admissao,true)+" · D"+daysSince(p.admissao,todayISO()):""].filter(Boolean).join(" · "))),
-      el("button",{class:"btn small",type:"button",onclick:()=>{ SEL.med=p.id; showView("med"); if(window.matchMedia("(max-width:700px)").matches) document.body.classList.add("m-ed"); }},"Editar no passômetro")));
-    if(p.her.length){ card.append(el("div",{class:"csub"},"Herdadas de meses anteriores (não entram na contagem deste mês)"),culTabela(p.her,p.admissao,true)); }
-    if(p.cs.length){ if(p.her.length) card.append(el("div",{class:"csub"},"Coletadas em "+culMesNome(m))); card.append(culTabela(p.cs,p.admissao)); }
-    inner.append(card);
-  });
+      el("button",{class:"btn small"+(ed?" primary":""),type:"button",onclick:()=>{ culState.edit=ed?null:"int:"+bd.id; if(ed) save(); renderCulturas(); }},ed?"Concluir":"Editar culturas")));
+    if(ed) culEditor(card,bd,()=>{ bd.upd=Date.now(); });
+    else{
+      if(p.her&&p.her.length){ card.append(el("div",{class:"csub"},"Herdadas de meses anteriores (não entram na contagem deste mês)"),culTabela(p.her,p.admissao,true)); }
+      if(p.cs&&p.cs.length){ if(p.her.length) card.append(el("div",{class:"csub"},"Coletadas em "+culMesNome(m))); card.append(culTabela(p.cs,p.admissao)); }
+      else if(!(p.her&&p.her.length)) card.append(el("p",{class:"hint",style:"margin:0"},"Nenhuma cultura registrada. Clique em “Editar culturas” para lançar."));
+    }
+    return card;
+  };
+  ints.forEach(p=>{ const bd=SV.med.beds.find(x=>x.id===p.id); if(bd) inner.append(intCard(bd,p)); });
+  if(atual){             /* internados ainda sem cultura: lançar sem ir ao passômetro */
+    const sem=SV.med.beds.filter(b=>!(b.extra&&!b.ativo)&&b.nome&&!culValidas(b.culturas).length&&!ints.some(p=>p.id===b.id));
+    const abertos=sem.filter(b=>culState.edit==="int:"+b.id);
+    abertos.forEach(b=>inner.append(intCard(b,{leito:bedLabel(b)+(b.extra&&b.local?" · "+b.local:""),nome:b.nome,idade:b.idade,admissao:b.admissao,cs:[],her:[]})));
+    const resto=sem.filter(b=>!abertos.includes(b));
+    if(resto.length) inner.append(el("div",{class:"card"},el("div",{class:"csub",style:"margin-top:0"},"Internados sem cultura registrada"),
+      el("div",{style:"display:flex;flex-wrap:wrap;gap:6px"},...resto.map(b=>el("button",{class:"btn small",type:"button",title:"Lançar cultura deste paciente",
+        onclick:()=>{ culState.edit="int:"+b.id; b.culturas.push(culNova(todayISO())); b.upd=Date.now(); save(); renderCulturas(); culAvisoLista(); }},
+        "+ "+bedLabel(b)+" · "+b.nome)))));
+  }
   inner.append(el("div",{class:"csec-row"},el("h2",{class:"csec"},"Pacientes que tiveram alta"),
     el("button",{class:"btn",type:"button",onclick:()=>culNovaAltaModal(m)},"+ Registrar paciente de alta")));
   if(!altas.length) inner.append(el("p",{class:"hint"},"Nenhum paciente de alta com cultura neste mês. Ao clicar em “Limpar leito” no passômetro, as culturas do paciente aparecem aqui."));
@@ -2950,9 +2966,9 @@ function culListaTela(inner,m){
     inner.append(card);
   });
 }
-function culEditor(card,r){
+function culEditor(card,r,onch){
   const box=el("div"); card.append(box);
-  const ch=()=>{ save(); };
+  const ch=()=>{ if(onch) onch(); save(); };
   function draw(){
     box.innerHTML="";
     if(!r.culturas.length) box.append(el("p",{class:"hint"},"Nenhuma cultura registrada."));
