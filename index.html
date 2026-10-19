@@ -73,6 +73,8 @@ input.txt{width:100%;border:1px solid var(--line);border-radius:6px;padding:8px 
 .chip{display:inline-flex;align-items:center;gap:4px;background:var(--accent-soft);color:#0a4a41;border-radius:14px;padding:3px 4px 3px 10px;font-size:14px}
 .chip button{border:none;background:none;color:inherit;font-size:16px;line-height:1;padding:0 5px;border-radius:50%}
 .chip button:hover{background:rgba(0,0,0,.1)}
+.dd .opt.new.fora{color:#8a4b00;background:#fff6e5}.dd .opt.new.fora small{display:block;font-weight:400;font-size:12px;color:#8a6100;margin-top:2px}
+.cul-aviso ul{margin:8px 0 12px;padding-left:20px}.cul-aviso li{margin:6px 0}.cul-aviso .ex{color:var(--muted);font-size:13px}
 .chip-ed{border:1.5px solid var(--accent);border-radius:14px;padding:3px 10px;font-size:14px;min-width:120px;max-width:100%;outline:none}
 .dd{position:absolute;left:-1px;right:-1px;top:calc(100% + 4px);z-index:20;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(20,40,38,.16);max-height:260px;overflow-y:auto;padding:4px}
 .dd[hidden]{display:none}
@@ -733,9 +735,13 @@ function regRecord(key,text){
   if(tot.n>=THRESH&&Array.isArray(SHARED.lists[key])) addToList(key,text);
   save();
 }
+const CUL_LISTAS={germe:true,sCultura:true};   /* nas culturas, "e.coli", "E. Coli" e "Escherichia coli" fora de ordem não viram itens diferentes */
+const normSolto=s=>norm(s).replace(/[^a-z0-9]+/g,"");
+function culCanon(key,t){ t=String(t||"").replace(/\s+/g," ").trim(); if(!t) return t; const L=SHARED.lists[key]||[], n=normSolto(t);
+  return L.find(x=>norm(x)===norm(t))||(n&&L.find(x=>normSolto(x)===n))||t; }
 function learn(key,name){            /* usa o texto; só entra na lista de sugestões após THRESH citações (médicos: na hora) */
   name=String(name||"").replace(/\s+/g," ").trim(); if(!name) return null;
-  const hit=S.lists[key].find(x=>norm(x)===norm(name)); if(hit) return hit;
+  const hit=S.lists[key].find(x=>norm(x)===norm(name))||(CUL_LISTAS[key]&&S.lists[key].find(x=>normSolto(x)===normSolto(name))); if(hit) return hit;
   if(IMEDIATO[key]) return addToList(key,name);
   regRecord(key,name); return name;
 }
@@ -822,9 +828,9 @@ function picker(opts){
     dd.innerHTML="";
     shown.forEach((x,i)=>dd.append(el("div",{class:"opt"+(i===active?" on":""),
       onmousedown:e=>{e.preventDefault(); pick(x);}},x)));
-    const exact=S.lists[opts.key].some(x=>norm(x)===nq);
-    if(nq && !exact) dd.append(el("div",{class:"opt new",onmousedown:e=>{e.preventDefault(); pick(q,true);}},
-      `Usar "${q.trim()}"`));
+    const exact=S.lists[opts.key].some(x=>norm(x)===nq||(CUL_LISTAS[opts.key]&&normSolto(x)===normSolto(q)));
+    if(nq && !exact) dd.append(el("div",{class:"opt new"+(CUL_LISTAS[opts.key]?" fora":""),onmousedown:e=>{e.preventDefault(); pick(q,true);}},
+      `Usar "${q.trim()}"`,CUL_LISTAS[opts.key]?el("small",{},"⚠ Fora da lista: confira se não existe com outro nome. Grafias diferentes viram itens separados no relatório."):""));
     if(!shown.length && !(nq&&!exact)) dd.append(el("div",{class:"none"},"Nenhum item disponível"));
     dd.hidden=false;
   }
@@ -1076,7 +1082,7 @@ function renderEditor(){
     culCard.innerHTML=""; culCard.append(el("h3",{},"Culturas"));
     if(!b.culturas.length) culCard.append(el("p",{class:"hint"},"Nenhuma cultura registrada."));
     b.culturas.forEach((c,i)=>culCard.append(culRowEditor(c,()=>afterChange(),()=>{b.culturas.splice(i,1);afterChange();renderCul();})));
-    culCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.culturas.push(culNova(S.data));afterChange();renderCul();}},"+ Adicionar cultura"));
+    culCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.culturas.push(culNova(S.data));afterChange();renderCul();culAvisoLista();}},"+ Adicionar cultura"));
     if(!b.culturas.some(culCovid)) culCard.append(" ",el("button",{class:"btn",type:"button",onclick:()=>{ const c=culNova(b.admissao||S.data); c.sitio=learn("sCultura",CUL_COVID)||CUL_COVID;
       b.culturas.push(c); afterChange(); renderCul(); }},"+ RT-PCR COVID-19 (admissão)"));
   }
@@ -2713,6 +2719,24 @@ function culFix(c){        /* perfis antigos (texto livre) viram caixas; o que n
   c.outro=String(c.outro||""); c.outroOn=!!c.outroOn;
   return c;
 }
+/* aviso ao clicar em "+ Adicionar cultura" (pode ser desligado neste aparelho) */
+function culAvisoLista(){
+  try{ if(localStorage.getItem("cul_aviso_lista_off")==="1") return; }catch(e){}
+  const ck=el("input",{type:"checkbox"});
+  const body=el("div",{class:"cul-aviso"},
+    el("p",{style:"margin-top:0"},"Para o relatório mensal de culturas sair correto, escolha o ",el("b",{},"sítio")," e o ",el("b",{},"germe")," sempre ",el("b",{},"a partir da lista"),"."),
+    el("ul",{},
+      el("li",{},"Digite parte do nome e clique na opção que aparecer. ",el("span",{class:"ex"},"Ex.: “kleb” → Klebsiella pneumoniae; “hemo” → Hemocultura.")),
+      el("li",{},"Evite abreviações e nomes fora da lista: cada grafia diferente vira um germe diferente no relatório. ",el("span",{class:"ex"},"Ex.: “K. pneumo”, “klebisiela”.")),
+      el("li",{},"Resistência (KPC, ESBL, MRSA…) é marcada nas caixas do antibiograma, não no nome do germe."),
+      el("li",{},"Maiúsculas, minúsculas e acentos não importam: “klebsiella pneumoniae” é reconhecido como Klebsiella pneumoniae."),
+      el("li",{},"Só escreva um nome novo se ele realmente não existir na lista e, nesse caso, escreva o nome completo e correto.")),
+    el("label",{style:"display:flex;gap:8px;align-items:center;font-size:14px"},ck,"Não mostrar novamente neste aparelho"));
+  let close;
+  const ok=el("button",{class:"btn primary",type:"button",onclick:()=>{ if(ck.checked){ try{ localStorage.setItem("cul_aviso_lista_off","1"); }catch(e){} } close(); }},"Entendi");
+  body.append(el("div",{style:"margin-top:14px"},ok));
+  close=openModal("Atenção ao lançar culturas",body);
+}
 function culNova(data){ return {data:data||"",sitio:"",germe:"",perfil:[],virus:[],outro:"",outroOn:false,res:"pend"}; }
 function culCaixas(titulo,itens,arr,onch,mr){
   return el("div",{class:"cul-grp"},el("div",{class:"cul-gt"},titulo),el("div",{class:"cul-cks"},...itens.map(x=>{
@@ -2831,10 +2855,10 @@ function culStats(m){
   const pos=all.filter(x=>x.r==="pos");
   const germes={}, sitios={}, virus={};
   pos.filter(x=>culViral(x.c)).forEach(x=>culGermes(x.c).forEach(v=>{ const k=norm(v); const e=virus[k]||(virus[k]={nome:v,n:0}); e.n++; }));
-  pos.filter(x=>!culViral(x.c)).forEach(x=>{ const g=(x.c.germe||"Germe não informado").trim(), k=norm(g);
+  pos.filter(x=>!culViral(x.c)).forEach(x=>{ const g=culCanon("germe",x.c.germe)||"Germe não informado", k=normSolto(g);
     const e=germes[k]||(germes[k]={nome:g,n:0,tags:{},mr:0}); e.n++; if(culEhMR(x.c)) e.mr++;
     culPerfilRel(x.c).forEach(t=>{ e.tags[t]=(e.tags[t]||0)+1; }); });
-  all.forEach(x=>{ const s=(x.c.sitio||"Sítio não informado").trim(), k=norm(s);
+  all.forEach(x=>{ const s=culCanon("sCultura",x.c.sitio)||"Sítio não informado", k=normSolto(s);
     const e=sitios[k]||(sitios[k]={nome:s,n:0,pend:0,neg:0,pos:0,cont:0}); e.n++; e[x.r]++; });
   const iras=pos.filter(x=>culOrigem(x.p.admissao,x.c.data)==="IRAS").length, prec=pos.filter(x=>culOrigem(x.p.admissao,x.c.data)==="≤ 48 h").length;
   const mr=pos.filter(x=>culEhMR(x.c)), outros=pos.filter(x=>!culViral(x.c)&&culOutroTxt(x.c)).length;
@@ -2933,7 +2957,7 @@ function culEditor(card,r){
     box.innerHTML="";
     if(!r.culturas.length) box.append(el("p",{class:"hint"},"Nenhuma cultura registrada."));
     r.culturas.forEach((c,i)=>box.append(culRowEditor(c,ch,()=>{r.culturas.splice(i,1);ch();draw();})));
-    box.append(el("button",{class:"btn",type:"button",onclick:()=>{ r.culturas.push(culNova(r.alta||todayISO())); ch(); draw(); }},"+ Adicionar cultura"));
+    box.append(el("button",{class:"btn",type:"button",onclick:()=>{ r.culturas.push(culNova(r.alta||todayISO())); ch(); draw(); culAvisoLista(); }},"+ Adicionar cultura"));
   }
   draw();
 }
