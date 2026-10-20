@@ -516,7 +516,7 @@ const SVC_KEYS=["atb","culturas","imagem","pend","condutas","interc","exm","proc
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
 function defaultDisp(){ return {svd:false,sne:false,gtt:false,tot:false,tqt:false,avp:false,prec:{on:false,resp:false,cont:false},cvc:{on:false,sitios:[]},cdl:{on:false,sitios:[]},pa:{on:false,sitios:[]},dreno:{on:false,sitios:[]},outros:[]}; }
 function defaultPac(id){ return {pid:"",nome:"",idade:"",admissao:"",plano:"",problemas:[],disp:defaultDisp(),dd:{},ativo:!String(id).startsWith("E"),local:"",pf:defaultPf()}; }
-/* Pendências fixas: ficam no cadastro do leito, então médico e enfermagem veem e marcam as mesmas; saem na alta (Limpar leito). */
+/* Pendências fixas: marcadas no passômetro médico e guardadas no cadastro do leito, para saírem também na impressão da enfermagem; saem na alta (Limpar leito). */
 const PF_ITENS=[["exm","Checar exames","Quais? Ex.: gasometria 14h, lactato"],["tc","Tomografia","Qual? Ex.: TC de crânio sem contraste"],["esp","Avaliação de especialidade","Qual? Ex.: Cardiologia, Cirurgia geral"]];
 function defaultPf(){ return {exm:{on:false,t:""},tc:{on:false,t:""},esp:{on:false,t:""},alta:""}; }
 function fixPf(v){
@@ -944,7 +944,7 @@ function pfCard(b,extra){
   const card=el("div",{class:"card pf-card"});
   function render(foco){
     const pf=b.pf=fixPf(b.pf); card.innerHTML="";
-    card.append(el("h3",{},"Pendências"),el("p",{class:"hint"},"Marque o que estiver pendente e escreva o detalhe na frente. Vale para os dois passômetros (médico e enfermagem) e aparece no quadro do topo da impressão."));
+    card.append(el("h3",{},"Pendências"),el("p",{class:"hint"},"Marque o que estiver pendente e escreva o detalhe na frente. Aparece no quadro do topo da impressão, também no passômetro da enfermagem."));
     PF_ITENS.forEach(([k,l,ph])=>{
       const x=pf[k], row=el("div",{class:"pf-row"},
         el("label",{class:"pf-chk"},el("input",{type:"checkbox",...(x.on?{checked:""}:{}),onchange:e=>{ x.on=e.target.checked; if(!x.on) x.t=""; afterChange(); render(x.on?k:null); }}),l));
@@ -1114,7 +1114,6 @@ function renderEditor(){
       prCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.proc.push({nome:"",feito:false,data:S.data,hora:"",medico:""});afterChange();renderProc();}},"+ Adicionar procedimento"));
     }
     renderProc();
-    ed.append(pfCard(b));
     ed.append(listCard("Atualizações, Condutas, Pendências e Observações","npend","pend","Atualizações, condutas, pendências ou observações: clique para ver a lista ou digite uma nova"));
     ed.append(el("p",{class:"hint",id:"updInfo",style:"margin:4px 2px"},updText(b)));
     return;
