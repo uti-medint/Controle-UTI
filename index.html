@@ -126,6 +126,22 @@ input.txt{width:100%;border:1px solid var(--line);border-radius:6px;padding:8px 
 .x-btn:hover{background:#f6e3d3;color:var(--danger)}
 @media(max-width:900px){.atb-row{grid-template-columns:1fr 1fr}}
 .toggle-row{display:flex;align-items:center;gap:8px}
+/* pendências fixas e texto livre */
+.pf-row{display:grid;grid-template-columns:230px minmax(0,1fr);gap:6px 12px;align-items:center;padding:6px 0;border-top:1px solid #eef2f1}
+.pf-row:first-of-type{border-top:none}
+.pf-chk{display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;min-height:38px}
+.pf-chk input{width:18px;height:18px;accent-color:var(--accent);flex:none}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;justify-self:start}
+.seg button{border:none;border-left:1px solid var(--line);background:#fff;padding:7px 16px;min-height:38px}
+.seg button:first-child{border-left:none}
+.seg button.on{background:var(--accent);color:#fff;font-weight:600}
+.pf-outras{margin-top:12px}
+.quick{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.qk{border:1px dashed #9cc9c0;background:var(--accent-soft);color:#0a4a41;border-radius:14px;padding:2px 10px;font-size:13px}
+.qk:hover{border-style:solid}
+textarea.txt.lines{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;min-height:84px;line-height:1.45;resize:none;overflow:hidden}
+textarea.txt.lines:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+@media(max-width:700px){.pf-row{grid-template-columns:minmax(0,1fr)}.qk{padding:6px 12px;font-size:14px}}
 .toggle-row input{width:18px;height:18px}
 
 /* modal */
@@ -494,18 +510,30 @@ const N_FIXOS = 17, N_EXTRAS = 4;
 
 /* Cadastro único por leito, compartilhado entre passômetro médico, enfermagem e POCUS:
    identificação, lista de problemas, dispositivos invasivos e situação do leito ficam em SHARED.pac[idDoLeito]. */
-const PAC_KEYS=["pid","nome","idade","admissao","plano","problemas","disp","dd","ativo","local"];
-const PAC_MOVE=["pid","nome","idade","admissao","plano","problemas","disp","dd"];
+const PAC_KEYS=["pid","nome","idade","admissao","plano","problemas","disp","dd","ativo","local","pf"];
+const PAC_MOVE=["pid","nome","idade","admissao","plano","problemas","disp","dd","pf"];
 const SVC_KEYS=["atb","culturas","imagem","pend","condutas","interc","exm","proc","labesp","resp"];
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
 function defaultDisp(){ return {svd:false,sne:false,gtt:false,tot:false,tqt:false,avp:false,prec:{on:false,resp:false,cont:false},cvc:{on:false,sitios:[]},cdl:{on:false,sitios:[]},pa:{on:false,sitios:[]},dreno:{on:false,sitios:[]},outros:[]}; }
-function defaultPac(id){ return {pid:"",nome:"",idade:"",admissao:"",plano:"",problemas:[],disp:defaultDisp(),dd:{},ativo:!String(id).startsWith("E"),local:""}; }
+function defaultPac(id){ return {pid:"",nome:"",idade:"",admissao:"",plano:"",problemas:[],disp:defaultDisp(),dd:{},ativo:!String(id).startsWith("E"),local:"",pf:defaultPf()}; }
+/* Pendências fixas: ficam no cadastro do leito, então médico e enfermagem veem e marcam as mesmas; saem na alta (Limpar leito). */
+const PF_ITENS=[["exm","Checar exames","Quais? Ex.: gasometria 14h, lactato"],["tc","Tomografia","Qual? Ex.: TC de crânio sem contraste"],["esp","Avaliação de especialidade","Qual? Ex.: Cardiologia, Cirurgia geral"]];
+function defaultPf(){ return {exm:{on:false,t:""},tc:{on:false,t:""},esp:{on:false,t:""},alta:""}; }
+function fixPf(v){
+  const d=defaultPf(); v=(v&&typeof v==="object")?v:{};
+  PF_ITENS.forEach(([k])=>{ const x=v[k]; d[k]={on:!!(x&&x.on),t:String((x&&x.t)||"")}; });
+  d.alta=(v.alta==="24"||v.alta==="48")?v.alta:"";
+  return d;
+}
+function pfOf(b){ return fixPf(b&&b.pf); }
+function pfAny(b){ const pf=pfOf(b); return !!pf.alta||PF_ITENS.some(([k])=>pf[k].on); }
+function pfLines(b){ const pf=pfOf(b); return PF_ITENS.filter(([k])=>pf[k].on).map(([k,l])=>l+(pf[k].t.trim()?": "+pf[k].t.trim():"")); }
 function pacOf(id){ return SHARED.pac[id]||(SHARED.pac[id]=defaultPac(id)); }
 function pacPristine(p,id){
   const d=defaultPac(id);
   const dev=DEVS.some(([k])=>{ const v=p.disp&&p.disp[k]; return v&&typeof v==="object"?!!v.on:!!v; });
   return !p.pid && ["nome","idade","admissao","plano","local"].every(k=>!p[k]) && !(p.problemas||[]).length
-    && !dev && !(p.disp&&p.disp.prec&&p.disp.prec.on) && !((p.disp&&p.disp.outros)||[]).length && !Object.keys(p.dd||{}).length && p.ativo===d.ativo;
+    && !dev && !(p.disp&&p.disp.prec&&p.disp.prec.on) && !((p.disp&&p.disp.outros)||[]).length && !Object.keys(p.dd||{}).length && p.ativo===d.ativo && !pfAny(p);
 }
 function bindPac(b){
   PAC_KEYS.forEach(k=>Object.defineProperty(b,k,{get:()=>pacOf(b.id)[k],set:v=>{ pacOf(b.id)[k]=v; },enumerable:false,configurable:true}));
@@ -591,7 +619,7 @@ function fixSvc(b){                /* somente os campos de cada passômetro */
 }
 function fixArch(b){               /* leito arquivado: carrega a própria cópia da identificação */
   fixSvc(b); b.disp=Object.assign(defaultDisp(),b.disp||{}); b.dd=b.dd||{};
-  b.problemas=Array.isArray(b.problemas)?b.problemas:[];
+  b.problemas=Array.isArray(b.problemas)?b.problemas:[]; b.pf=fixPf(b.pf);
   return b;
 }
 function fixBed(b){ absorbLegacy(b); bindPac(b); return fixSvc(b); }
@@ -633,7 +661,7 @@ function buildAll(raw){
   SHARED.pocus=Array.isArray(raw.pocus)?raw.pocus:[];
   SHARED.ped=Array.isArray(raw.ped)?raw.ped:[];
   SHARED.pac=(raw.pac&&typeof raw.pac==='object')?raw.pac:{};
-  Object.keys(SHARED.pac).forEach(id=>{ const q=SHARED.pac[id]; if(q&&typeof q==='object') q.disp=Object.assign(defaultDisp(),q.disp||{}); });
+  Object.keys(SHARED.pac).forEach(id=>{ const q=SHARED.pac[id]; if(q&&typeof q==='object'){ q.disp=Object.assign(defaultDisp(),q.disp||{}); q.pf=fixPf(q.pf); } });
   SHARED.reg=(raw.reg&&typeof raw.reg==='object')?raw.reg:{};
   SHARED.cul=Array.isArray(raw.cul)?raw.cul.map(fixCulRec):[];
   SHARED.culmeta=Object.assign({impresso:"",por:""},raw.culmeta||{});
@@ -881,7 +909,7 @@ function bedLabel(b){ return b.extra ? `Extra ${b.id.slice(1)}` : `Leito ${b.id.
 function renderNav(){
   const nav=$("#nav"); nav.innerHTML="";
   const mk=b=>{
-    const has=b.nome||b.problemas.length||b.atb.length||b.pend.length||(b.exm||[]).length||(b.proc||[]).length;
+    const has=b.nome||b.problemas.length||b.atb.length||b.pend.length||(b.exm||[]).length||(b.proc||[]).length||pfAny(b);
     const devs=devEntries(b,S.data).length;
     const inactive=b.extra&&!b.ativo;
     const btn=el("button",{class:"bed-btn"+(b.id===selected?" active":"")+(!has?" empty":"")+(inactive?" inactive":""),
@@ -898,6 +926,42 @@ function renderNav(){
 }
 
 /* ============ Editor do leito ============ */
+/* Texto livre, uma linha por item (guardado como lista de linhas). Os itens da lista viram atalhos que só iniciam o texto;
+   o que se digita aqui não entra na lista de sugestões. */
+function linesBox(b,prop,key,ph){
+  const ta=el("textarea",{class:"txt lines",rows:"3",placeholder:ph,"aria-label":LIST_NAMES[key]||key});
+  ta.value=(b[prop]||[]).join("\n");
+  const fit=()=>{ ta.style.height="auto"; ta.style.height=(ta.scrollHeight+2)+"px"; };
+  const store=()=>{ b[prop]=ta.value.split("\n").map(x=>x.replace(/\s+/g," ").trim()).filter(Boolean); afterChange(); };
+  ta.addEventListener("input",()=>{ store(); fit(); });
+  const quick=el("div",{class:"quick"},...(S.lists[key]||[]).map(t=>el("button",{type:"button",class:"qk",title:"Inserir “"+t+"” e completar",
+    onmousedown:e=>e.preventDefault(),
+    onclick:()=>{ let v=ta.value.replace(/\s+$/,""); v+=(v?"\n":"")+t+" "; ta.value=v; store(); fit(); ta.focus(); ta.setSelectionRange(v.length,v.length); }},"+ "+t)));
+  requestAnimationFrame(fit);
+  return el("div",{class:"lines-box"},quick,ta);
+}
+function pfCard(b,extra){
+  const card=el("div",{class:"card pf-card"});
+  function render(foco){
+    const pf=b.pf=fixPf(b.pf); card.innerHTML="";
+    card.append(el("h3",{},"Pendências"),el("p",{class:"hint"},"Marque o que estiver pendente e escreva o detalhe na frente. Vale para os dois passômetros (médico e enfermagem) e aparece no quadro do topo da impressão."));
+    PF_ITENS.forEach(([k,l,ph])=>{
+      const x=pf[k], row=el("div",{class:"pf-row"},
+        el("label",{class:"pf-chk"},el("input",{type:"checkbox",...(x.on?{checked:""}:{}),onchange:e=>{ x.on=e.target.checked; if(!x.on) x.t=""; afterChange(); render(x.on?k:null); }}),l));
+      if(x.on) row.append(el("input",{class:"txt",type:"text","data-pf":k,placeholder:ph,value:x.t,"aria-label":l+": detalhe",oninput:e=>{ x.t=e.target.value; afterChange(); }}));
+      card.append(row);
+    });
+    const ar=el("div",{class:"pf-row"},el("label",{class:"pf-chk"},el("input",{type:"checkbox",...(pf.alta?{checked:""}:{}),
+      onchange:e=>{ pf.alta=e.target.checked?"24":""; afterChange(); render(); }}),"Previsão de alta"));
+    if(pf.alta) ar.append(el("div",{class:"seg",role:"group","aria-label":"Previsão de alta"},...["24","48"].map(h=>el("button",{type:"button","aria-pressed":pf.alta===h?"true":"false",class:pf.alta===h?"on":"",
+      onclick:()=>{ pf.alta=h; afterChange(); render(); }},"em "+h+" h"))));
+    card.append(ar);
+    if(extra) card.append(extra);
+    if(foco){ const i=card.querySelector(`[data-pf="${foco}"]`); if(i) i.focus(); }
+  }
+  render();
+  return card;
+}
 function renderEditor(){
   const b=S.beds.find(x=>x.id===selected); const ed=$("#editor"); ed.innerHTML="";
   // título
@@ -1050,6 +1114,7 @@ function renderEditor(){
       prCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.proc.push({nome:"",feito:false,data:S.data,hora:"",medico:""});afterChange();renderProc();}},"+ Adicionar procedimento"));
     }
     renderProc();
+    ed.append(pfCard(b));
     ed.append(listCard("Atualizações, Condutas, Pendências e Observações","npend","pend","Atualizações, condutas, pendências ou observações: clique para ver a lista ou digite uma nova"));
     ed.append(el("p",{class:"hint",id:"updInfo",style:"margin:4px 2px"},updText(b)));
     return;
@@ -1152,8 +1217,11 @@ function renderEditor(){
     icCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.interc.push({nome:"",data:""});afterChange();renderIc();}},"+ Adicionar intercorrência"));
   }
   renderIc();
-  ed.append(listCard("Pendências","pend","pend","Clique para ver as pendências ou digite uma nova"));
-  ed.append(listCard("Condutas","condutas","condutas","Clique para ver as condutas ou digite uma nova"));
+  ed.append(pfCard(b,el("div",{},el("label",{class:"lbl pf-outras"},"Outras pendências (uma por linha)"),
+    linesBox(b,"pend","pend","Ex.: Conversar com a família às 16h"))));
+  ed.append(el("div",{class:"card"},el("h3",{},"Condutas"),
+    el("p",{class:"hint"},"Uma conduta por linha. Os atalhos colocam o início do texto; complete com o detalhe (droga, dose, alvo)."),
+    linesBox(b,"condutas","condutas","Ex.: Desmame de noradrenalina, alvo PAM ≥ 65")));
 
   ed.append(el("p",{class:"hint",id:"updInfo",style:"margin:4px 2px"},updText(b)));
 }
@@ -1182,6 +1250,13 @@ const DOC_CSS=`
 .v2 .res{font-size:8.5pt;background:#eef6f4;border:1px solid #b8d3cd;padding:3pt 8pt;margin:0 0 6pt}
 .v2 .res b{color:#a30000}
 .v2 tr{page-break-inside:avoid;break-inside:avoid}
+.pt table.pq{margin:0 0 6pt;border:1.5px solid #444}
+.pt .pq td{width:25%;font-size:8.5pt;padding:3pt 5pt;line-height:1.3;background:#fff}
+.pt .pq .qt{font-weight:bold;font-size:7.5pt;text-transform:uppercase;background:#d9e6e3;margin:-3pt -5pt 3pt;padding:2pt 5pt;border-bottom:1px solid #444}
+.pt .pq .qv{color:#777}
+.pt .alta{display:inline-block;margin-top:3pt;padding:1pt 4pt;border:1.5px solid #000;font-weight:bold;font-size:7pt}
+.pt ul.li{margin:0;padding-left:10pt}
+.pt ul.li li{margin:0 0 1pt}
 `;
 function docHead(st,logoSrc,title){
   const titulo=`<h1>${esc(title)} – ${esc(st.unit)}</h1><p class="sub">Data: <b>${fmtDate(st.data,true)}</b></p>`;
@@ -1197,6 +1272,18 @@ function devTxt(b,ref){
     return (x.data&&x.d>ALERT_DIAS)?`<b style="color:#b00000">⚠ ${txt}</b>`:txt;
   }).join("<br>");
 }
+/* Quadro "Pendências do dia" (topo dos dois passômetros) e selo de alta prevista na coluna do paciente */
+function pfQuadro(beds){
+  const lab=b=>b.extra?"Extra "+b.id.slice(1):"L"+b.id.slice(1).padStart(2,"0");
+  const ativos=beds.filter(pfAny); if(!ativos.length) return "";
+  const col=(t,itens)=>`<td><div class="qt">${t}</div>${itens.length?itens.join("<br>"):'<span class="qv">—</span>'}</td>`;
+  const cols=PF_ITENS.map(([k,l])=>col(l,ativos.filter(b=>pfOf(b)[k].on).map(b=>`<b>${lab(b)}</b>${pfOf(b)[k].t.trim()?" "+esc(pfOf(b)[k].t.trim()):""}`)));
+  const al=h=>ativos.filter(b=>pfOf(b).alta===h).map(lab).join(", ");
+  const altas=(al("24")||al("48"))?[`<b>Em 24 h:</b> ${al("24")||"—"}`,`<b>Em 48 h:</b> ${al("48")||"—"}`]:[];
+  return `<table class="pq"><tr>${cols.join("")}${col("Previsão de alta",altas)}</tr></table>`;
+}
+function altaSelo(b){ const h=pfOf(b).alta; return h?`<span class="alta">ALTA PREVISTA EM ${h} H</span>`:""; }
+const ulTxt=a=>(a&&a.length)?`<ul class="li">${a.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:"";
 function docBodyEnf(st,logoSrc){
   const ref=st.data; logoSrc=logoSrc||st.logo;
   const list=a=>(a||[]).map(esc).join("; ");
@@ -1211,12 +1298,13 @@ function docBodyEnf(st,logoSrc){
   const rows=st.beds.filter(b=>!b.extra||b.ativo).map(b=>{
     const lab=b.extra?`Extra ${b.id.slice(1)}${b.local?"<br>"+esc(b.local):""}`:b.id.slice(1).padStart(2,"0");
     const dv=devTxt(b,ref);
-    const has=b.nome||precTxt(b)||b.problemas.length||b.pend.length||(b.exm||[]).length||(b.proc||[]).length||dv;
+    const has=b.nome||precTxt(b)||b.problemas.length||b.pend.length||(b.exm||[]).length||(b.proc||[]).length||dv||pfAny(b);
     if(!has) return `<tr class="vago"><td class="b">${lab}</td><td colspan="6">Vago</td></tr>`;
-    const id=`<span class="b">${esc(b.nome)||"—"}</span>${b.idade?"<br>"+esc(b.idade)+" anos":""}${b.admissao?"<br>Adm.: "+fmtDate(b.admissao,true):""}${b.plano?"<br>"+esc(b.plano):""}${precHtml(b)}`;
-    return `<tr><td class="b">${lab}</td><td>${id}</td><td>${list(b.problemas)}</td><td>${dv}</td><td>${exm(b)}</td><td>${proc(b)}</td><td>${list(b.pend)}</td></tr>`;
+    const id=`<span class="b">${esc(b.nome)||"—"}</span>${b.idade?"<br>"+esc(b.idade)+" anos":""}${b.admissao?"<br>Adm.: "+fmtDate(b.admissao,true):""}${b.plano?"<br>"+esc(b.plano):""}${precHtml(b)}${altaSelo(b)}`;
+    const pfl=pfLines(b);
+    return `<tr><td class="b">${lab}</td><td>${id}</td><td>${list(b.problemas)}</td><td>${dv}</td><td>${exm(b)}</td><td>${proc(b)}</td><td>${pfl.length?ulTxt(pfl.concat(b.pend)):list(b.pend)}</td></tr>`;
   }).join("");
-  return `<div class="pt">${docHead(st,logoSrc,"Passômetro de Enfermagem")}
+  return `<div class="pt">${docHead(st,logoSrc,"Passômetro de Enfermagem")}${pfQuadro(st.beds.filter(b=>!b.extra||b.ativo))}
 <table><thead><tr>
 <th style="width:5%">Leito</th><th style="width:13%">Paciente</th><th style="width:15%">Problemas / Hipóteses Diagnósticas</th><th style="width:15%">Dispositivos</th><th style="width:18%">Exames de Imagem pendentes / realizados</th><th style="width:18%">Procedimentos pendentes / realizados</th><th style="width:16%">Atualizações, Condutas, Pendências e Observações</th>
 </tr></thead><tbody>${rows}</tbody></table></div>`;
@@ -1240,9 +1328,9 @@ function docBody(st,logoSrc){
   const sl=(t,first)=>`<div class="sl${first?" first":""}">${t}</div>`;
   const cell=blocks=>{ let first=true,h=""; blocks.forEach(([t,c])=>{ if(!c) return; h+=sl(t,first)+c; first=false; }); return h; };
   const vis=st.beds.filter(b=>!b.extra||b.ativo);
-  const occ=b=>!!(b.nome||precTxt(b)||b.problemas.length||b.atb.length||(b.culturas||[]).length||labEspTxt(b)||b.imagem.length||b.pend.length||b.condutas.length||(b.interc||[]).length||dev(b));
+  const occ=b=>!!(b.nome||precTxt(b)||b.problemas.length||b.atb.length||(b.culturas||[]).length||labEspTxt(b)||b.imagem.length||b.pend.length||b.condutas.length||(b.interc||[]).length||dev(b)||pfAny(b));
   const anyIc=vis.some(b=>occ(b)&&(b.interc||[]).some(x=>x.nome));
-  const anyPC=vis.some(b=>occ(b)&&(b.pend.length||b.condutas.length));
+  const anyPC=vis.some(b=>occ(b)&&(b.pend.length||b.condutas.length||pfLines(b).length));
   const W=[["lei",4,1],["pac",13,1],["pd",22,1],["aci",26,1],["ic",17,anyIc],["pc",18,anyPC]].filter(c=>c[2]);
   const tot=W.reduce((a,c)=>a+c[1],0), wd=k=>(W.find(c=>c[0]===k)[1]/tot*100).toFixed(1)+"%";
   const NC=W.length;
@@ -1252,13 +1340,13 @@ function docBody(st,logoSrc){
     if(!occ(b)) return `<tr class="vago"><td class="b">${lab}</td><td colspan="${NC-1}">Vago</td></tr>`;
     n++;
     const dd=b.admissao?daysSince(b.admissao,ref):null;
-    const id=`<span class="b">${esc(b.nome)||"—"}</span>${b.idade?"<br>"+esc(b.idade)+" anos":""}${b.admissao?"<br>Adm.: "+fmtDate(b.admissao,true)+(dd>0?" · <b>D"+dd+"</b>":""):""}${b.plano?"<br>"+esc(b.plano):""}${precHtml(b)}${(b.admissao&&b.admissao===ref)?'<span class="tag">ADMISSÃO HOJE</span>':""}`
+    const id=`<span class="b">${esc(b.nome)||"—"}</span>${b.idade?"<br>"+esc(b.idade)+" anos":""}${b.admissao?"<br>Adm.: "+fmtDate(b.admissao,true)+(dd>0?" · <b>D"+dd+"</b>":""):""}${b.plano?"<br>"+esc(b.plano):""}${precHtml(b)}${(b.admissao&&b.admissao===ref)?'<span class="tag">ADMISSÃO HOJE</span>':""}${altaSelo(b)}`
       +(b.upd?`<div class="upd">Atualizado: ${new Date(b.upd).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</div>`:"");
     return `<tr${n%2?"":' class="z"'}><td class="b">${lab}</td><td>${id}</td>`
       +`<td>${cell([["PROBLEMAS",list(b.problemas)],["DISPOSITIVOS",dev(b)]])}</td>`
       +`<td>${cell([["ANTIBIÓTICOS",atb(b)],["CULTURAS",cul(b)],["LABORATORIAIS",labEspTxt(b)],["IMAGEM",img(b)]])}</td>`
       +(anyIc?`<td>${ic(b)}</td>`:"")
-      +(anyPC?`<td>${cell([["PENDÊNCIAS",list(b.pend)],["CONDUTAS",list(b.condutas)]])}</td>`:"")+`</tr>`;
+      +(anyPC?`<td>${cell([["PENDÊNCIAS",ulTxt(pfLines(b).concat(b.pend))],["CONDUTAS",ulTxt(b.condutas)]])}</td>`:"")+`</tr>`;
   }).join("");
   const fx=vis.filter(b=>!b.extra), ex=vis.filter(b=>b.extra), ocup=vis.filter(occ);
   const cnt=f=>ocup.filter(f).length, alertas=ocup.reduce((a,b)=>a+devAlerts(b,ref).length,0);
@@ -1267,8 +1355,9 @@ function docBody(st,logoSrc){
   parts.push("TOT "+cnt(b=>devOn(b,"tot")),"TQT "+cnt(b=>devOn(b,"tqt")),"Precaução "+cnt(b=>!!precTxt(b)));
   if(alertas) parts.push(`<b>Dispositivos &gt; ${ALERT_DIAS} dias: ${alertas}</b>`);
   const adm=cnt(b=>b.admissao&&b.admissao===ref); if(adm) parts.push("Admissões hoje: "+adm);
+  const alt=cnt(b=>!!pfOf(b).alta); if(alt) parts.push(`<b>Altas previstas: ${alt}</b>`);
   const hdr=docHead(st,logoSrc,"Passômetro");
-  return `<div class="pt v2">${hdr}<div class="res">${parts.join(" · ")} · Impresso em ${new Date().toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}</div>
+  return `<div class="pt v2">${hdr}<div class="res">${parts.join(" · ")} · Impresso em ${new Date().toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}</div>${pfQuadro(ocup)}
 <table><thead><tr>
 <th style="width:${wd("lei")}">Leito</th><th style="width:${wd("pac")}">Paciente</th><th style="width:${wd("pd")}">Problemas / Dispositivos</th><th style="width:${wd("aci")}">Antibióticos / Culturas / Imagem</th>${anyIc?`<th style="width:${wd("ic")}">Intercorrências</th>`:""}${anyPC?`<th style="width:${wd("pc")}">Pendências / Condutas</th>`:""}
 </tr></thead><tbody>${rows}</tbody></table></div>`;
@@ -1340,7 +1429,7 @@ function logoModal(){
 
 /* ============ Transferência de leito ============ */
 function bedHasPatient(b){
-  return !!(b.nome||b.problemas.length||b.atb.length||(b.culturas||[]).length||b.imagem.length||b.pend.length||b.condutas.length||(b.interc||[]).length||(b.exm||[]).length||(b.proc||[]).length||labEspTxt(b)||((b.disp&&b.disp.outros)||[]).length||DEVS.some(([k])=>devOn(b,k)));
+  return !!(b.nome||b.problemas.length||b.atb.length||(b.culturas||[]).length||b.imagem.length||b.pend.length||b.condutas.length||(b.interc||[]).length||(b.exm||[]).length||(b.proc||[]).length||labEspTxt(b)||((b.disp&&b.disp.outros)||[]).length||DEVS.some(([k])=>devOn(b,k))||pfAny(b));
 }
 function movePatient(a,b,swap){
   const ia=a.id, ib=b.id, now=Date.now();
@@ -1580,7 +1669,7 @@ function applyPart(n,v){
   if(n==="logo"){ SHARED.logo=v.logo||""; SHARED.logoRatio=v.logoRatio||0; return; }
   if(n.startsWith("list:")){ SHARED.lists[n.slice(5)]=v; return; }
   if(n.startsWith("reg:")){ SHARED.reg[n.slice(4)]=(v&&typeof v==="object")?v:{}; return; }
-  if(n.startsWith("pac:")){ const id=n.slice(4), q=Object.assign(defaultPac(id),v); q.disp=Object.assign(defaultDisp(),q.disp||{}); SHARED.pac[id]=q; return; }
+  if(n.startsWith("pac:")){ const id=n.slice(4), q=Object.assign(defaultPac(id),v); q.disp=Object.assign(defaultDisp(),q.disp||{}); q.pf=fixPf(q.pf); SHARED.pac[id]=q; return; }
   if(n.startsWith("ped:")){
     const r=Object.assign({},v), i=SHARED.ped.findIndex(x=>x.ts===r.ts);
     if(i>=0) SHARED.ped[i]=r; else SHARED.ped.push(r);
