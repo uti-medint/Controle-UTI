@@ -516,7 +516,7 @@ const SVC_KEYS=["atb","culturas","imagem","pend","condutas","interc","exm","proc
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
 function defaultDisp(){ return {svd:false,sne:false,gtt:false,tot:false,tqt:false,avp:false,prec:{on:false,resp:false,cont:false},cvc:{on:false,sitios:[]},cdl:{on:false,sitios:[]},pa:{on:false,sitios:[]},dreno:{on:false,sitios:[]},outros:[]}; }
 function defaultPac(id){ return {pid:"",nome:"",idade:"",admissao:"",plano:"",problemas:[],disp:defaultDisp(),dd:{},ativo:!String(id).startsWith("E"),local:"",pf:defaultPf()}; }
-/* Pendências fixas: marcadas no passômetro médico e guardadas no cadastro do leito, para saírem também na impressão da enfermagem; saem na alta (Limpar leito). */
+/* Pendências fixas: marcadas no passômetro médico e guardadas no cadastro do leito, para irem junto na transferência; saem na alta (Limpar leito). Não aparecem no passômetro da enfermagem. */
 const PF_ITENS=[["exm","Checar exames","Quais? Ex.: gasometria 14h, lactato"],["tc","Tomografia","Qual? Ex.: TC de crânio sem contraste"],["esp","Avaliação de especialidade","Qual? Ex.: Cardiologia, Cirurgia geral"]];
 function defaultPf(){ return {exm:{on:false,t:""},tc:{on:false,t:""},esp:{on:false,t:""},alta:""}; }
 function fixPf(v){
@@ -909,7 +909,7 @@ function bedLabel(b){ return b.extra ? `Extra ${b.id.slice(1)}` : `Leito ${b.id.
 function renderNav(){
   const nav=$("#nav"); nav.innerHTML="";
   const mk=b=>{
-    const has=b.nome||b.problemas.length||b.atb.length||b.pend.length||(b.exm||[]).length||(b.proc||[]).length||pfAny(b);
+    const has=b.nome||b.problemas.length||b.atb.length||b.pend.length||(b.exm||[]).length||(b.proc||[]).length||(S.svc==="med"&&pfAny(b));
     const devs=devEntries(b,S.data).length;
     const inactive=b.extra&&!b.ativo;
     const btn=el("button",{class:"bed-btn"+(b.id===selected?" active":"")+(!has?" empty":"")+(inactive?" inactive":""),
@@ -944,7 +944,7 @@ function pfCard(b,extra){
   const card=el("div",{class:"card pf-card"});
   function render(foco){
     const pf=b.pf=fixPf(b.pf); card.innerHTML="";
-    card.append(el("h3",{},"Pendências"),el("p",{class:"hint"},"Marque o que estiver pendente e escreva o detalhe na frente. Aparece no quadro do topo da impressão, também no passômetro da enfermagem."));
+    card.append(el("h3",{},"Pendências"),el("p",{class:"hint"},"Marque o que estiver pendente e escreva o detalhe na frente. Aparece no quadro do topo da impressão."));
     PF_ITENS.forEach(([k,l,ph])=>{
       const x=pf[k], row=el("div",{class:"pf-row"},
         el("label",{class:"pf-chk"},el("input",{type:"checkbox",...(x.on?{checked:""}:{}),onchange:e=>{ x.on=e.target.checked; if(!x.on) x.t=""; afterChange(); render(x.on?k:null); }}),l));
@@ -1297,13 +1297,12 @@ function docBodyEnf(st,logoSrc){
   const rows=st.beds.filter(b=>!b.extra||b.ativo).map(b=>{
     const lab=b.extra?`Extra ${b.id.slice(1)}${b.local?"<br>"+esc(b.local):""}`:b.id.slice(1).padStart(2,"0");
     const dv=devTxt(b,ref);
-    const has=b.nome||precTxt(b)||b.problemas.length||b.pend.length||(b.exm||[]).length||(b.proc||[]).length||dv||pfAny(b);
+    const has=b.nome||precTxt(b)||b.problemas.length||b.pend.length||(b.exm||[]).length||(b.proc||[]).length||dv;
     if(!has) return `<tr class="vago"><td class="b">${lab}</td><td colspan="6">Vago</td></tr>`;
-    const id=`<span class="b">${esc(b.nome)||"—"}</span>${b.idade?"<br>"+esc(b.idade)+" anos":""}${b.admissao?"<br>Adm.: "+fmtDate(b.admissao,true):""}${b.plano?"<br>"+esc(b.plano):""}${precHtml(b)}${altaSelo(b)}`;
-    const pfl=pfLines(b);
-    return `<tr><td class="b">${lab}</td><td>${id}</td><td>${list(b.problemas)}</td><td>${dv}</td><td>${exm(b)}</td><td>${proc(b)}</td><td>${pfl.length?ulTxt(pfl.concat(b.pend)):list(b.pend)}</td></tr>`;
+    const id=`<span class="b">${esc(b.nome)||"—"}</span>${b.idade?"<br>"+esc(b.idade)+" anos":""}${b.admissao?"<br>Adm.: "+fmtDate(b.admissao,true):""}${b.plano?"<br>"+esc(b.plano):""}${precHtml(b)}`;
+    return `<tr><td class="b">${lab}</td><td>${id}</td><td>${list(b.problemas)}</td><td>${dv}</td><td>${exm(b)}</td><td>${proc(b)}</td><td>${list(b.pend)}</td></tr>`;
   }).join("");
-  return `<div class="pt">${docHead(st,logoSrc,"Passômetro de Enfermagem")}${pfQuadro(st.beds.filter(b=>!b.extra||b.ativo))}
+  return `<div class="pt">${docHead(st,logoSrc,"Passômetro de Enfermagem")}
 <table><thead><tr>
 <th style="width:5%">Leito</th><th style="width:13%">Paciente</th><th style="width:15%">Problemas / Hipóteses Diagnósticas</th><th style="width:15%">Dispositivos</th><th style="width:18%">Exames de Imagem pendentes / realizados</th><th style="width:18%">Procedimentos pendentes / realizados</th><th style="width:16%">Atualizações, Condutas, Pendências e Observações</th>
 </tr></thead><tbody>${rows}</tbody></table></div>`;
