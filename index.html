@@ -160,8 +160,8 @@ textarea.txt.lines:focus{outline:none;border-color:var(--accent);box-shadow:0 0 
 .saved.bad{color:var(--danger);font-weight:600}
 .net-banner{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#fff6e5;border-bottom:1px solid #f0cf8a;color:#6b4300;padding:8px 20px;font-weight:600}
 .net-banner[hidden]{display:none}
-#app[hidden],#hub[hidden],#pocusApp[hidden],#examApp[hidden],#culApp[hidden]{display:none!important}
-#hub,#pocusApp,#examApp,#culApp{display:flex;flex-direction:column;height:100vh}
+#app[hidden],#hub[hidden],#pocusApp[hidden],#examApp[hidden],#culApp[hidden],#parApp[hidden]{display:none!important}
+#hub,#pocusApp,#examApp,#culApp,#parApp{display:flex;flex-direction:column;height:100vh}
 .hub-wrap{flex:1;overflow-y:auto;padding:36px 24px;max-width:980px;width:100%;margin:0 auto}
 .hub-wrap h2{margin:0 0 18px;font-size:22px;letter-spacing:-.01em}
 .hub-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
@@ -292,7 +292,7 @@ textarea.txt.lines:focus{outline:none;border-color:var(--accent);box-shadow:0 0 
 }
 @media print{
   body{background:#fff}
-  #app,#hub,#pocusApp,#examApp,#culApp,.overlay,.toast{display:none!important}
+  #app,#hub,#pocusApp,#examApp,#culApp,#parApp,.overlay,.toast{display:none!important}
   #printArea{display:block}
 }
 
@@ -376,6 +376,18 @@ textarea.txt.lines:focus{outline:none;border-color:var(--accent);box-shadow:0 0 
 .cform{display:grid;grid-template-columns:2fr 1fr;gap:10px}
 @media(max-width:900px){.ctwo{grid-template-columns:1fr}}
 @media(max-width:700px){.cwrap{padding:12px 10px 90px}.cform{grid-template-columns:1fr}.cbl{width:38%}.ctab{font-size:13px}}
+/* parecer médico */
+.par-id{display:grid;grid-template-columns:1.3fr 2fr 1.2fr .9fr;gap:12px}
+.par-id2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+textarea.par-ta{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;min-height:150px;line-height:1.45;resize:vertical}
+textarea.par-ta:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.par-st{display:inline-block;font-size:12px;font-weight:700;border-radius:10px;padding:2px 9px;text-transform:uppercase;letter-spacing:.03em}
+.par-st.pend{background:var(--atb-soft);color:var(--atb)}
+.par-st.resp{background:var(--accent-soft);color:var(--accent)}
+.par-mini{margin-top:10px;padding-top:8px;border-top:1px dashed var(--line);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.par-mini .btn{display:inline-flex;align-items:center;gap:6px}
+@media(max-width:900px){.par-id{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.par-id,.par-id2{grid-template-columns:minmax(0,1fr)}}
 </style>
 </head>
 <body>
@@ -397,6 +409,7 @@ textarea.txt.lines:focus{outline:none;border-color:var(--accent);box-shadow:0 0 
 <div id="pocusApp" hidden></div>
 <div id="examApp" hidden></div>
 <div id="culApp" hidden></div>
+<div id="parApp" hidden></div>
 <div id="app" hidden>
   <header class="top">
     <button class="btn" id="bMenu">← Menu</button>
@@ -475,7 +488,7 @@ const LIST_NAMES = {
   achado:"Achados de imagem", sCultura:"Sítios de cultura", germe:"Germes identificados", perfil:"Perfis de antibiograma", medico:"Médicos / residentes",
   npend:"Atualizações, Condutas, Pendências e Observações (enfermagem)", sPA:"Sítios de punção arterial", procOutros:"Procedimentos (outros dispositivos)",
   sOutros:"Sítios (outros dispositivos)", procP:"Procedimentos pendentes",
-  examLab:"Exames laboratoriais (livres)", examRx:"Radiografias (livres)", examTc:"Tomografias (livres)", examRm:"Ressonâncias (livres)", examLivre:"Solicitação livre (exames)"
+  examLab:"Exames laboratoriais (livres)", examRx:"Radiografias (livres)", examTc:"Tomografias (livres)", examRm:"Ressonâncias (livres)", examLivre:"Solicitação livre (exames)", espec:"Especialidades (parecer)"
 };
 const DEFAULT_LISTS = {
   problemas:["Sepse","Choque séptico","Pneumonia associada à ventilação","Insuficiência respiratória aguda","SDRA","Lesão renal aguda","Pré-eclâmpsia grave","Eclâmpsia","Síndrome HELLP","Hemorragia pós-parto","Atonia uterina","Acretismo placentário","Histerectomia puerperal","Choque hemorrágico","Coagulopatia","Anemia","Distúrbio hidroeletrolítico","Diabetes descompensado","Cardiopatia","Insuficiência cardíaca","Edema agudo de pulmão","Tromboembolismo pulmonar","Crise convulsiva","Encefalopatia","Pós-parada cardiorrespiratória","Corioamnionite","Endometrite","Infecção de sítio cirúrgico","Pós-operatório de cesariana","Pós-operatório de laparotomia","Neoplasia ginecológica"],
@@ -499,6 +512,7 @@ const DEFAULT_LISTS = {
   procOutros:["Cateter de hemodiálise","PICC","Marcapasso transitório","Cateter epidural","Cateter de Swan-Ganz","ECMO","Balão intra-aórtico"],
   sOutros:["Jugular D","Jugular E","Subclávia D","Subclávia E","Femoral D","Femoral E","Radial D","Radial E","Braço D","Braço E","Tórax D","Tórax E","Abdome"],
   examLab:[], examRx:[], examTc:[], examRm:[], examLivre:[],
+  espec:["Cardiologia","Cirurgia geral","Cirurgia vascular","Endocrinologia","Gastroenterologia","Ginecologia e obstetrícia","Hematologia","Infectologia","Nefrologia","Neurocirurgia","Neurologia","Oncologia","Ortopedia","Pneumologia","Psiquiatria","Urologia"],
   procP:["Passagem de CVC","Passagem de acesso arterial (PAI)","Intubação orotraqueal","Traqueostomia","Drenagem torácica","Paracentese","Toracocentese","Punção lombar","Cateter de hemodiálise","PICC","Passagem de SNE","Endoscopia digestiva alta","Broncoscopia","Retirada de dreno","Curativo extenso"]
 };
 const DEVS=[["svd","SVD"],["sne","SNE"],["gtt","GTT"],["tot","TOT"],["tqt","TQT"],["avp","AVP"],["cvc","CVC"],["cdl","CDL"],["pa","Punção arterial"],["dreno","Dreno"]];
@@ -634,7 +648,7 @@ function freshBeds(){
 /* Dois serviços (med = médico, enf = enfermagem) com leitos e histórico próprios.
    Listas, logo, exames POCUS e último responsável são compartilhados (SHARED). */
 const SVCS=["med","enf"];
-const SHARED={lists:{},logo:"",logoRatio:0,ultimoResp:"",pocus:[],pac:{},reg:{},ped:[],cul:[],culmeta:{impresso:"",por:""}};
+const SHARED={lists:{},logo:"",logoRatio:0,ultimoResp:"",pocus:[],pac:{},reg:{},ped:[],cul:[],culmeta:{impresso:"",por:""},par:[]};
 const SV={};
 const SEL={med:"L1",enf:"L1"};
 let S, selected="L1", view="hub";
@@ -665,13 +679,14 @@ function buildAll(raw){
   SHARED.reg=(raw.reg&&typeof raw.reg==='object')?raw.reg:{};
   SHARED.cul=Array.isArray(raw.cul)?raw.cul.map(fixCulRec):[];
   SHARED.culmeta=Object.assign({impresso:"",por:""},raw.culmeta||{});
+  SHARED.par=Array.isArray(raw.par)?raw.par.map(fixParRec):[];
   ensurePlanos();
   SV.med=normalizeService(legacy?raw:raw.med,"med");
   SV.enf=normalizeService(raw.enf,"enf");
 }
 function snapService(st){ return {unit:st.unit,data:st.data,beds:st.beds,archive:st.archive}; }
 function snapshotAll(){
-  return {v:2,med:snapService(SV.med),enf:snapService(SV.enf),lists:SHARED.lists,logo:SHARED.logo,logoRatio:SHARED.logoRatio,pocus:SHARED.pocus,pac:SHARED.pac,reg:SHARED.reg,ped:SHARED.ped,cul:SHARED.cul,culmeta:SHARED.culmeta};
+  return {v:2,med:snapService(SV.med),enf:snapService(SV.enf),lists:SHARED.lists,logo:SHARED.logo,logoRatio:SHARED.logoRatio,pocus:SHARED.pocus,pac:SHARED.pac,reg:SHARED.reg,ped:SHARED.ped,cul:SHARED.cul,culmeta:SHARED.culmeta,par:SHARED.par};
 }
 function load(){
   try{ const raw=localStorage.getItem(STORE_KEY); buildAll(raw?JSON.parse(raw):null); }
@@ -975,6 +990,8 @@ function renderEditor(){
         oninput:e=>{b.local=e.target.value; afterChange();}}));
   }
   title.append(el("span",{class:"spacer",style:"flex:1"}),
+    (S.svc==="med"&&bedHasPatient(b)&&!(b.extra&&!b.ativo))?el("button",{class:"btn small",type:"button",onclick:()=>parDoPassometro(b)},"Pedir parecer"):null,
+    (S.svc==="med"&&bedHasPatient(b)&&!(b.extra&&!b.ativo))?el("button",{class:"btn small no-mobile",type:"button",onclick:()=>examesDoPassometro(b)},"Pedir exames"):null,
     (bedHasPatient(b)&&!(b.extra&&!b.ativo))?el("button",{class:"btn small",type:"button",onclick:()=>transferModal(b)},"Transferir de leito"):null,
     el("button",{class:"btn small danger",onclick:()=>{
       const nCul=culHasData(b.id);
@@ -1217,7 +1234,7 @@ function renderEditor(){
   }
   renderIc();
   ed.append(pfCard(b,el("div",{},el("label",{class:"lbl pf-outras"},"Outras pendências (uma por linha)"),
-    linesBox(b,"pend","pend","Ex.: Conversar com a família às 16h"))));
+    linesBox(b,"pend","pend","Ex.: Conversar com a família às 16h"),parMini(b))));
   ed.append(el("div",{class:"card"},el("h3",{},"Condutas"),
     el("p",{class:"hint"},"Uma conduta por linha. Os atalhos colocam o início do texto; complete com o detalhe (droga, dose, alvo)."),
     linesBox(b,"condutas","condutas","Ex.: Desmame de noradrenalina, alvo PAM ≥ 65")));
@@ -1494,7 +1511,7 @@ function transferModal(src){
 function openModal(title,bodyNode,extraBtns){
   const ov=el("div",{class:"overlay",onmousedown:e=>{if(e.target===ov)close();}});
   const close=()=>{ ov.remove();
-    if(view==="med"||view==="enf"){ renderNav(); renderEditor(); } else if(view==="pocus") renderPocus(); else if(view==="exames") renderExames(); else if(view==="cult") renderCulturas(); else if(view==="hub") renderHub(); };
+    if(view==="med"||view==="enf"){ renderNav(); renderEditor(); } else if(view==="pocus") renderPocus(); else if(view==="exames") renderExames(); else if(view==="cult") renderCulturas(); else if(view==="par") renderPareceres(); else if(view==="hub") renderHub(); };
   ov.append(el("div",{class:"modal",role:"dialog","aria-label":title},
     el("header",{},el("h3",{},title),el("div",{},extraBtns||"",el("button",{class:"btn",onclick:close},"Fechar"))),
     el("div",{class:"body"},bodyNode)));
@@ -1636,14 +1653,15 @@ function isOpen(n){
   if(n===openPart()) return true;
   if(view==="med"||view==="enf") return n==="pac:"+selected;
   if(view==="pocus") return !!(pdraft&&pdraft.leito&&n==="pac:"+pdraft.leito);
+  if(view==="par") return !!(parState.cur&&n==="par:"+parState.cur);
   return false;
 }
 function rerenderActive(){
   if(editingNow()){ needRender=true; return; }
-  if(view==="pocus") renderPocus(); else if(view==="med"||view==="enf") renderEditor(); else if(view==="cult") renderCulturas();
+  if(view==="pocus") renderPocus(); else if(view==="med"||view==="enf") renderEditor(); else if(view==="cult") renderCulturas(); else if(view==="par") renderPareceres();
 }
 function partNames(){
-  const out=["logo",...Object.keys(SHARED.lists).map(k=>"list:"+k),...SHARED.pocus.map(r=>"pocus:"+r.ts),...SHARED.ped.map(r=>"ped:"+r.ts),...SV.med.beds.map(b=>"pac:"+b.id),...Object.keys(Object.assign({[RID]:1},SHARED.reg)).map(r=>"reg:"+r),...SHARED.cul.map(r=>"cul:"+r.ts),"culmeta"];
+  const out=["logo",...Object.keys(SHARED.lists).map(k=>"list:"+k),...SHARED.pocus.map(r=>"pocus:"+r.ts),...SHARED.ped.map(r=>"ped:"+r.ts),...SV.med.beds.map(b=>"pac:"+b.id),...Object.keys(Object.assign({[RID]:1},SHARED.reg)).map(r=>"reg:"+r),...SHARED.cul.map(r=>"cul:"+r.ts),"culmeta",...SHARED.par.map(r=>"par:"+r.ts)];
   SVCS.forEach(k=>{ const st=SV[k], p=PFX[k]; out.push(p.meta,...st.archive.map(a=>p.arch+a.ts),...st.beds.map(b=>p.bed+b.id)); });
   return out;
 }
@@ -1656,6 +1674,7 @@ function getPart(n){
   if(n.startsWith("ped:")) return SHARED.ped.find(r=>String(r.ts)===n.slice(4));
   if(n.startsWith("cul:")) return SHARED.cul.find(r=>String(r.ts)===n.slice(4));
   if(n==="culmeta") return SHARED.culmeta;
+  if(n.startsWith("par:")) return SHARED.par.find(r=>String(r.ts)===n.slice(4));
   const k=svcOfPart(n); if(!k) return undefined;
   const st=SV[k], p=PFX[k];
   if(n===p.meta) return {unit:st.unit,data:st.data};
@@ -1678,6 +1697,11 @@ function applyPart(n,v){
     if(i>=0) SHARED.cul[i]=r; else SHARED.cul.push(r); return;
   }
   if(n==="culmeta"){ SHARED.culmeta=Object.assign({impresso:"",por:""},v||{}); return; }
+  if(n.startsWith("par:")){
+    const r=fixParRec(Object.assign({},v)), i=SHARED.par.findIndex(x=>x.ts===r.ts);
+    if(i>=0) SHARED.par[i]=r; else SHARED.par.push(r);
+    SHARED.par.sort((a,b)=>b.ts-a.ts); return;
+  }
   if(n.startsWith("pocus:")){
     const r=Object.assign({},v), i=SHARED.pocus.findIndex(x=>x.ts===r.ts);
     if(i>=0) SHARED.pocus[i]=r; else SHARED.pocus.push(r);
@@ -1701,6 +1725,7 @@ function labelOf(n){
   if(n.startsWith("reg:")) return "Registro de textos";
   if(n.startsWith("cul:")){ const r=getPart(n); return "Controle de culturas"+(r&&r.nome?" ("+r.nome+")":""); }
   if(n==="culmeta") return "Controle de culturas (impressão)";
+  if(n.startsWith("par:")){ const r=getPart(n); return "Parecer médico"+(r?" ("+[r.espec,r.nome].filter(Boolean).join(" · ")+")":""); }
   if(n.startsWith("pac:")){ const b=SV.med.beds.find(x=>x.id===n.slice(4)); return "Identificação, problemas e dispositivos do "+(b?bedLabel(b):n); }
   if(n==="logo") return "Logo";
   const k=svcOfPart(n), tag=k==="enf"?" (enfermagem)":"";
@@ -1720,7 +1745,7 @@ function unionList(a,b){
   return out.sort((x,y)=>x.localeCompare(y,"pt-BR",{sensitivity:"base"}));
 }
 function editingNow(){
-  const a=document.activeElement; return !!(a&&($("#editor").contains(a)||$("#pocusApp").contains(a)||$("#examApp").contains(a)||$("#culApp").contains(a))&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+  const a=document.activeElement; return !!(a&&($("#editor").contains(a)||$("#pocusApp").contains(a)||$("#examApp").contains(a)||$("#culApp").contains(a)||$("#parApp").contains(a))&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
 }
 function setNet(up,stamp){ setNet0(up,stamp); mirrorMsg(); }
 function setNet0(up,stamp){
@@ -1753,7 +1778,8 @@ async function pushDirty(){
       if(n==="culmeta"&&versions[n]===undefined&&!SHARED.culmeta.impresso){ synced[n]=js; continue; }
       let r;
       try{ r=await FB.put(n,versions[n]||0,getPart(n),netUser,CID); }
-      catch(e){ if(/^cul/.test(n)&&e&&e.code==="permission-denied"){ culNegado(); synced[n]=js; continue; } netError(e); return; }
+      catch(e){ if(/^cul/.test(n)&&e&&e.code==="permission-denied"){ culNegado(); synced[n]=js; continue; }
+        if(n.startsWith("par:")&&e&&e.code==="permission-denied"){ parNegado(); synced[n]=js; continue; } netError(e); return; }
       if(r.conflict){
         const cur=r.current;
         if(cur&&JSON.stringify(cur.value)===JSON.stringify(getPart(n))){ versions[n]=cur.v; synced[n]=js; continue; }
@@ -1767,8 +1793,8 @@ async function pushDirty(){
       versions[n]=r.v; synced[n]=js; sent=true;
     }
     for(const n of Object.keys(synced)){           /* histórico apagado localmente */
-      if((isImmutable(n)||n.startsWith("cul:"))&&!names.includes(n)){
-        try{ await FB.remove(n); delete synced[n]; delete versions[n]; sent=true; }catch(e){ if(n.startsWith("cul:")&&e&&e.code==="permission-denied"){ culNegado(); delete synced[n]; continue; } netError(e); return; }
+      if((isImmutable(n)||n.startsWith("cul:")||n.startsWith("par:"))&&!names.includes(n)){
+        try{ await FB.remove(n); delete synced[n]; delete versions[n]; sent=true; }catch(e){ if(/^(cul|par):/.test(n)&&e&&e.code==="permission-denied"){ if(n.startsWith("cul:")) culNegado(); else parNegado(); delete synced[n]; continue; } netError(e); return; }
       }
     }
     setNet(true,sent);
@@ -1783,6 +1809,7 @@ function applyRemote(ev){
     if(ev.part===PFX[S.svc].meta||isOpen(ev.part)) rerenderActive();
   } else if(view==="pocus"&&(ev.part.startsWith("pac:")||ev.part.startsWith("pocus:"))) rerenderActive();
   else if(view==="cult"&&/^(cul|pac:|bed:)/.test(ev.part)) rerenderActive();
+  else if(view==="par"&&/^(par:|pac:)/.test(ev.part)) rerenderActive();
   else if(view==="hub") renderHub();
 }
 function onRemote(ev){
@@ -1807,10 +1834,11 @@ function onRemote(ev){
 }
 function onChange(c){
   if(c.type==="removed"){
-    const m=c.part.match(/^(arch:|narch:|pocus:|ped:|cul:)(\d+)$/);
+    const m=c.part.match(/^(arch:|narch:|pocus:|ped:|cul:|par:)(\d+)$/);
     if(m){
       const ts=Number(m[2]);
       if(m[1]==="cul:"){ SHARED.cul=SHARED.cul.filter(r=>r.ts!==ts); if(view==="cult") rerenderActive(); }
+      else if(m[1]==="par:"){ SHARED.par=SHARED.par.filter(r=>r.ts!==ts); if(parState.cur===ts) parState.cur=null; if(view==="par") rerenderActive(); }
       else if(m[1]==="pocus:") SHARED.pocus=SHARED.pocus.filter(r=>r.ts!==ts);
       else if(m[1]==="ped:") SHARED.ped=SHARED.ped.filter(r=>r.ts!==ts);
       else { const st=SV[m[1]==="arch:"?"med":"enf"]; st.archive=st.archive.filter(a=>a.ts!==ts); }
@@ -1921,9 +1949,9 @@ async function netStart(){
   $("#editor").addEventListener("focusout",()=>setTimeout(()=>{
     if(editingNow()) return; flushPending(); if(needRender){ needRender=false; rerenderActive(); }
   },250));
-  $("#pocusApp").addEventListener("focusout",()=>setTimeout(()=>{
+  ["#pocusApp","#parApp"].forEach(id=>$(id).addEventListener("focusout",()=>setTimeout(()=>{
     if(editingNow()) return; flushPending(); if(needRender){ needRender=false; rerenderActive(); }
-  },250));
+  },250)));
   save();
 }
 
@@ -1936,6 +1964,7 @@ const ICONS={
   img:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="12" cy="12" r="4"/><path d="M12 8v8M8 12h8"/></svg>',
   cult:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="9" cy="10" r="1.6"/><circle cx="14.6" cy="9" r="1.1"/><circle cx="13.4" cy="14.6" r="1.9"/><circle cx="8.6" cy="14.8" r="1"/></svg>',
   livre:'<svg viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/></svg>',
+  par:'<svg viewBox="0 0 24 24"><path d="M5 5h14v10H10l-4 4v-4H5z"/><path d="M9 9h6M9 12h4"/></svg>',
   visita:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.5 3-6 6-6s6 2.5 6 6"/><path d="M15.5 14.5c3 0 5.5 2 5.5 5.5"/></svg>'
 };
 function renderHub(){
@@ -1952,6 +1981,7 @@ function renderHub(){
     card(ICONS.cult,"Controle de culturas","Culturas dos internados, consolidado mensal, germes e perfil de resistência",()=>showView("cult")),
     card(ICONS.pocus,"POCUS","Registro de ultrassom à beira leito, com comparação com o exame anterior",()=>showView("pocus")),
     card(ICONS.lab,"Solicitação de exames","Laboratório e imagem, com guias IPASGO, UNIMED e particular",()=>showView("exames"),false,true),
+    card(ICONS.par,"Parecer médico","Pedido de parecer às especialidades e resposta do especialista, com impressão da folha",()=>showView("par")),
     card(ICONS.visita,"Visita multidisciplinar","Será montada em breve",()=>toast("Visita multidisciplinar: em construção. Será montada em breve."),true));
 }
 try{ if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol)) window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }catch(e){}
@@ -1968,6 +1998,7 @@ function limparHistoricos(){
   if(SHARED.ped){ const n=SHARED.ped.length; SHARED.ped=SHARED.ped.filter(r=>r.ts>=(pedTemLab(r)?v12:v00)); if(SHARED.ped.length!==n) mudou=true; }   /* laboratório: 00:00 e 12:00 · demais: 00:00 */
   SVCS.forEach(k=>{ const st=SV[k]; if(!st||!st.archive) return; const n=st.archive.length; st.archive=st.archive.filter(a=>!arqVence(a,now)); if(st.archive.length!==n) mudou=true; });
   if(culLimpar()) mudou=true;
+  { const n=SHARED.par.length; SHARED.par=SHARED.par.filter(r=>!parVence(r,now)); if(SHARED.par.length!==n){ mudou=true; if(parState.cur&&!parRec(parState.cur)) parState.cur=null; if(view==="par"&&!document.querySelector(".overlay")) renderPareceres(); } }
   if(mudou){ try{ pushDirty(); }catch(e){} if(view==="exames"&&!document.querySelector(".overlay")) renderExames(); }
 }
 function avisoExames(){
@@ -1981,12 +2012,14 @@ function avisoExames(){
 function showView(v){
   document.body.classList.remove("m-ed");   /* no celular, sempre começa pela lista de leitos */
   if(S&&S.svc&&(view==="med"||view==="enf")) SEL[S.svc]=selected;
+  if(v==="hub"||v==="med"||v==="enf") VOLTA=null;      /* "← Passômetro" só vale enquanto se está no pedido aberto pelo leito */
   view=v;
   $("#hub").hidden=v!=="hub";
   $("#app").hidden=!(v==="med"||v==="enf");
   $("#pocusApp").hidden=v!=="pocus";
   $("#examApp").hidden=v!=="exames";
   $("#culApp").hidden=v!=="cult";
+  $("#parApp").hidden=v!=="par";
   if(v==="med"||v==="enf"){
     S=SV[v]; selected=SEL[v];
     $("#svcTitle").textContent=v==="enf"?"Passômetro de enfermagem":"Passômetro médico";
@@ -1996,6 +2029,7 @@ function showView(v){
   else if(v==="pocus") renderPocus();
   else if(v==="exames"){ renderExames(); avisoExames(); }
   else if(v==="cult"){ culState.tab="lista"; culState.mes=culMesAtual(); renderCulturas(); culAvisoImpressao(); }
+  else if(v==="par"){ if(!VOLTA){ parState.tab="lista"; parState.draft=null; } renderPareceres(); }
   renderBanner();
   window.scrollTo(0,0);
 }
@@ -2348,7 +2382,7 @@ function pocusSheet(r,blank){
   return `<style>${POC_CSS}</style><div class="sheet-portrait pocs ${cls}">${head}${pat}${prob}${dv}${alb}<div class="grid ${blank?"n"+n:"fl"}">${blocks}</div><div class="obs"><b>Observações:</b> ${(!blank&&r.obs)?esc(r.obs).replace(/\n/g,"<br>"):""}</div><div class="ft">${esc(POC_RODAPE)}</div></div>`;
 }
 function fitSheet(pa){                /* garante uma única folha: reduz a escala se o conteúdo passar da página */
-  const sh=pa.querySelector(".pocs"); if(!sh) return;
+  const sh=pa.querySelector(".pocs,.pars"); if(!sh) return;
   const keep=pa.getAttribute("style");
   pa.style.cssText="display:block;position:absolute;left:-10000px;top:0;width:190mm;visibility:hidden";
   sh.style.zoom="";
@@ -2571,7 +2605,7 @@ function renderExames(){
   const titles={menu:"",lab:" · Laboratoriais",img:" · Imagem",livre:" · Solicitação livre"};
   const msg=el("span",{class:"saved netmsg"}); const sm=$("#savedMsg"); msg.textContent=sm.textContent; if(sm.classList.contains("bad")) msg.classList.add("bad");
   root.append(el("header",{class:"top"},
-    el("button",{class:"btn",type:"button",onclick:()=>{ if(xd.tab==="menu") showView("hub"); else { xd.tab="menu"; renderExames(); } }},xd.tab==="menu"?"← Menu":"← Solicitação"),
+    el("button",{class:"btn",type:"button",onclick:()=>{ if(xd.tab==="menu") voltar(); else { xd.tab="menu"; renderExames(); } }},xd.tab==="menu"?(VOLTA?"← Passômetro":"← Menu"):"← Solicitação"),
 el("button",{class:"btn primary",type:"button",style:"font-weight:800",onclick:()=>{ if(!xd.lab.sel.length&&!xd.img.length&&!xd.livre.length&&!xd.lab.gaso||confirm("Começar um novo pedido? O pedido atual será descartado (se já foi impresso, está no histórico).")){ xd=xdNew(); renderExames(); } }},"NOVO PEDIDO"),
     el("h1",{},"Solicitação de exames"+titles[xd.tab]),el("div",{class:"spacer"}),msg,
     el("button",{class:"btn",type:"button",onclick:xHist},"Histórico de pedidos")));
@@ -2748,6 +2782,197 @@ function xHist(){
     });
   }
   draw(); openModal("Histórico de pedidos de exames",body);
+}
+
+/* ============ Parecer médico ============ */
+/* Um registro por pedido (parte "par:<ts>"). O pedido é feito pelo intensivista; a resposta do especialista é opcional:
+   pode ser digitada aqui ou escrita à mão na folha impressa. Ao salvar o pedido, a especialidade entra na pendência
+   "Avaliação de especialidade" do leito. O registro acompanha o paciente (pid) se ele mudar de leito e é apagado
+   às 00:00 do 15º dia depois do pedido. */
+const parState={tab:"lista",filtro:"pend",cur:null,draft:null};
+let parNegadoAvisado=false, VOLTA=null;
+function parNegado(){ if(parNegadoAvisado) return; parNegadoAvisado=true; alert("O servidor recusou a gravação do Parecer médico (permissão). Os demais módulos continuam funcionando. Peça ao responsável pelo sistema para liberar as partes “par” no Firebase."); }
+function fixParRec(r){
+  r=r||{};
+  ["pid","leito","nome","idade","plano","data","solicitante","espec","pedido","por","resp","respPor"].forEach(k=>{ if(r[k]==null) r[k]=""; });
+  r.pedEm=Number(r.pedEm)||0; r.respEm=Number(r.respEm)||0;
+  return r;
+}
+function parRec(ts){ return SHARED.par.find(r=>r.ts===ts)||null; }
+function parRespondido(r){ return !!String(r.resp||"").trim(); }
+function parVence(r,now){ const d=new Date(r.ts); d.setHours(0,0,0,0); return now>=new Date(d.getFullYear(),d.getMonth(),d.getDate()+DIAS_HIST).getTime(); }
+function parDoLeito(b){ return SHARED.par.filter(r=>b.pid?r.pid===b.pid:r.leito===b.id); }
+function parNovo(id){
+  const d=fixParRec({data:todayISO(),solicitante:SHARED.ultimoResp||""});
+  if(id) parDoBed(d,id);
+  return d;
+}
+function parDoBed(d,id){
+  d.leito=id||""; d.pid="";
+  const b=id?SV.med.beds.find(x=>x.id===id):null;
+  if(b&&bedHasPatient(b)){ d.nome=b.nome||""; d.idade=b.idade||""; d.plano=b.plano||""; d.pid=ensurePid(id); }
+}
+function parPendencia(r){              /* coloca a especialidade na pendência "Avaliação de especialidade" do leito */
+  const b=r.pid?SV.med.beds.find(x=>x.pid===r.pid):SV.med.beds.find(x=>x.id===r.leito);
+  if(!b||!bedHasPatient(b)) return false;
+  const pf=b.pf=fixPf(b.pf), x=pf.esp, esp=String(r.espec||"").trim(), t=x.t.trim();
+  x.on=true;
+  if(esp&&!t.split(/\s*[,;]\s*/).some(y=>norm(y)===norm(esp))) x.t=t?t+", "+esp:esp;
+  b.upd=Date.now(); return true;
+}
+function parQuando(ts){ return ts?new Date(ts).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}):""; }
+function parAbrir(ts){ parState.cur=ts; parState.draft=null; parState.tab="form"; }
+function voltar(){
+  if(view==="par"&&parState.draft&&String(parState.draft.pedido||"").trim()&&!confirm("O pedido de parecer ainda não foi salvo. Sair e descartar?")) return;
+  if(view==="par") parState.draft=null;
+  const v=VOLTA; VOLTA=null;
+  if(!v){ showView("hub"); return; }
+  SEL.med=v; showView("med"); document.body.classList.add("m-ed"); renderNav(); renderEditor();
+}
+function parDoPassometro(b){           /* botão "Pedir parecer" do passômetro médico */
+  VOLTA=b.id; parState.cur=null; parState.draft=parNovo(b.id); parState.tab="form"; showView("par");
+}
+function parAbrirDoPassometro(b,ts){ VOLTA=b.id; parAbrir(ts); showView("par"); }
+function examesDoPassometro(b){        /* botão "Pedir exames": abre a solicitação já com o paciente do leito */
+  const busy=xd&&(xd.lab.sel.length||xd.lab.gaso||(xd.lab.livres||[]).length||xd.img.length||xd.livre.length);
+  if(busy&&xd.leito!==b.id&&!confirm("Há um pedido de exames em andamento para outro paciente ("+(xd.nome||"sem nome")+"). Descartar e começar um pedido para este leito?")) return;
+  if(!xd||xd.leito!==b.id){ xd=xdNew(); xFromBed(b.id); }
+  xd.tab="menu"; VOLTA=b.id; showView("exames");
+}
+function parMini(b){                   /* pareceres do paciente, no cartão de pendências do passômetro médico */
+  const rs=parDoLeito(b); if(!rs.length) return null;
+  return el("div",{class:"par-mini"},el("span",{class:"hint",style:"margin:0"},"Pareceres:"),
+    ...rs.map(r=>el("button",{class:"btn small",type:"button",title:"Abrir o parecer",onclick:()=>parAbrirDoPassometro(b,r.ts)},
+      r.espec||"Sem especialidade",el("span",{class:"par-st "+(parRespondido(r)?"resp":"pend")},parRespondido(r)?"Respondido":"Pendente"))));
+}
+
+/* ---- folha impressa (A4 retrato, preto e branco, no modelo da folha do hospital) ---- */
+const PAR_CSS=`
+.pars{font-family:Arial,Helvetica,sans-serif;color:#000;display:flex;flex-direction:column;width:190mm;max-width:100%;min-height:272mm;margin:0 auto;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pars *{box-sizing:border-box}
+.pars .ph{display:flex;align-items:center;gap:6mm;margin-bottom:4mm}
+.pars .ph .lg{width:40mm;flex:none}
+.pars .ph img{display:block;max-height:18mm;max-width:40mm;object-fit:contain}
+.pars .tt{flex:1;text-align:center}
+.pars .tt span{display:inline-block;border:1.5pt solid #000;background:#cfcfcf;padding:2mm 7mm;font-size:20pt;font-weight:800;letter-spacing:.5pt}
+.pars table{width:100%;border-collapse:collapse;table-layout:fixed}
+.pars td{border:1pt solid #000;padding:1mm 2mm;height:9.5mm;vertical-align:top}
+.pars td small{display:block;font-size:6.5pt;font-weight:bold;text-transform:uppercase}
+.pars td b{display:block;font-size:10.5pt;font-weight:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pars .sec{border:1pt solid #000;margin-top:5mm;display:flex;flex-direction:column}
+.pars .sec.r{flex:1}
+.pars .bar{background:#9a9a9a;color:#000;font-family:"Times New Roman",serif;font-size:11pt;font-weight:bold;padding:1.2mm 2mm;text-transform:uppercase;border-bottom:1pt solid #000}
+.pars .ln{flex:1;padding:0 2mm;font-size:10.5pt;line-height:7mm;white-space:pre-wrap;word-wrap:break-word;background-image:linear-gradient(to bottom,transparent calc(7mm - .5pt),#555 calc(7mm - .5pt),#555 7mm);background-size:100% 7mm}
+.pars .ass{display:flex;gap:8mm;align-items:flex-end;padding:2mm 2mm 1.5mm;font-size:9pt;border-top:1pt solid #000}
+.pars .ass .sg{flex:1;text-align:center}
+.pars .ass .sg div{border-top:1pt solid #000;margin-top:7mm;padding-top:.6mm}
+`;
+function parSheet(r,o){
+  o=o||{}; const blank=!!o.blank, semResp=blank||!!o.semResp||!parRespondido(r);
+  const v=x=>blank?"":esc(x||"");
+  const cell=(l,x,cs)=>`<td${cs?` colspan="${cs}"`:""}><small>${l}:</small><b>${x||"&nbsp;"}</b></td>`;
+  const leito=blank?"":esc(leitoDoRegistro(r)||r.leito||"");
+  const logo=SHARED.logo?`<img src="${SHARED.logo}" alt="">`:"";
+  const ass=(quando,nome)=>`<div class="ass"><div>Data / hora: ${quando||"____/____/________ &nbsp;____:____"}</div><div class="sg"><div>${nome||"Assinatura e carimbo"}</div></div></div>`;
+  const pedLinhas=Math.max(9,String(blank?"":r.pedido||"").split("\n").length);
+  return `<style>${PAR_CSS}</style><div class="sheet-portrait pars">
+<div class="ph"><div class="lg">${logo}</div><div class="tt"><span>PARECER MÉDICO</span></div><div class="lg"></div></div>
+<table><colgroup><col style="width:38%"><col style="width:24%"><col style="width:20%"><col style="width:18%"></colgroup>
+<tr>${cell("Nome do paciente",v(r.nome),3)}${cell("Leito",leito)}</tr>
+<tr>${cell("Convênio",v(r.plano),2)}${cell("Data",blank?"":fmtDate(r.data,true))}${cell("Idade",blank||!r.idade?"":esc(r.idade)+" anos")}</tr>
+<tr>${cell("Médico solicitante",v(r.solicitante))}${cell("Especialista",blank?"":esc([r.espec,semResp?"":r.respPor].filter(Boolean).join(" · ")),3)}</tr></table>
+<div class="sec"><div class="bar">Pedido de parecer de especialidade (data / hora / ass.):</div><div class="ln" style="min-height:${pedLinhas*7}mm">${v(r.pedido)}</div>${ass(blank?"":parQuando(r.pedEm),blank?"":esc(r.solicitante))}</div>
+<div class="sec r"><div class="bar">Parecer de especialidades (data / hora / ass.):</div><div class="ln">${semResp?"":esc(r.resp)}</div>${ass(semResp?"":parQuando(r.respEm),semResp?"":esc(r.respPor))}</div>
+</div>`;
+}
+function parPrint(r,o){ printHtml(parSheet(r,o)); }
+
+/* ---- tela ---- */
+function renderPareceres(){
+  const root=$("#parApp"); const old=root.querySelector(".cwrap"); const st=old?old.scrollTop:0; root.innerHTML="";
+  if(parState.tab==="form"&&!parState.draft&&!parRec(parState.cur)) parState.tab="lista";
+  const form=parState.tab==="form";
+  root.append(el("header",{class:"top"},
+    el("button",{class:"btn",type:"button",onclick:()=>{ if(form&&!VOLTA){ parState.tab="lista"; parState.draft=null; renderPareceres(); } else voltar(); }},form&&!VOLTA?"← Pareceres":(VOLTA?"← Passômetro":"← Menu")),
+    el("h1",{},"Parecer médico"),el("div",{class:"spacer"}),el("span",{class:"saved netmsg"}),
+    el("button",{class:"btn no-mobile",type:"button",onclick:()=>parPrint({},{blank:true})},"Folha em branco"),
+    el("button",{class:"btn primary",type:"button",onclick:()=>{ parState.cur=null; parState.draft=parNovo(""); parState.tab="form"; renderPareceres(); }},"Novo parecer")));
+  mirrorMsg();
+  const wrap=el("div",{class:"cwrap"}), inner=el("div",{class:"cinner"}); wrap.append(inner); root.append(wrap);
+  if(form) parForm(inner); else parLista(inner);
+  wrap.scrollTop=st;
+}
+function parLista(inner){
+  const nP=SHARED.par.filter(r=>!parRespondido(r)).length, nR=SHARED.par.length-nP;
+  const f=parState.filtro;
+  inner.append(el("div",{class:"seg",role:"group","aria-label":"Filtro",style:"margin-bottom:14px"},
+    ...[["pend","Pendentes ("+nP+")"],["resp","Respondidos ("+nR+")"],["todos","Todos ("+SHARED.par.length+")"]].map(([k,l])=>
+      el("button",{type:"button",class:f===k?"on":"","aria-pressed":f===k?"true":"false",onclick:()=>{ parState.filtro=k; renderPareceres(); }},l))));
+  const rs=SHARED.par.filter(r=>f==="todos"||(f==="resp")===parRespondido(r)).sort((a,b)=>b.ts-a.ts);
+  const card=el("div",{class:"card"}); inner.append(card);
+  if(!rs.length){ card.append(el("p",{class:"hint",style:"margin:0"},f==="pend"?"Nenhum parecer pendente.":f==="resp"?"Nenhum parecer respondido.":"Nenhum parecer registrado. Use “Novo parecer” ou o botão “Pedir parecer” dentro do leito, no passômetro médico.")); }
+  rs.forEach(r=>{
+    const ok=parRespondido(r);
+    card.append(el("div",{class:"list-item",style:"padding:8px 0;flex-wrap:wrap"},
+      el("div",{style:"flex:1;min-width:220px"},
+        el("b",{},(r.espec||"Sem especialidade")+" · "+(r.nome||"Sem nome")+(leitoDoRegistro(r)?" · "+leitoDoRegistro(r):"")," ",el("span",{class:"par-st "+(ok?"resp":"pend")},ok?"Respondido":"Pendente")),
+        el("div",{class:"hint",style:"margin:0"},"Pedido em "+parQuando(r.pedEm||r.ts)+(r.solicitante?" por "+r.solicitante:"")+(ok?" · respondido em "+parQuando(r.respEm)+(r.respPor?" por "+r.respPor:""):""))),
+      el("button",{class:"btn small",type:"button",onclick:()=>{ parAbrir(r.ts); renderPareceres(); }},ok?"Abrir":"Abrir / responder"),
+      el("button",{class:"btn small no-mobile",type:"button",onclick:()=>parPrint(r)},"Imprimir"),
+      el("button",{class:"btn small danger",type:"button",onclick:()=>{ if(confirm("Excluir este parecer? A pendência do leito não é alterada.")){ SHARED.par=SHARED.par.filter(x=>x!==r); save(); renderPareceres(); } }},"Excluir")));
+  });
+  inner.append(el("p",{class:"hint"},"Os pareceres são apagados automaticamente às 00:00 do "+DIAS_HIST+"º dia depois do pedido."));
+}
+function parForm(inner){
+  const novo=!!parState.draft, r=novo?parState.draft:parRec(parState.cur);
+  if(!novo&&r.pid){ const nb=SV.med.beds.find(x=>x.pid===r.pid); if(nb&&nb.id!==r.leito) r.leito=nb.id; }   /* paciente mudou de leito */
+  const touch=()=>{ if(!novo) save(); };
+  const f=(l,n)=>el("div",{},el("label",{class:"lbl"},l),n);
+  const bedOpts=SV.med.beds.filter(x=>(!x.extra||x.ativo||x.id===r.leito)&&(bedHasPatient(x)||x.id===r.leito));
+  const sel=el("select",{class:"txt","aria-label":"Leito",style:"width:100%;min-height:38px",onchange:e=>{ parDoBed(r,e.target.value); touch(); renderPareceres(); }},el("option",{value:""},"Escolher leito…"),
+    ...bedOpts.map(x=>el("option",{value:x.id},bedLabel(x)+(x.extra&&x.local?" · "+x.local:"")+" — "+(bedHasPatient(x)?(x.nome||"paciente"):"vago"))));
+  sel.value=r.leito;
+  inner.append(el("div",{class:"card"},el("h3",{},novo?"Novo pedido de parecer":"Identificação"),
+    el("div",{class:"par-id"},
+      f("Leito",sel),
+      f("Nome do paciente",el("input",{class:"txt",type:"text",value:r.nome,oninput:e=>{ r.nome=e.target.value; touch(); }})),
+      f("Convênio",picker({key:"plano",single:true,placeholder:"Escolher plano",get:()=>r.plano,set:v=>{ r.plano=v; touch(); }})),
+      f("Data",el("input",{class:"txt",type:"date",value:r.data,oninput:e=>{ r.data=e.target.value; touch(); }}))),
+    el("div",{class:"par-id2"},
+      f("Médico solicitante",picker({key:"medico",single:true,placeholder:"Escolher ou digitar o nome",get:()=>r.solicitante,set:v=>{ r.solicitante=v; touch(); }})),
+      f("Especialidade",picker({key:"espec",single:true,placeholder:"Escolher ou digitar a especialidade",get:()=>r.espec,set:v=>{ r.espec=v; touch(); }})))));
+  const ped=el("textarea",{class:"txt par-ta",rows:"7",placeholder:"Resumo do caso e o que se pergunta ao especialista…","aria-label":"Pedido de parecer",oninput:e=>{ r.pedido=e.target.value; touch(); }}); ped.value=r.pedido;
+  inner.append(el("div",{class:"card"},el("h3",{},"Pedido de parecer de especialidade"),ped,
+    el("p",{class:"hint",style:"margin:6px 0 0"},novo?"A data e a hora do pedido são registradas ao salvar.":"Pedido registrado em "+parQuando(r.pedEm||r.ts)+(r.por?" (usuário "+r.por+")":"")+".")));
+  if(novo){
+    inner.append(el("div",{style:"display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px"},
+      el("button",{class:"btn primary",type:"button",onclick:()=>{
+        if(!r.espec){ alert("Escolha a especialidade."); return; }
+        if(!String(r.pedido).trim()&&!confirm("O texto do pedido está vazio. Salvar mesmo assim?")) return;
+        let ts=Date.now(); while(SHARED.par.some(x=>x.ts===ts)) ts++;
+        r.ts=ts; r.pedEm=ts; r.por=netUser||"";
+        if(r.leito&&!r.pid){ const b=SV.med.beds.find(x=>x.id===r.leito); if(b&&bedHasPatient(b)) r.pid=ensurePid(b.id); }
+        if(r.solicitante) SHARED.ultimoResp=r.solicitante;
+        SHARED.par.push(r); SHARED.par.sort((a,b)=>b.ts-a.ts);
+        const pend=parPendencia(r);
+        parState.draft=null; parState.cur=ts; save(); renderPareceres();
+        toast(pend?"Parecer salvo e incluído nas pendências do leito":"Parecer salvo");
+      }},"Salvar pedido"),
+      el("button",{class:"btn",type:"button",onclick:()=>{ parState.draft=null; if(VOLTA) voltar(); else { parState.tab="lista"; renderPareceres(); } }},"Cancelar")),
+      el("p",{class:"hint"},"Ao salvar, “"+(r.espec||"a especialidade")+"” entra na pendência “Avaliação de especialidade” do leito, no passômetro médico."));
+    return;
+  }
+  const resp=el("textarea",{class:"txt par-ta",rows:"10",placeholder:"Resposta do especialista (opcional: a folha também pode ser impressa com este espaço em branco, para resposta à mão)","aria-label":"Parecer do especialista",
+    oninput:e=>{ const had=parRespondido(r); r.resp=e.target.value; const has=parRespondido(r);
+      if(has&&!r.respEm) r.respEm=Date.now(); if(!has) r.respEm=0;
+      if(had!==has){ const t=document.getElementById("parRespInfo"); if(t) t.textContent=has?"Resposta registrada em "+parQuando(r.respEm)+".":"Sem resposta digitada."; }
+      touch(); }}); resp.value=r.resp;
+  inner.append(el("div",{class:"card"},el("h3",{},"Parecer do especialista ",el("span",{class:"hint",style:"font-weight:400"},"(opcional)")),
+    el("div",{style:"max-width:420px;margin-bottom:10px"},f("Especialista que respondeu",picker({key:"medico",single:true,placeholder:"Escolher ou digitar o nome",get:()=>r.respPor,set:v=>{ r.respPor=v; touch(); }}))),
+    resp,el("p",{class:"hint",id:"parRespInfo",style:"margin:6px 0 0"},parRespondido(r)?"Resposta registrada em "+parQuando(r.respEm)+".":"Sem resposta digitada.")));
+  inner.append(el("div",{class:"no-mobile",style:"display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px"},
+    el("button",{class:"btn primary",type:"button",onclick:()=>parPrint(r)},parRespondido(r)?"Imprimir com a resposta":"Imprimir (resposta em branco)"),
+    parRespondido(r)?el("button",{class:"btn",type:"button",onclick:()=>parPrint(r,{semResp:true})},"Imprimir só o pedido (resposta à mão)"):null));
 }
 
 /* ============ Controle de culturas ============ */
