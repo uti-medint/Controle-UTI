@@ -2846,7 +2846,11 @@ function fixParRec(r){
 function parRec(ts){ return SHARED.par.find(r=>r.ts===ts)||null; }
 function parTemTexto(r){ return !!String(r.resp||"").trim(); }
 function parRespondido(r){ return parTemTexto(r)||!!r.mao; }      /* resposta digitada aqui ou marcada como respondida fora do sistema */
-function parMarcarMao(r,on){ r.mao=on; if(on){ if(!r.respEm) r.respEm=Date.now(); } else if(!parTemTexto(r)) r.respEm=0; }
+function parMarcarMao(r,on){           /* respondido fora do sistema: tira a especialidade da pendência do leito (desfazer devolve) */
+  r.mao=on;
+  if(on){ if(!r.respEm) r.respEm=Date.now(); parTiraPendencia(r); }
+  else if(!parTemTexto(r)){ r.respEm=0; parPendencia(r); }
+}
 function parVence(r,now){ const d=new Date(r.ts); d.setHours(0,0,0,0); return now>=new Date(d.getFullYear(),d.getMonth(),d.getDate()+DIAS_HIST).getTime(); }
 function parDoLeito(b){ return SHARED.par.filter(r=>b.pid?r.pid===b.pid:r.leito===b.id); }
 function parNovo(id){
@@ -2859,15 +2863,24 @@ function parDoBed(d,id){
   const b=id?SV.med.beds.find(x=>x.id===id):null;
   if(b&&bedHasPatient(b)){ d.nome=b.nome||""; d.idade=b.idade||""; d.plano=b.plano||""; d.pid=ensurePid(id); }
 }
+function parBedDoReg(r){ const b=r.pid?SV.med.beds.find(x=>x.pid===r.pid):SV.med.beds.find(x=>x.id===r.leito); return b&&bedHasPatient(b)?b:null; }
 function parPendencia(r){              /* coloca a especialidade na pendência "Avaliação de especialidade" do leito */
-  const b=r.pid?SV.med.beds.find(x=>x.pid===r.pid):SV.med.beds.find(x=>x.id===r.leito);
-  if(!b||!bedHasPatient(b)) return false;
+  const b=parBedDoReg(r);
+  if(!b) return false;
   const pf=b.pf=fixPf(b.pf), x=pf.esp, esp=String(r.espec||"").trim(), t=x.t.trim();
   x.on=true;
   if(esp&&!t.split(/\s*[,;]\s*/).some(y=>norm(y)===norm(esp))) x.t=t?t+", "+esp:esp;
   b.upd=Date.now(); return true;
 }
 function parRespInfo(r){ return parTemTexto(r)?"Resposta registrada em "+parQuando(r.respEm)+".":r.mao?"Marcado como respondido fora do sistema em "+parQuando(r.respEm)+".":"Sem resposta digitada."; }
+function parTiraPendencia(r){          /* tira a especialidade da pendência, se não houver outro parecer dela ainda pendente */
+  const b=parBedDoReg(r), esp=norm(String(r.espec||"").trim());
+  if(!b||!esp||parDoLeito(b).some(o=>o!==r&&!parRespondido(o)&&norm(String(o.espec||"").trim())===esp)) return false;
+  const x=(b.pf=fixPf(b.pf)).esp, itens=x.t.split(/\s*[,;]\s*/).filter(y=>y.trim()), resto=itens.filter(y=>norm(y)!==esp);
+  if(resto.length===itens.length) return false;
+  x.t=resto.join(", "); if(!x.t) x.on=false;
+  b.upd=Date.now(); return true;
+}
 function parQuando(ts){ return ts?new Date(ts).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}):""; }
 function parAbrir(ts){ parState.cur=ts; parState.draft=null; parState.tab="form"; }
 function voltar(){
@@ -2888,22 +2901,18 @@ function examesDoPassometro(b){        /* botão "Pedir exames": abre a solicita
   xd.tab="menu"; VOLTA=b.id; showView("exames");
 }
 function parMini(b){                   /* pareceres do paciente, no cartão de pendências do passômetro médico */
-  const host=el("div");
-  const draw=()=>{
-    host.innerHTML=""; const rs=parDoLeito(b); if(!rs.length) return;
-    host.append(el("div",{class:"par-mini"},el("span",{class:"hint",style:"margin:0"},"Pareceres:"),
-      ...rs.map(r=>{
-        const ok=parRespondido(r), esp=r.espec||"Sem especialidade";
-        return el("span",{class:"par-mini-it"},
-          el("button",{class:"btn small",type:"button",title:"Abrir o parecer",onclick:()=>parAbrirDoPassometro(b,r.ts)},
-            esp,el("span",{class:"par-st "+(ok?"resp":"pend")},ok?"Respondido":"Pendente")),
-          !ok?el("button",{class:"btn small",type:"button",title:"O especialista respondeu fora do sistema (à mão)",onclick:()=>{
-              if(!confirm("Marcar o parecer de "+esp+" como respondido (resposta fora do sistema)?")) return;
-              parMarcarMao(r,true); save(); draw(); toast("Parecer marcado como respondido"); }},"✔ Marcar respondido")
-            :(r.mao&&!parTemTexto(r))?el("button",{class:"btn small",type:"button",title:"Voltar o parecer para pendente",onclick:()=>{ parMarcarMao(r,false); save(); draw(); }},"Desfazer")
-            :null); })));
-  };
-  draw(); return host;
+  const rs=parDoLeito(b); if(!rs.length) return null;
+  return el("div",{class:"par-mini"},el("span",{class:"hint",style:"margin:0"},"Pareceres:"),
+    ...rs.map(r=>{
+      const ok=parRespondido(r), esp=r.espec||"Sem especialidade";
+      return el("span",{class:"par-mini-it"},
+        el("button",{class:"btn small",type:"button",title:"Abrir o parecer",onclick:()=>parAbrirDoPassometro(b,r.ts)},
+          esp,el("span",{class:"par-st "+(ok?"resp":"pend")},ok?"Respondido":"Pendente")),
+        !ok?el("button",{class:"btn small",type:"button",title:"O especialista respondeu fora do sistema (à mão)",onclick:()=>{
+            if(!confirm("Marcar o parecer de "+esp+" como respondido (resposta fora do sistema)?")) return;
+            parMarcarMao(r,true); afterChange(); renderEditor(); toast("Parecer marcado como respondido"); }},"✔ Marcar respondido")
+          :(r.mao&&!parTemTexto(r))?el("button",{class:"btn small",type:"button",title:"Voltar o parecer para pendente",onclick:()=>{ parMarcarMao(r,false); afterChange(); renderEditor(); }},"Desfazer")
+          :null); }));
 }
 
 /* ---- folha impressa (A4 retrato, preto e branco, no modelo da folha do hospital) ---- */
