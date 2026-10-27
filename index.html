@@ -3031,7 +3031,9 @@ function parForm(inner){
       el("p",{class:"hint"},"Ao salvar, “"+(r.espec||"a especialidade")+"” entra na pendência “Avaliação de especialidade” do leito, no passômetro médico."));
     return;
   }
-  const resp=el("textarea",{class:"txt par-ta",rows:"10",placeholder:"Resposta do especialista (opcional: a folha também pode ser impressa com este espaço em branco, para resposta à mão)","aria-label":"Parecer do especialista",
+  let antes=parRespondido(r);          /* ao sair do campo: resposta nova tira a especialidade da pendência; resposta apagada devolve */
+  const resp=el("textarea",{class:"txt par-ta",rows:"10",onfocus:()=>{ antes=parRespondido(r); },
+    onblur:()=>{ const agora=parRespondido(r); if(agora===antes) return; antes=agora; if(agora) parTiraPendencia(r); else parPendencia(r); save(); },placeholder:"Resposta do especialista (opcional: a folha também pode ser impressa com este espaço em branco, para resposta à mão)","aria-label":"Parecer do especialista",
     oninput:e=>{ const had=parRespondido(r); r.resp=e.target.value; const has=parRespondido(r);
       if(has&&!r.respEm) r.respEm=Date.now(); if(!has) r.respEm=0;
       if(had!==has){ const t=document.getElementById("parRespInfo"); if(t) t.textContent=parRespInfo(r); }
