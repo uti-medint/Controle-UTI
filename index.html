@@ -599,7 +599,7 @@ function labNum(v){        /* número do resultado; "0,45" e "1.5" valem, "negat
   const n=t.replace(/[<>≤≥~\s]/g,""); return parseFloat(n.includes(",")?n.replace(/\./g,"").replace(",","."):n);
 }
 function labSeq(e){      /* "08/10 0,12 → 09/10 0,45 ↓ 10/10 0,30" */
-  const r=(e.res||[]).filter(x=>x&&(x.data||String(x.valor||"").trim())).slice().sort((a,b)=>(a.data||"9999").localeCompare(b.data||"9999"));
+  const r=(e.res||[]).filter(x=>x&&(x.data||String(x.valor||"").trim())).slice().sort(ordData);
   const sh=r.slice(-LAB_MAX), mais=r.length>sh.length;
   const f=x=>(x.data?fmtDate(x.data)+" ":"")+esc(String(x.valor||"").trim()||"—");
   let out=mais?"… ":"";
@@ -977,6 +977,29 @@ function pfCard(b,extra){
   render();
   return card;
 }
+/* listas datadas sempre em ordem de data (sem data no fim). Já abrem ordenadas; depois de incluir um item ou mudar
+   uma data, reordenam só ORD_ATRASO depois, e nunca com o cursor dentro do quadro, para a linha não pular durante a edição */
+const ORD_ATRASO=30000;
+const ordPor=(...ks)=>(a,b)=>{ for(const k of ks){ const r=((a&&a[k])||"9999").localeCompare((b&&b[k])||"9999"); if(r) return r; } return 0; };
+const ordData=ordPor("data"), ordDataHora=ordPor("data","hora"), ordAtb=ordPor("ini","fim");
+function ordenar(list,cmp){ if(Array.isArray(list)) list.sort(cmp); return list; }
+function ordenarLeito(b){
+  ordenar(b.atb,ordAtb); ordenar(b.culturas,ordData); ordenar(b.imagem,ordData); ordenar(b.interc,ordData);
+  ordenar(b.exm,ordDataHora); ordenar(b.proc,ordDataHora); ordenar(b.disp&&b.disp.outros,ordData);
+  ((b.labesp&&b.labesp.exames)||[]).forEach(e=>ordenar(e.res,ordData));
+}
+const ordTimers=new WeakMap();
+function ordAgendar(list,cmp,box,redraw){
+  if(!Array.isArray(list)) return;
+  clearTimeout(ordTimers.get(list));
+  const go=()=>{
+    if(!box.isConnected){ ordTimers.delete(list); return; }                                     /* quadro já redesenhado/fechado: ordena ao reabrir */
+    if(box.contains(document.activeElement)){ ordTimers.set(list,setTimeout(go,5000)); return; }  /* ainda editando: espera sair do quadro */
+    ordTimers.delete(list);
+    const a=list.slice(); list.sort(cmp); if(list.some((x,i)=>x!==a[i])){ redraw(); save(); }
+  };
+  ordTimers.set(list,setTimeout(go,ORD_ATRASO));
+}
 function renderEditor(){
   const b=S.beds.find(x=>x.id===selected); const ed=$("#editor"); ed.innerHTML="";
   // título
@@ -1000,6 +1023,7 @@ function renderEditor(){
     }},"Limpar leito"));
   ed.append(title);
   if(b.extra&&!b.ativo){ ed.append(el("div",{class:"card"},el("p",{class:"hint",style:"margin:0"},"Marque “Leito extra em uso” para preencher este leito.")));return; }
+  ordenarLeito(b);
 
   const alertBox=el("div"); ed.append(alertBox);
   function renderAlert(){
@@ -1037,13 +1061,14 @@ function renderEditor(){
 
   // dispositivos
   const devCard=el("div",{class:"card"}); ed.append(devCard);
+  const ordOutros=()=>ordAgendar(b.disp.outros,ordData,devCard,renderDevs);
   function renderDevs(){
     devCard.innerHTML=""; devCard.append(el("h3",{},"Dispositivos invasivos"));
     const wrap=el("div",{class:"devs"});
     DEVS.forEach(([k,l])=>wrap.append(el("button",{type:"button",class:"tog"+(devOn(b,k)?" on":""),"aria-pressed":devOn(b,k),
       onclick:()=>{ setDevOn(b,k,!devOn(b,k)); if(!devOn(b,k)) delete b.dd[k]; afterChange(); renderDevs(); renderAlert(); }},l)));
     wrap.append(el("button",{type:"button",class:"tog add",title:"Adicionar outro dispositivo ou procedimento",
-      onclick:()=>{ b.disp.outros=(b.disp.outros||[]).concat([{proc:"",data:"",sitio:""}]); afterChange(); renderDevs(); }},"+ Outros"));
+      onclick:()=>{ b.disp.outros=(b.disp.outros||[]).concat([{proc:"",data:"",sitio:""}]); afterChange(); renderDevs(); ordOutros(); }},"+ Outros"));
     devCard.append(wrap);
     const on=DEVS.filter(([k])=>devOn(b,k));
     if(on.length){
@@ -1071,7 +1096,7 @@ function renderEditor(){
         upd();
         og.append(el("div",{class:"out-row"},
           el("div",{},el("label",{class:"lbl"},"Outros · procedimento"),picker({key:"procOutros",single:true,placeholder:"Escolher ou digitar",get:()=>o.proc,set:v=>{o.proc=v;}})),
-          el("div",{},el("label",{class:"lbl"},"Data"),el("input",{class:"txt",type:"date",value:o.data||"",oninput:e=>{o.data=e.target.value;upd();afterChange();renderAlert();}})),
+          el("div",{},el("label",{class:"lbl"},"Data"),el("input",{class:"txt",type:"date",value:o.data||"",oninput:e=>{o.data=e.target.value;upd();afterChange();renderAlert();ordOutros();}})),
           el("div",{},el("label",{class:"lbl"},"Sítio"),picker({key:"sOutros",single:true,placeholder:"Escolher ou digitar",get:()=>o.sitio,set:v=>{o.sitio=v;}})),
           badge,
           el("button",{class:"x-btn",type:"button","aria-label":"Remover",onclick:()=>{ b.disp.outros.splice(i,1); afterChange(); renderDevs(); renderAlert(); }},"×")));
@@ -1086,6 +1111,7 @@ function renderEditor(){
 
   if(S.svc==="enf"){
     const exCard=el("div",{class:"card"}); ed.append(exCard);
+    const ordExm=()=>ordAgendar(b.exm,ordDataHora,exCard,renderExm);
     function renderExm(){
       exCard.innerHTML=""; exCard.append(el("h3",{},"Exames de Imagem pendentes / realizados"));
       if(!b.exm.length) exCard.append(el("p",{class:"hint"},"Nenhum exame de imagem pendente. Escolha o exame para informar suporte anestésico, data e hora provável."));
@@ -1101,8 +1127,8 @@ function renderEditor(){
             el("button",{type:"button",class:"anest feito"+(x.feito?" on":""),"aria-pressed":!!x.feito,title:"Clique para marcar se o exame já foi realizado",
               onclick:()=>{ x.feito=!x.feito; afterChange(); drawDetail(); }},
               el("span",{"aria-hidden":"true"},x.feito?"✔":"○"),x.feito?"Realizado":"Não realizado"),
-            el("div",{},el("label",{class:"lbl"},"Data prevista"),el("input",{class:"txt",type:"date",value:x.data||"",oninput:e=>{x.data=e.target.value;afterChange();}})),
-            el("div",{},el("label",{class:"lbl"},"Hora provável"),el("input",{class:"txt",type:"time",value:x.hora||"",oninput:e=>{x.hora=e.target.value;afterChange();}})));
+            el("div",{},el("label",{class:"lbl"},"Data prevista"),el("input",{class:"txt",type:"date",value:x.data||"",oninput:e=>{x.data=e.target.value;afterChange();ordExm();}})),
+            el("div",{},el("label",{class:"lbl"},"Hora provável"),el("input",{class:"txt",type:"time",value:x.hora||"",oninput:e=>{x.hora=e.target.value;afterChange();ordExm();}})));
         };
         drawDetail();
         exCard.append(el("div",{class:"rowbox exm-row"},
@@ -1110,25 +1136,26 @@ function renderEditor(){
           detail,
           el("button",{class:"x-btn",type:"button","aria-label":"Remover exame",onclick:()=>{b.exm.splice(i,1);afterChange();renderExm();}},"×")));
       });
-      exCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.exm.push({nome:"",anest:false,feito:false,data:S.data,hora:""});afterChange();renderExm();}},"+ Adicionar exame"));
+      exCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.exm.push({nome:"",anest:false,feito:false,data:S.data,hora:""});afterChange();renderExm();ordExm();}},"+ Adicionar exame"));
     }
     renderExm();
     const prCard=el("div",{class:"card"}); ed.append(prCard);
+    const ordProc=()=>ordAgendar(b.proc,ordDataHora,prCard,renderProc);
     function renderProc(){
       prCard.innerHTML=""; prCard.append(el("h3",{},"Procedimentos pendentes / realizados"));
       if(!b.proc.length) prCard.append(el("p",{class:"hint"},"Nenhum procedimento pendente. Escolha o procedimento para informar data, hora provável e o médico que irá realizar."));
       b.proc.forEach((x,i)=>{
         prCard.append(el("div",{class:"rowbox proc-row"},
           el("div",{},el("label",{class:"lbl"},"Procedimento"),picker({key:"procP",single:true,placeholder:"Escolher ou digitar o procedimento",get:()=>x.nome,set:v=>{x.nome=v;}})),
-          el("div",{},el("label",{class:"lbl"},"Data prevista"),el("input",{class:"txt",type:"date",value:x.data||"",oninput:e=>{x.data=e.target.value;afterChange();}})),
-          el("div",{},el("label",{class:"lbl"},"Hora provável"),el("input",{class:"txt",type:"time",value:x.hora||"",oninput:e=>{x.hora=e.target.value;afterChange();}})),
+          el("div",{},el("label",{class:"lbl"},"Data prevista"),el("input",{class:"txt",type:"date",value:x.data||"",oninput:e=>{x.data=e.target.value;afterChange();ordProc();}})),
+          el("div",{},el("label",{class:"lbl"},"Hora provável"),el("input",{class:"txt",type:"time",value:x.hora||"",oninput:e=>{x.hora=e.target.value;afterChange();ordProc();}})),
           el("div",{},el("label",{class:"lbl"},"Médico que irá realizar"),picker({key:"medico",single:true,placeholder:"Escolher ou digitar o nome",get:()=>x.medico,set:v=>{x.medico=v;}})),
           el("button",{type:"button",class:"anest feito"+(x.feito?" on":""),"aria-pressed":!!x.feito,title:"Clique para marcar se o procedimento já foi realizado",
             onclick:()=>{ x.feito=!x.feito; afterChange(); renderProc(); }},
             el("span",{"aria-hidden":"true"},x.feito?"✔":"○"),x.feito?"Realizado":"Não realizado"),
           el("button",{class:"x-btn",type:"button","aria-label":"Remover procedimento",onclick:()=>{b.proc.splice(i,1);afterChange();renderProc();}},"×")));
       });
-      prCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.proc.push({nome:"",feito:false,data:S.data,hora:"",medico:""});afterChange();renderProc();}},"+ Adicionar procedimento"));
+      prCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.proc.push({nome:"",feito:false,data:S.data,hora:"",medico:""});afterChange();renderProc();ordProc();}},"+ Adicionar procedimento"));
     }
     renderProc();
     ed.append(listCard("Atualizações, Condutas, Pendências e Observações","npend","pend","Atualizações, condutas, pendências ou observações: clique para ver a lista ou digite uma nova"));
@@ -1138,6 +1165,7 @@ function renderEditor(){
 
   // antibióticos
   const atbCard=el("div",{class:"card"}); ed.append(atbCard);
+  const ordAtbL=()=>ordAgendar(b.atb,ordAtb,atbCard,renderAtb);
   function renderAtb(){
     atbCard.innerHTML=""; atbCard.append(el("h3",{},"Antibióticos"));
     if(!b.atb.length) atbCard.append(el("p",{class:"hint"},"Nenhum antibiótico em uso."));
@@ -1147,25 +1175,26 @@ function renderEditor(){
       upd();
       atbCard.append(el("div",{class:"atb-row"},
         el("div",{},el("label",{class:"lbl"},"Antibiótico"),picker({key:"atb",single:true,placeholder:"Escolher antibiótico",get:()=>a.nome,set:v=>{a.nome=v;upd();}})),
-        el("div",{},el("label",{class:"lbl"},"Início"),el("input",{type:"date",value:a.ini||"",oninput:e=>{a.ini=e.target.value;upd();afterChange();}})),
-        el("div",{},el("label",{class:"lbl"},"Término"),el("input",{type:"date",value:a.fim||"",oninput:e=>{a.fim=e.target.value;upd();afterChange();}})),
+        el("div",{},el("label",{class:"lbl"},"Início"),el("input",{type:"date",value:a.ini||"",oninput:e=>{a.ini=e.target.value;upd();afterChange();ordAtbL();}})),
+        el("div",{},el("label",{class:"lbl"},"Término"),el("input",{type:"date",value:a.fim||"",oninput:e=>{a.fim=e.target.value;upd();afterChange();ordAtbL();}})),
         day,
         el("button",{class:"x-btn",type:"button","aria-label":"Remover antibiótico",onclick:()=>{b.atb.splice(i,1);afterChange();renderAtb();}},"×")));
     });
-    atbCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.atb.push({nome:"",ini:S.data,fim:""});afterChange();renderAtb();}},"+ Adicionar antibiótico"));
+    atbCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.atb.push({nome:"",ini:S.data,fim:""});afterChange();renderAtb();ordAtbL();}},"+ Adicionar antibiótico"));
   }
   renderAtb();
 
 
   // culturas
   const culCard=el("div",{class:"card"}); ed.append(culCard);
+  const ordCul=()=>ordAgendar(b.culturas,ordData,culCard,renderCul);
   function renderCul(){
-    culCard.innerHTML=""; culCard.append(el("h3",{},"Culturas")); culOrdenar(b.culturas);
+    culCard.innerHTML=""; culCard.append(el("h3",{},"Culturas"));
     if(!b.culturas.length) culCard.append(el("p",{class:"hint"},"Nenhuma cultura registrada."));
-    b.culturas.forEach((c,i)=>culCard.append(culRowEditor(c,()=>afterChange(),()=>{b.culturas.splice(i,1);afterChange();renderCul();},culReordena(b.culturas,renderCul))));
-    culCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.culturas.push(culNova(S.data));afterChange();renderCul();culAvisoLista();}},"+ Adicionar cultura"));
+    b.culturas.forEach((c,i)=>culCard.append(culRowEditor(c,()=>afterChange(),()=>{b.culturas.splice(i,1);afterChange();renderCul();},ordCul)));
+    culCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.culturas.push(culNova(S.data));afterChange();renderCul();ordCul();culAvisoLista();}},"+ Adicionar cultura"));
     if(!b.culturas.some(culCovid)) culCard.append(" ",el("button",{class:"btn",type:"button",onclick:()=>{ const c=culNova(b.admissao||S.data); c.sitio=learn("sCultura",CUL_COVID)||CUL_COVID;
-      b.culturas.push(c); afterChange(); renderCul(); }},"+ RT-PCR COVID-19 (admissão)"));
+      b.culturas.push(c); afterChange(); renderCul(); ordCul(); }},"+ RT-PCR COVID-19 (admissão)"));
   }
   renderCul();
 
@@ -1182,21 +1211,21 @@ function renderEditor(){
     }
     if(!L.exames.length) labCard.append(el("p",{class:"hint",style:"margin:10px 0 0"},"Escolha o exame e registre a data e o resultado. Use “+ Adicionar data e resultado” para acompanhar a variação."));
     L.exames.forEach((e,i)=>{
-      const box=el("div",{class:"rowbox lab-box"});
+      const box=el("div",{class:"rowbox lab-box"}), ordRes=()=>ordAgendar(e.res,ordData,labCard,renderLab);
       box.append(el("div",{class:"lab-ex"},
         el("div",{},el("label",{class:"lbl"},"Exame"),picker({key:"labEsp",single:true,placeholder:"Escolher ou digitar o exame",get:()=>e.nome,set:v=>{ e.nome=v; if(v&&!e.res.length){ e.res.push({data:todayISO(),valor:""}); setTimeout(renderLab,0); } afterChange(); }})),   /* redesenha depois, para o campo terminar de fechar */
         el("div",{},el("label",{class:"lbl"},"Unidade"),el("input",{class:"txt",type:"text",placeholder:"ex.: ng/mL",value:e.unidade||"",oninput:ev=>{e.unidade=ev.target.value;afterChange();}})),
         el("button",{class:"x-btn",type:"button","aria-label":"Remover exame",onclick:()=>{L.exames.splice(i,1);afterChange();renderLab();}},"×")));
       e.res.forEach((r,k)=>{
         box.append(el("div",{class:"lab-res"},
-          el("input",{class:"txt",type:"date","aria-label":"Data do resultado",value:r.data||"",oninput:ev=>{r.data=ev.target.value;afterChange();updTrend();}}),
+          el("input",{class:"txt",type:"date","aria-label":"Data do resultado",value:r.data||"",oninput:ev=>{r.data=ev.target.value;afterChange();updTrend();ordRes();}}),
           el("input",{class:"txt",type:"text","aria-label":"Resultado",placeholder:"Resultado",value:r.valor||"",oninput:ev=>{r.valor=ev.target.value;afterChange();updTrend();}}),
           el("button",{class:"x-btn",type:"button","aria-label":"Remover resultado",onclick:()=>{e.res.splice(k,1);afterChange();renderLab();}},"×")));
       });
       const tr=el("div",{class:"hint lab-trend"});
       const updTrend=()=>{ const t=labSeq(e); tr.textContent=t?"Evolução: "+t.replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">"):""; };
       updTrend();
-      box.append(tr,el("button",{class:"btn small",type:"button",onclick:()=>{e.res.push({data:todayISO(),valor:""});afterChange();renderLab();}},"+ Adicionar data e resultado"));
+      box.append(tr,el("button",{class:"btn small",type:"button",onclick:()=>{e.res.push({data:todayISO(),valor:""});afterChange();renderLab();ordRes();}},"+ Adicionar data e resultado"));
       labCard.append(box);
     });
     labCard.append(el("button",{class:"btn",type:"button",style:"margin-top:6px",onclick:()=>{L.exames.push({nome:"",unidade:"",res:[]});afterChange();renderLab();}},"+ Adicionar exame especial"));
@@ -1205,32 +1234,34 @@ function renderEditor(){
 
   // exames de imagem
   const imgCard=el("div",{class:"card"}); ed.append(imgCard);
+  const ordImg=()=>ordAgendar(b.imagem,ordData,imgCard,renderImg);
   function renderImg(){
     imgCard.innerHTML=""; imgCard.append(el("h3",{},"Exames de imagem"));
     if(!b.imagem.length) imgCard.append(el("p",{class:"hint"},"Nenhum exame de imagem registrado."));
     b.imagem.forEach((x,i)=>{
       imgCard.append(el("div",{class:"rowbox img-row"},
         el("div",{},el("label",{class:"lbl"},"Exame"),picker({key:"imagem",single:true,placeholder:"Escolher exame",get:()=>x.nome,set:v=>x.nome=v})),
-        el("div",{},el("label",{class:"lbl"},"Data"),el("input",{class:"txt",type:"date",value:x.data||"",oninput:e=>{x.data=e.target.value;afterChange();}})),
+        el("div",{},el("label",{class:"lbl"},"Data"),el("input",{class:"txt",type:"date",value:x.data||"",oninput:e=>{x.data=e.target.value;afterChange();ordImg();}})),
         el("div",{},el("label",{class:"lbl"},"Principal achado"),picker({key:"achado",single:true,placeholder:"Escolher ou digitar o achado",get:()=>x.achado,set:v=>x.achado=v})),
         el("button",{class:"x-btn",type:"button","aria-label":"Remover exame",onclick:()=>{b.imagem.splice(i,1);afterChange();renderImg();}},"×")));
     });
-    imgCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.imagem.push({nome:"",data:S.data,achado:""});afterChange();renderImg();}},"+ Adicionar exame"));
+    imgCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.imagem.push({nome:"",data:S.data,achado:""});afterChange();renderImg();ordImg();}},"+ Adicionar exame"));
   }
   renderImg();
 
   // intercorrências (só no passômetro médico; saem somente quando retiradas manualmente)
   const icCard=el("div",{class:"card"}); ed.append(icCard);
+  const ordIc=()=>ordAgendar(b.interc,ordData,icCard,renderIc);
   function renderIc(){
     icCard.innerHTML=""; icCard.append(el("h3",{},"Intercorrências"));
     if(!b.interc.length) icCard.append(el("p",{class:"hint"},"Nenhuma intercorrência registrada. Elas permanecem até serem retiradas (×)."));
     b.interc.forEach((x,i)=>{
       icCard.append(el("div",{class:"rowbox ic-row"},
         el("div",{},el("label",{class:"lbl"},"Intercorrência"),picker({key:"interc",single:true,placeholder:"Escolher ou digitar",get:()=>x.nome,set:v=>x.nome=v})),
-        el("div",{},el("label",{class:"lbl"},"Data (opcional)"),el("input",{class:"txt",type:"date",value:x.data||"",oninput:e=>{x.data=e.target.value;afterChange();}})),
+        el("div",{},el("label",{class:"lbl"},"Data (opcional)"),el("input",{class:"txt",type:"date",value:x.data||"",oninput:e=>{x.data=e.target.value;afterChange();ordIc();}})),
         el("button",{class:"x-btn",type:"button","aria-label":"Retirar intercorrência",onclick:()=>{b.interc.splice(i,1);afterChange();renderIc();}},"×")));
     });
-    icCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.interc.push({nome:"",data:""});afterChange();renderIc();}},"+ Adicionar intercorrência"));
+    icCard.append(el("button",{class:"btn",type:"button",onclick:()=>{b.interc.push({nome:"",data:""});afterChange();renderIc();ordIc();}},"+ Adicionar intercorrência"));
   }
   renderIc();
   ed.append(pfCard(b,el("div",{},el("label",{class:"lbl pf-outras"},"Outras pendências (uma por linha)"),
@@ -1303,11 +1334,11 @@ const ulTxt=a=>(a&&a.length)?`<ul class="li">${a.map(x=>`<li>${esc(x)}</li>`).jo
 function docBodyEnf(st,logoSrc){
   const ref=st.data; logoSrc=logoSrc||st.logo;
   const list=a=>(a||[]).map(esc).join("; ");
-  const exm=b=>(b.exm||[]).filter(x=>x.nome).map(x=>{
+  const exm=b=>(b.exm||[]).filter(x=>x.nome).sort(ordDataHora).map(x=>{
     const quando=(x.data?fmtDate(x.data)+(x.hora?" "+esc(x.hora):""):(x.hora?esc(x.hora):""));
     return `<div class="atb"><b>${esc(x.nome)}</b>${quando?" – "+quando:""}${x.anest?" · <b>com suporte anestésico</b>":""}${x.feito?" · <b>realizado ✔</b>":""}</div>`;
   }).join("");
-  const proc=b=>(b.proc||[]).filter(x=>x.nome).map(x=>{
+  const proc=b=>(b.proc||[]).filter(x=>x.nome).sort(ordDataHora).map(x=>{
     const quando=(x.data?fmtDate(x.data)+(x.hora?" "+esc(x.hora):""):(x.hora?esc(x.hora):""));
     return `<div class="atb"><b>${esc(x.nome)}</b>${quando?" – "+quando:""}${x.medico?" · "+esc(x.medico):""}${x.feito?" · <b>realizado ✔</b>":""}</div>`;
   }).join("");
@@ -1328,17 +1359,17 @@ function docBody(st,logoSrc){
   if(st.svc==="enf") return docBodyEnf(st,logoSrc);
   const ref=st.data; logoSrc=logoSrc||st.logo;
   const dev=b=>devTxt(b,ref);
-  const atb=b=>b.atb.filter(a=>a.nome).map(a=>{
+  const atb=b=>b.atb.filter(a=>a.nome).sort(ordAtb).map(a=>{
     const d=daysSince(a.ini,ref), ai=atbInfo(a,ref);
     const per=a.ini||a.fim?` (${fmtDate(a.ini)||"?"} a ${fmtDate(a.fim)||"?"}${ai.fin?", finalizado · "+ai.n+" D":(d>0?", D"+d:"")})`:"";
     return `<div class="atb"><b>${esc(a.nome)}</b>${esc(per)}</div>`;
   }).join("");
-  const cul=b=>culValidas(b.culturas).slice().sort(culCmpData).map(c=>{ const g=culGermeTxt(c), per=(culViral(c)?[]:(c.perfil||[]).concat(culOutroTxt(c)?[culOutroTxt(c)]:[]));
+  const cul=b=>culValidas(b.culturas).slice().sort(ordData).map(c=>{ const g=culGermeTxt(c), per=(culViral(c)?[]:(c.perfil||[]).concat(culOutroTxt(c)?[culOutroTxt(c)]:[]));
     if(culCovid(c)) return `<div class="atb">${c.data?fmtDate(c.data)+" ":""}<b>${esc(c.sitio)}</b>: ${culRes(c)==="pend"?"<i>aguardando</i>":culResLabel(culRes(c),c).toLowerCase()}</div>`;
     return `<div class="atb">${c.data?fmtDate(c.data)+" ":""}<b>${esc(c.sitio||"Cultura")}</b>: ${culRes(c)==="neg"?(culViral(c)?"<i>não detectado</i>":"<i>negativa</i>"):culRes(c)==="cont"?esc(g)+" <i>(contaminante)</i>":g?esc(g):"<i>aguardando</i>"}${per.length?" – "+esc(per.join(", ")):""}</div>`; }).join("");
-  const img=b=>(b.imagem||[]).map(x=>typeof x==="string"?{nome:x}:x).filter(x=>x.nome).map(x=>
+  const img=b=>(b.imagem||[]).map(x=>typeof x==="string"?{nome:x}:x).filter(x=>x.nome).sort(ordData).map(x=>
     `<div class="atb"><b>${esc(x.nome)}</b>${x.data?" ("+fmtDate(x.data)+")":""}${x.achado?": "+esc(x.achado):""}</div>`).join("");
-  const ic=b=>(b.interc||[]).filter(x=>x.nome).map(x=>{ return `<div class="atb">${x.data?"<b>"+fmtDate(x.data)+"</b> ":""}${esc(x.nome)}</div>`; }).join("");
+  const ic=b=>(b.interc||[]).filter(x=>x.nome).sort(ordData).map(x=>{ return `<div class="atb">${x.data?"<b>"+fmtDate(x.data)+"</b> ":""}${esc(x.nome)}</div>`; }).join("");
   const list=a=>a.map(esc).join("; ");
   const sl=(t,first)=>`<div class="sl${first?" first":""}">${t}</div>`;
   const cell=blocks=>{ let first=true,h=""; blocks.forEach(([t,c])=>{ if(!c) return; h+=sl(t,first)+c; first=false; }); return h; };
@@ -3049,10 +3080,6 @@ function culAvisoLista(){
   body.append(el("div",{style:"margin-top:14px"},ok));
   close=openModal("Atenção ao lançar culturas",body);
 }
-/* culturas sempre em ordem de data de coleta (sem data no fim); reordena ao redesenhar, não enquanto digita */
-const culCmpData=(a,b)=>((a&&a.data)||"9999").localeCompare((b&&b.data)||"9999");
-function culOrdenar(list){ if(Array.isArray(list)) list.sort(culCmpData); return list; }
-function culReordena(list,redraw){ return ()=>{ const a=list.slice(); culOrdenar(list); if(list.some((x,i)=>x!==a[i])) redraw(); }; }   /* ao sair do campo de data */
 function culNova(data){ return {data:data||"",sitio:"",germe:"",perfil:[],virus:[],outro:"",outroOn:false,res:"pend"}; }
 function culCaixas(titulo,itens,arr,onch,mr){
   return el("div",{class:"cul-grp"},el("div",{class:"cul-gt"},titulo),el("div",{class:"cul-cks"},...itens.map(x=>{
@@ -3096,7 +3123,7 @@ function culRowEditor(c,onch,onRemove,onData){
       outros("Outros","Descreva (situação específica; não entra no relatório)","Outros"));
   }
   const row=el("div",{class:"rowbox cul-row"},
-    el("div",{},el("label",{class:"lbl"},"Data da cultura"),el("input",{class:"txt",type:"date",value:c.data||"",oninput:e=>{c.data=e.target.value;onch();},onblur:()=>{ if(onData) setTimeout(onData,0); }})),
+    el("div",{},el("label",{class:"lbl"},"Data da cultura"),el("input",{class:"txt",type:"date",value:c.data||"",oninput:e=>{c.data=e.target.value;onch();if(onData) onData();}})),
     el("div",{},el("label",{class:"lbl"},"Sítio / exame"),picker({key:"sCultura",single:true,placeholder:"Escolher sítio ou painel",get:()=>c.sitio,
       set:v=>{ c.sitio=v; if(culCovid(c)&&!CUL_RES_COVID.some(([k])=>k===c.res)) c.res="pend"; rt.sync(); drawGerme(); drawPerf(); }})),
     germeBox,
@@ -3285,11 +3312,13 @@ function culListaTela(inner,m){
 function culEditor(card,r,onch){
   const box=el("div"); card.append(box);
   const ch=()=>{ if(onch) onch(); save(); };
+  const ord=()=>ordAgendar(r.culturas,ordData,box,draw);
+  ordenar(r.culturas,ordData);
   function draw(){
-    box.innerHTML=""; culOrdenar(r.culturas);
+    box.innerHTML="";
     if(!r.culturas.length) box.append(el("p",{class:"hint"},"Nenhuma cultura registrada."));
-    r.culturas.forEach((c,i)=>box.append(culRowEditor(c,ch,()=>{r.culturas.splice(i,1);ch();draw();},culReordena(r.culturas,draw))));
-    box.append(el("button",{class:"btn",type:"button",onclick:()=>{ r.culturas.push(culNova(r.alta||todayISO())); ch(); draw(); culAvisoLista(); }},"+ Adicionar cultura"));
+    r.culturas.forEach((c,i)=>box.append(culRowEditor(c,ch,()=>{r.culturas.splice(i,1);ch();draw();},ord)));
+    box.append(el("button",{class:"btn",type:"button",onclick:()=>{ r.culturas.push(culNova(r.alta||todayISO())); ch(); draw(); ord(); culAvisoLista(); }},"+ Adicionar cultura"));
   }
   draw();
 }
