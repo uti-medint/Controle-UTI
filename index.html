@@ -1429,6 +1429,58 @@ function doPrint(){
   $("#printArea").innerHTML=`<style>${DOC_CSS}</style>`+docBody(S);
   window.print();
 }
+/* Lista de pacientes: só leito, nome, idade, admissão e plano — A4 paisagem, uma folha */
+const LISTA_CSS=`
+.pl{font-family:Calibri,Arial,sans-serif;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pl h1{font-size:14pt;margin:0 0 4pt}
+.pl .sub{font-size:10pt;margin:0 0 6pt}
+.pl .res{font-size:9pt;margin:0 0 6pt}
+.pl table{width:100%;border-collapse:collapse;table-layout:fixed}
+.pl th{background:#d9e6e3;border:1px solid #444;font-size:10pt;padding:4pt 6pt;text-align:left}
+.pl td{border:1px solid #444;font-size:10.5pt;padding:3.5pt 6pt;word-wrap:break-word}
+.pl tr{page-break-inside:avoid;break-inside:avoid}
+.pl tr.z td{background:#f4f8f7}
+.pl .vago td{color:#777}
+.pl .c{text-align:center}.pl .b{font-weight:bold}
+`;
+function listaBody(st){
+  const ref=st.data, vis=st.beds.filter(b=>!b.extra||b.ativo);
+  const occ=b=>!!(b.nome||b.idade||b.admissao||b.plano);
+  let n=0;
+  const rows=vis.map(b=>{
+    const lab=b.extra?`Extra ${b.id.slice(1)}${b.local?"<br>"+esc(b.local):""}`:b.id.slice(1).padStart(2,"0");
+    if(!occ(b)) return `<tr class="vago"><td class="c b">${lab}</td><td colspan="4">Leito vago</td></tr>`;
+    n++;
+    const dd=b.admissao?daysSince(b.admissao,ref):null;
+    return `<tr${n%2?"":' class="z"'}><td class="c b">${lab}</td><td class="b">${esc(b.nome)||"—"}</td><td class="c">${b.idade?esc(b.idade)+" anos":""}</td>`
+      +`<td class="c">${b.admissao?fmtDate(b.admissao,true)+(dd>0?" · D"+dd:""):""}</td><td>${esc(b.plano||"")}</td></tr>`;
+  }).join("");
+  const fx=vis.filter(b=>!b.extra), ex=vis.filter(b=>b.extra);
+  const parts=[`<b>Ocupados ${fx.filter(occ).length}/${fx.length}</b>`];
+  if(ex.length) parts.push("Extras em uso "+ex.filter(occ).length);
+  parts.push("Impresso em "+new Date().toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}));
+  return `<div class="pl">${docHead(st,st.logo,"Lista de pacientes")}<div class="res">${parts.join(" · ")}</div>
+<table><thead><tr><th class="c" style="width:8%">Leito</th><th style="width:42%">Nome</th><th class="c" style="width:12%">Idade</th><th class="c" style="width:16%">Admissão</th><th style="width:22%">Plano de saúde</th></tr></thead>
+<tbody>${rows}</tbody></table></div>`;
+}
+function doPrintLista(){
+  const pa=$("#printArea"); pa.innerHTML=`<style>${LISTA_CSS}</style>`+listaBody(S);
+  const sh=pa.querySelector(".pl"), keep=pa.getAttribute("style");   /* reduz a escala se passar de uma folha paisagem */
+  pa.style.cssText="display:block;position:absolute;left:-10000px;top:0;width:281mm;visibility:hidden";
+  const maxH=Math.floor(194/25.4*96)-8, h=sh.scrollHeight;
+  if(h>maxH) sh.style.zoom=Math.max(0.4,maxH/h).toFixed(3);
+  if(keep===null) pa.removeAttribute("style"); else pa.setAttribute("style",keep);
+  window.print();
+}
+function printModal(){
+  let close;
+  const body=el("div",{},
+    el("p",{class:"hint"},"Escolha o que imprimir."),
+    el("div",{style:"display:flex;gap:10px;flex-wrap:wrap"},
+      el("button",{class:"btn primary",type:"button",onclick:()=>{ close(); doPrint(); }},"Passômetro completo"),
+      el("button",{class:"btn",type:"button",onclick:()=>{ close(); doPrintLista(); }},"Lista de pacientes")));
+  close=openModal("Imprimir",body);
+}
 function download(name,blob){
   const a=el("a",{href:URL.createObjectURL(blob),download:name}); document.body.append(a); a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
@@ -3623,7 +3675,7 @@ async function init(){
   $("#hUnit").addEventListener("input",e=>{S.unit=e.target.value;save();});
   $("#hData").addEventListener("input",e=>{ if(e.target.value){S.data=e.target.value; save(); renderEditor();} });
   $("#bLists").onclick=listsModal; $("#bHist").onclick=histModal; $("#bBackup").onclick=backupModal; $("#bLogo").onclick=logoModal;
-  $("#bNovo").onclick=novoPlantao; $("#bPrint").onclick=doPrint; $("#bWord").onclick=doWord;
+  $("#bNovo").onclick=novoPlantao; $("#bPrint").onclick=printModal; $("#bWord").onclick=doWord;
   $("#bMenu").onclick=()=>showView("hub"); $("#hubLogoBtn").onclick=logoModal;
   showView("hub");
 }
