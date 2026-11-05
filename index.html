@@ -2089,13 +2089,27 @@ try{ if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol)) windo
 const DIAS_HIST=15;
 function ultimaViragem(now,soMeiaNoite){ const d=new Date(now); d.setMinutes(0,0,0); d.setHours(!soMeiaNoite&&d.getHours()>=12?12:0); return d.getTime(); }   /* último 00:00 (ou 12:00) */
 function pedTemLab(r){ const l=r&&r.d&&r.d.lab; return !!(l&&((l.sel&&l.sel.length)||l.gaso||(l.livres&&l.livres.length))); }
+const IMG_HORAS=72;
+function pedTemImg(r){ return !!(r&&r.d&&Array.isArray(r.d.img)&&r.d.img.some(i=>i&&i.nome)); }
+function pedTemOutros(r){ return pedTemLab(r)||!!(r&&r.d&&Array.isArray(r.d.livre)&&r.d.livre.some(i=>i&&i.nome)); }
+/* Prazos de cada parte do pedido (o registro em si nunca é alterado: cada computador aplica a mesma regra):
+   imagem + relatório da imagem: 72h depois da impressão · laboratório: 00:00 e 12:00 · solicitação livre: 00:00 (ou 00:00/12:00 se veio junto com laboratório). */
+function pedImgVale(r,now){ return pedTemImg(r)&&now<r.ts+IMG_HORAS*3600000; }
+function pedOutrosVale(r,now){ return pedTemOutros(r)&&r.ts>=(pedTemLab(r)?ultimaViragem(now):ultimaViragem(now,true)); }
+function pedVivo(r,now){ return pedImgVale(r,now)||pedOutrosVale(r,now); }
+function pedDados(r,now){                  /* o que ainda pode ser visto/reimpresso/reaberto deste pedido */
+  now=now||Date.now(); const d=JSON.parse(JSON.stringify(r.d));
+  if(!pedImgVale(r,now)){ d.img=[]; d.relImg=""; }
+  if(!pedOutrosVale(r,now)){ d.lab=Object.assign({},d.lab,{sel:[],gaso:false,livres:[]}); d.livre=[]; d.relLivre=""; }
+  return d;
+}
 function arqVence(a,now){                 /* plantão arquivado: some às 00:00 do 15º dia depois da data do passômetro */
   let ini; if(a.data&&/^\d{4}-\d{2}-\d{2}$/.test(a.data)){ const [y,m,d]=a.data.split("-").map(Number); ini=new Date(y,m-1,d); } else { ini=new Date(a.ts); ini.setHours(0,0,0,0); }
   const venc=new Date(ini.getFullYear(),ini.getMonth(),ini.getDate()+DIAS_HIST); return now>=venc.getTime();
 }
 function limparHistoricos(){
   const now=Date.now(), v12=ultimaViragem(now), v00=ultimaViragem(now,true); let mudou=false;
-  if(SHARED.ped){ const n=SHARED.ped.length; SHARED.ped=SHARED.ped.filter(r=>r.ts>=(pedTemLab(r)?v12:v00)); if(SHARED.ped.length!==n) mudou=true; }   /* laboratório: 00:00 e 12:00 · demais: 00:00 */
+  if(SHARED.ped){ const n=SHARED.ped.length; SHARED.ped=SHARED.ped.filter(r=>pedVivo(r,now)); if(SHARED.ped.length!==n) mudou=true; }   /* imagem: 72h · laboratório: 00:00 e 12:00 · livre: 00:00 */
   SVCS.forEach(k=>{ const st=SV[k]; if(!st||!st.archive) return; const n=st.archive.length; st.archive=st.archive.filter(a=>!arqVence(a,now)); if(st.archive.length!==n) mudou=true; });
   if(culLimpar()) mudou=true;
   { const n=SHARED.par.length; SHARED.par=SHARED.par.filter(r=>!parVence(r,now)); if(SHARED.par.length!==n){ mudou=true; if(parState.cur&&!parRec(parState.cur)) parState.cur=null; if(view==="par"&&!document.querySelector(".overlay")) renderPareceres(); } }
@@ -2106,7 +2120,7 @@ function avisoExames(){
     el("h2",{},"⚠ ATENÇÃO — evite pedidos duplicados"),
     el("div",{class:"xa"},el("span",{class:"n"},"1"),el("div",{},"Ao finalizar o pedido de exame de um paciente, clique em ",el("b",{},"“NOVO PEDIDO”")," no canto superior esquerdo da tela.")),
     el("div",{class:"xa"},el("span",{class:"n"},"2"),el("div",{},"Sempre confira quais exames estão sendo solicitados na caixa ",el("b",{},"“PEDIDO”")," no canto direito da tela.")),
-    el("p",{class:"hint",style:"margin:6px 0 0"},"O histórico de pedidos é apagado automaticamente: laboratório às 00:00 e 12:00; imagem às 00:00."));
+    el("p",{class:"hint",style:"margin:6px 0 0"},"O histórico de pedidos é apagado automaticamente: laboratório às 00:00 e 12:00; solicitação livre às 00:00; exames de imagem (com o relatório) 72h depois da impressão."));
   openModal("Aviso importante",body);
 }
 function showView(v){
@@ -2891,10 +2905,14 @@ function xReview(){
     el("div",{style:"display:flex;gap:10px;margin-bottom:12px"},
       el("button",{class:"btn primary",type:"button",onclick:()=>{
         if(warn.length&&!confirm("Há avisos neste pedido. Imprimir mesmo assim?")) return;
-        const rec=xRecord(); SHARED.ped.unshift(rec); if(SHARED.ped.length>150) SHARED.ped.length=150; save();
+        const rec=xRecord(); SHARED.ped.unshift(rec); pedLimite(); save();
         xPrintHtml(html);
       }},"Imprimir e salvar no histórico")),prev);
   openModal("Revisar pedido",body); fitFields(prev);
+}
+function pedLimite(){                       /* no máximo 150 pedidos; os de imagem ainda dentro das 72h nunca saem por causa do limite */
+  const now=Date.now();
+  for(let i=SHARED.ped.length-1;i>=0&&SHARED.ped.length>150;i--) if(!pedImgVale(SHARED.ped[i],now)) SHARED.ped.splice(i,1);
 }
 function xHist(){
   const body=el("div");
@@ -2903,13 +2921,14 @@ function xHist(){
     if(!SHARED.ped.length){ body.append(el("p",{class:"hint"},"Nenhum pedido impresso ainda.")); return; }
     SHARED.ped.forEach((r,i)=>{
       const when=new Date(r.ts).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});
-      const ps=xPedidos(r.d);
+      const dv=pedDados(r), ps=xPedidos(dv);
+      if(!ps.length) return;
       body.append(el("div",{class:"list-item",style:"padding:8px 0"},
         el("div",{style:"flex:1"},el("b",{},(r.ctx.nome||"Sem nome")+(r.leito?" · "+leitoLabel(r.leito):"")),
           el("div",{class:"hint",style:"margin:0"},when+" · "+ps.map(p=>p.titulo).join(", ")+(r.por?" · "+r.por:""))),
-        el("button",{class:"btn small",type:"button",onclick:()=>{ const ctx=Object.assign({},r.ctx,{data:new Date(r.ts)}); xPrintHtml(xSheetsHtml(ctx,r.d)); }},"Imprimir"),
-        el("button",{class:"btn small",type:"button",onclick:()=>{ xd=JSON.parse(JSON.stringify(r.d)); xd.tab="menu"; document.querySelectorAll(".overlay").forEach(o=>o.remove()); renderExames(); }},"Reabrir"),
-        el("button",{class:"btn small danger",type:"button",onclick:()=>{ if(confirm("Excluir este pedido do histórico?")){ SHARED.ped.splice(i,1); save(); draw(); } }},"Excluir")));
+        el("button",{class:"btn small",type:"button",onclick:()=>{ const ctx=Object.assign({},r.ctx,{data:new Date(r.ts)}); xPrintHtml(xSheetsHtml(ctx,pedDados(r))); }},"Imprimir"),
+        el("button",{class:"btn small",type:"button",onclick:()=>{ xd=pedDados(r); xd.tab="menu"; document.querySelectorAll(".overlay").forEach(o=>o.remove()); renderExames(); }},"Reabrir"),
+        el("button",{class:"btn small danger",type:"button",onclick:()=>{ if(confirm("Excluir este pedido do histórico?")){ const j=SHARED.ped.indexOf(r); if(j>=0) SHARED.ped.splice(j,1); save(); draw(); } }},"Excluir")));
     });
   }
   draw(); openModal("Histórico de pedidos de exames",body);
