@@ -1405,7 +1405,7 @@ function renderEditor(){
     labCard.append(el("button",{type:"button",class:"tog"+(L.on?" on":""),"aria-pressed":!!L.on,title:"Marque para incluir esta coluna no passômetro",
       onclick:()=>{ L.on=!L.on; afterChange(); renderLab(); }},(L.on?"✔ ":"")+"Incluir no passômetro"));
     if(!L.on){
-      labCard.append(el("p",{class:"hint",style:"margin:8px 0 0"},"Marque a caixa para incluir estes exames na grade do passômetro. Desmarcada, não aparece na impressão nem no Word."+(L.exames.length?" Os exames já registrados ficam guardados.":"")));
+      labCard.append(el("p",{class:"hint",style:"margin:8px 0 0"},"Marque a caixa para incluir estes exames na grade do passômetro. Desmarcada, não aparece na impressão."+(L.exames.length?" Os exames já registrados ficam guardados.":"")));
       return;
     }
     if(!L.exames.length) labCard.append(el("p",{class:"hint",style:"margin:10px 0 0"},"Escolha o exame e registre a data e o resultado. Use “+ Adicionar data e resultado” para acompanhar a variação."));
@@ -1473,7 +1473,7 @@ function renderEditor(){
   mostrar();
 }
 
-/* ============ Documento do passômetro (impressão e Word) ============ */
+/* ============ Documento do passômetro (impressão) ============ */
 const DOC_CSS=`
 .pt{font-family:Calibri,Arial,sans-serif;color:#000}
 .pt h1{font-size:14pt;margin:0 0 4pt}
@@ -1668,31 +1668,6 @@ function download(name,blob){
   const a=el("a",{href:URL.createObjectURL(blob),download:name}); document.body.append(a); a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
 }
-function wordHtml(st,logoSrc){
-  return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
-<head><meta charset="utf-8"><title>Passômetro</title>
-<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
-<style>
-@page Section1{size:841.9pt 595.3pt;mso-page-orientation:landscape;margin:28pt 28pt 28pt 28pt}
-div.Section1{page:Section1}
-${DOC_CSS}
-</style></head><body><div class="Section1">${docBody(st,logoSrc)}</div></body></html>`;
-}
-function wrap76(t){ return t.replace(/(.{76})/g,"$1\r\n"); }
-function wordFile(st){
-  const m=st.logo&&st.logo.match(/^data:image\/[a-z+]+;base64,(.*)$/);
-  if(!m) return "\ufeff"+wordHtml(st);
-  const html=wordHtml(st,"logo.png"), B="----=_NextPart_passometro_001";
-  const h64=btoa(unescape(encodeURIComponent(html)));
-  return "MIME-Version: 1.0\r\nContent-Type: multipart/related; boundary=\""+B+"\"; type=\"text/html\"\r\n\r\n"+
-    "--"+B+"\r\nContent-Type: text/html; charset=\"utf-8\"\r\nContent-Transfer-Encoding: base64\r\nContent-Location: file:///C:/passometro/passometro.htm\r\n\r\n"+wrap76(h64)+"\r\n\r\n"+
-    "--"+B+"\r\nContent-Type: image/png\r\nContent-Transfer-Encoding: base64\r\nContent-Location: file:///C:/passometro/logo.png\r\n\r\n"+wrap76(m[1])+"\r\n\r\n--"+B+"--\r\n";
-}
-function saveWord(st,name){ download(name,new Blob([wordFile(st)],{type:"application/msword"})); }
-function doWord(){
-  saveWord(S,`passometro${S.svc==="enf"?"_enfermagem":""}_${S.data}.doc`);
-  toast("Arquivo Word gerado (paisagem)");
-}
 function logoModal(){
   const prev=el("div",{style:"margin:12px 0;padding:12px;border:1px dashed var(--line);border-radius:8px;min-height:60px"});
   const draw=()=>{ prev.innerHTML=""; prev.append(S.logo?el("img",{src:S.logo,style:"max-height:80px;max-width:100%"}):el("p",{class:"hint",style:"margin:0"},"Nenhuma logo definida.")); };
@@ -1716,7 +1691,7 @@ function logoModal(){
     r.readAsDataURL(f); file.value="";
   });
   const body=el("div",{},
-    el("p",{class:"hint"},"A logo aparece no topo do passômetro impresso e do arquivo Word. Use uma imagem PNG ou JPG."),
+    el("p",{class:"hint"},"A logo aparece no topo do passômetro impresso. Use uma imagem PNG ou JPG."),
     prev,
     el("div",{style:"display:flex;gap:10px"},
       el("button",{class:"btn primary",onclick:()=>file.click()},"Escolher imagem"),
@@ -1863,7 +1838,6 @@ function histModal(){
       const n=a.beds.filter(b=>b.nome).length;
       body.append(el("div",{class:"list-item",style:"padding:8px 0"},
         el("div",{style:"flex:1"},el("b",{},"Passômetro de "+fmtDate(a.data,true)),el("div",{class:"hint",style:"margin:0"},`Arquivado em ${when} · ${n} paciente(s)`)),
-        el("button",{class:"btn small",onclick:()=>saveWord({svc:S.svc,unit:S.unit,data:a.data,beds:a.beds,logo:S.logo,logoRatio:S.logoRatio},`passometro${S.svc==="enf"?"_enfermagem":""}_${a.data}.doc`)},"Word"),
         el("button",{class:"btn small",onclick:()=>{ $("#printArea").innerHTML=`<style>${DOC_CSS}</style>`+docBody({svc:S.svc,unit:S.unit,data:a.data,beds:a.beds,logo:S.logo,logoRatio:S.logoRatio}); window.print(); }},"Imprimir"),
         el("button",{class:"btn small",onclick:()=>{ if(confirm("Restaurar este plantão? Os dados atuais serão substituídos, inclusive identificação, problemas e dispositivos, que são compartilhados com os outros módulos (arquive antes, se quiser guardá-los).")){
           restoreArchive(a); $("#hData").value=S.data; save(); toast("Plantão restaurado"); } }},"Restaurar"),
