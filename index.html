@@ -1028,9 +1028,7 @@ function renderNav(){
       el("div",{class:"nv-l"},...lista.map(x=>el("button",{type:"button",class:"nv-b"+(!noMapa()&&x.b.id===selected?" active":""),title:"Abrir "+bedLabel(x.b),onclick:()=>abrirLeito(x.b.id)},x.b.extra?"E"+x.b.id.slice(1):x.b.id.slice(1).padStart(2,"0")))))); };
   const fix=S.beds.filter(b=>!b.extra).map(mk), ext=S.beds.filter(b=>b.extra).map(mk);
   nav.append(el("div",{class:"group"},"Leitos fixos"));
-  fix.filter(x=>x.has).forEach(x=>nav.append(x.btn));
-  if(!fix.some(x=>x.has)) nav.append(el("div",{class:"hint",style:"padding:2px 10px"},"Nenhum paciente."));
-  vagosBox("Vagos",fix.filter(x=>!x.has));
+  fix.forEach(x=>nav.append(x.btn));        /* vagos ficam na lista, na ordem dos leitos */
   nav.append(el("div",{class:"group"},"Leitos extras"));
   ext.filter(x=>!x.inactive).forEach(x=>nav.append(x.btn));
   vagosBox("Não utilizados",ext.filter(x=>x.inactive));
