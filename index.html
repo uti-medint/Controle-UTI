@@ -596,12 +596,12 @@ const N_FIXOS = 17, N_EXTRAS = 4;
 
 /* Cadastro único por leito, compartilhado entre passômetro médico, enfermagem e POCUS:
    identificação, lista de problemas, dispositivos invasivos e situação do leito ficam em SHARED.pac[idDoLeito]. */
-const PAC_KEYS=["pid","nome","idade","admissao","plano","problemas","disp","dd","ativo","local","pf"];
+const PAC_KEYS=["pid","nome","idade","admissao","plano","problemas","disp","dd","ativo","local","junto","pf"];
 const PAC_MOVE=["pid","nome","idade","admissao","plano","problemas","disp","dd","pf"];
 const SVC_KEYS=["atb","culturas","imagem","pend","condutas","interc","exm","proc","labesp","resp"];
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
 function defaultDisp(){ return {svd:false,sne:false,gtt:false,tot:false,tqt:false,avp:false,prec:{on:false,resp:false,cont:false},cvc:{on:false,sitios:[]},cdl:{on:false,sitios:[]},pa:{on:false,sitios:[]},dreno:{on:false,sitios:[]},outros:[]}; }
-function defaultPac(id){ return {pid:"",nome:"",idade:"",admissao:"",plano:"",problemas:[],disp:defaultDisp(),dd:{},ativo:!String(id).startsWith("E"),local:"",pf:defaultPf()}; }
+function defaultPac(id){ return {pid:"",nome:"",idade:"",admissao:"",plano:"",problemas:[],disp:defaultDisp(),dd:{},ativo:!String(id).startsWith("E"),local:"",junto:"",pf:defaultPf()}; }
 /* Pendências fixas: marcadas no passômetro médico e guardadas no cadastro do leito, para irem junto na transferência; saem na alta (Limpar leito). Não aparecem no passômetro da enfermagem. */
 const PF_ITENS=[["exm","Checar exames","Quais? Ex.: gasometria 14h, lactato"],["tc","Tomografia","Qual? Ex.: TC de crânio sem contraste"],["esp","Avaliação de especialidade","Qual? Ex.: Cardiologia, Cirurgia geral"]];
 function defaultPf(){ return {exm:{on:false,t:""},tc:{on:false,t:""},esp:{on:false,t:""},alta:""}; }
@@ -618,7 +618,7 @@ function pacOf(id){ return SHARED.pac[id]||(SHARED.pac[id]=defaultPac(id)); }
 function pacPristine(p,id){
   const d=defaultPac(id);
   const dev=DEVS.some(([k])=>{ const v=p.disp&&p.disp[k]; return v&&typeof v==="object"?!!v.on:!!v; });
-  return !p.pid && ["nome","idade","admissao","plano","local"].every(k=>!p[k]) && !(p.problemas||[]).length
+  return !p.pid && ["nome","idade","admissao","plano","local","junto"].every(k=>!p[k]) && !(p.problemas||[]).length
     && !dev && !(p.disp&&p.disp.prec&&p.disp.prec.on) && !((p.disp&&p.disp.outros)||[]).length && !Object.keys(p.dd||{}).length && p.ativo===d.ativo && !pfAny(p);
 }
 function bindPac(b){
@@ -1006,7 +1006,38 @@ function afterChange(){
 }
 
 /* ============ Navegação lateral ============ */
-function bedLabel(b){ return b.extra ? `Extra ${b.id.slice(1)}` : `Leito ${b.id.slice(1).padStart(2,"0")}`; }
+/* Leito extra junto a um leito fixo: o extra do leito 5 transforma o 5 em 5A e o extra em 5B (no máximo um extra por leito).
+   O extra continua guardado como E1..E4; muda só o nome e a posição nas listas. */
+function bedsDe(b){ return (S&&S.beds&&S.beds.includes(b))?S.beds:((SV.med&&SV.med.beds)||[]); }
+function parDe(b,beds){
+  beds=beds||bedsDe(b);
+  if(b.extra) return (b.ativo&&b.junto)?beds.find(x=>!x.extra&&x.id===b.junto)||null:null;
+  return beds.find(x=>x.extra&&x.ativo&&x.junto===b.id)||null;
+}
+function bedNum(b,beds){         /* "05", "05A", "05B" ou "E1" */
+  const p=parDe(b,beds);
+  if(b.extra) return p?p.id.slice(1).padStart(2,"0")+"B":"E"+b.id.slice(1);
+  return b.id.slice(1).padStart(2,"0")+(p?"A":"");
+}
+function bedLabel(b,beds){ return (b.extra&&!parDe(b,beds)) ? `Extra ${b.id.slice(1)}` : `Leito ${bedNum(b,beds)}`; }
+function ordemLeitos(beds){      /* fixos na ordem, cada um seguido do seu extra; extras soltos no fim */
+  const out=[];
+  beds.filter(b=>!b.extra).forEach(b=>{ out.push(b); const e=parDe(b,beds); if(e) out.push(e); });
+  beds.filter(b=>b.extra&&!parDe(b,beds)).forEach(b=>out.push(b));
+  return out;
+}
+function printLab(b,beds){ return (b.extra&&!parDe(b,beds))?`Extra ${b.id.slice(1)}${b.local?"<br>"+esc(b.local):""}`:bedNum(b,beds); }
+/* leitos fixos que podem receber um extra junto: ocupados e sem outro extra (exceto o próprio "e") */
+function juntoOpts(e,excluir){
+  const beds=bedsDe(e);
+  return beds.filter(x=>!x.extra&&x.id!==excluir).map(x=>{ const p=parDe(x,beds), livre=!p||p===e;
+    return {b:x,ok:livre&&bedHasPatient(x),txt:"Leito "+x.id.slice(1).padStart(2,"0")+(x.nome?" · "+x.nome:"")+(!livre?" (já tem extra)":!bedHasPatient(x)?" (vago)":"")}; });
+}
+function juntoSelect(e,valor,excluir,onch){
+  return el("select",{class:"txt",style:"max-width:320px","aria-label":"Junto ao leito",onchange:e2=>onch(e2.target.value)},
+    el("option",{value:"",...(!valor?{selected:""}:{})},"Nenhum (outro local)"),
+    ...juntoOpts(e,excluir).map(o=>el("option",{value:o.b.id,...(o.ok?{}:{disabled:""}),...(valor===o.b.id?{selected:""}:{})},o.txt)));
+}
 function renderNav(){
   const nav=$("#nav"); nav.innerHTML="";
   const mk=b=>{
@@ -1016,7 +1047,7 @@ function renderNav(){
     const dd=b.admissao?dayCount(b.admissao):null, np=mapaPend(b);
     const btn=el("button",{class:"bed-btn"+(!noMapa()&&b.id===selected?" active":"")+(!has?" empty":"")+(inactive?" inactive":""),
       onclick:()=>abrirLeito(b.id)},
-      el("div",{class:"l1"},el("span",{},bedLabel(b)+(b.extra&&b.local?" · "+b.local:""),dd>0?el("span",{class:"bed-d"}," · D"+dd):""),
+      el("div",{class:"l1"},el("span",{},bedLabel(b)+(b.extra&&b.local&&!parDe(b)?" · "+b.local:""),dd>0?el("span",{class:"bed-d"}," · D"+dd):""),
         el("small",{}, precTxt(b)?el("span",{class:"dot prec",title:"Precaução "+precTxt(b)}):"",devAlerts(b,S.data).length?el("span",{class:"dot alert",title:"Dispositivo com mais de 15 dias"}):"", mapaAtbs(b).length?el("span",{class:"dot atb",title:"Antibiótico"}):"", np?el("span",{class:"dot pend",title:np+" pendência(s)"}):"", devs?devs+" disp.":"")),
       el("div",{class:"l2"}, inactive?"Não utilizado":(b.nome||"Vago")+(b.idade?` · ${b.idade}a`:"")));
     return {btn,has,inactive,b};
@@ -1025,14 +1056,15 @@ function renderNav(){
     el("div",{class:"l1"},el("span",{},"▦ Mapa da UTI")),el("div",{class:"l2"},"Todos os leitos numa tela")));
   const vagosBox=(titulo,lista)=>{ if(!lista.length) return;
     nav.append(el("div",{class:"nav-vagos"},el("div",{class:"nv-t"},titulo),
-      el("div",{class:"nv-l"},...lista.map(x=>el("button",{type:"button",class:"nv-b"+(!noMapa()&&x.b.id===selected?" active":""),title:"Abrir "+bedLabel(x.b),onclick:()=>abrirLeito(x.b.id)},x.b.extra?"E"+x.b.id.slice(1):x.b.id.slice(1).padStart(2,"0")))))); };
+      el("div",{class:"nv-l"},...lista.map(x=>el("button",{type:"button",class:"nv-b"+(!noMapa()&&x.b.id===selected?" active":""),title:"Abrir "+bedLabel(x.b),onclick:()=>abrirLeito(x.b.id)},bedNum(x.b)))))); };
   const fix=S.beds.filter(b=>!b.extra).map(mk), ext=S.beds.filter(b=>b.extra).map(mk);
   nav.append(el("div",{class:"group"},"Leitos fixos"));
-  fix.filter(x=>x.has).forEach(x=>nav.append(x.btn));
-  if(!fix.some(x=>x.has)) nav.append(el("div",{class:"hint",style:"padding:2px 10px"},"Nenhum paciente."));
-  vagosBox("Vagos",fix.filter(x=>!x.has));
+  fix.forEach(x=>{ nav.append(x.btn);        /* vagos ficam na lista, na ordem dos leitos; o extra (B) logo abaixo do seu leito (A) */
+    const e=parDe(x.b); if(e){ const y=ext.find(z=>z.b===e); if(y) nav.append(y.btn); } });
   nav.append(el("div",{class:"group"},"Leitos extras"));
-  ext.filter(x=>!x.inactive).forEach(x=>nav.append(x.btn));
+  const soltos=ext.filter(x=>!x.inactive&&!parDe(x.b));
+  soltos.forEach(x=>nav.append(x.btn));
+  if(!soltos.length&&ext.some(x=>!x.inactive)) nav.append(el("div",{class:"hint",style:"padding:2px 10px"},"Em uso junto aos leitos fixos."));
   vagosBox("Não utilizados",ext.filter(x=>x.inactive));
 }
 function abrirLeito(id){ selected=id; MAPA[S.svc]=false; document.body.classList.add("m-ed"); renderNav(); renderEditor(); const e=document.querySelector("section.editor"); if(e) e.scrollTop=0; }
@@ -1062,7 +1094,7 @@ function mapaChips(b,max){
 }
 function renderMapa(){
   const ed=$("#editor"); ed.innerHTML=""; const ref=S.data||todayISO();
-  const beds=S.beds.filter(b=>!(b.extra&&!b.ativo));
+  const beds=ordemLeitos(S.beds).filter(b=>!(b.extra&&!b.ativo));
   const occ=beds.filter(b=>bedHasPatient(b));
   const cnt=(n,l,cls,t)=>el("div",{class:"mp-n"+(cls?" "+cls:""),title:t||""},el("strong",{},String(n)),el("span",{},l));
   ed.append(el("div",{class:"bed-title"},el("button",{class:"btn m-only",type:"button",onclick:()=>{ document.body.classList.remove("m-ed"); renderNav(); }},"← Leitos"),
@@ -1083,7 +1115,7 @@ function renderMapa(){
   ed.append(res);
   const grid=el("div",{class:"mapa-grid"});
   beds.forEach(b=>{
-    const lab=bedLabel(b)+(b.extra&&b.local?" · "+b.local:"");
+    const lab=bedLabel(b)+(b.extra&&b.local&&!parDe(b)?" · "+b.local:"");
     if(!bedHasPatient(b)){ grid.append(el("button",{type:"button",class:"mapa-leito vago",onclick:()=>abrirLeito(b.id)},lab+" · vago")); return; }
     const dd=b.admissao?daysSince(b.admissao,ref):null, adm=b.admissao&&b.admissao===ref;
     grid.append(el("button",{type:"button",class:"mapa-leito"+(adm?" adm":"")+(precTxt(b)?" prec":""),onclick:()=>abrirLeito(b.id)},
@@ -1184,11 +1216,15 @@ function renderEditor(){
   if(b.extra){
     title.append(
       el("label",{class:"toggle-row"},
-        el("input",{type:"checkbox",...(b.ativo?{checked:""}:{}),onchange:e=>{b.ativo=e.target.checked; afterChange(); renderEditor();}}),
-        "Leito extra em uso"),
-      el("input",{class:"txt",style:"max-width:320px",type:"text",placeholder:"Localização real (ex.: Sala de recuperação)",value:b.local,
+        el("input",{type:"checkbox",...(b.ativo?{checked:""}:{}),onchange:e=>{b.ativo=e.target.checked; if(!b.ativo) b.junto=""; afterChange(); renderEditor();}}),
+        "Leito extra em uso"));
+    if(b.ativo){
+      title.append(el("label",{class:"lbl",style:"margin:0"},"Junto ao leito"),
+        juntoSelect(b,b.junto||"",null,v=>{ b.junto=v; if(v) b.local=""; afterChange(); renderEditor(); }));
+      if(!b.junto) title.append(el("input",{class:"txt",style:"max-width:320px",type:"text",placeholder:"Localização real (ex.: Sala de recuperação)",value:b.local,
         oninput:e=>{b.local=e.target.value; afterChange();}}));
-  }
+    }
+  } else { const e=parDe(b); if(e) title.append(el("span",{class:"hint",style:"margin:0"},"Com leito extra junto ("+bedLabel(e)+")")); }
   const pac=bedHasPatient(b)&&!(b.extra&&!b.ativo);
   const acoes=el("details",{class:"acoes"},el("summary",{class:"btn small",title:"Mais ações do leito"},"⋯"),el("div",{class:"acoes-pop"},
     pac?el("button",{class:"mais-it",type:"button",onclick:()=>transferModal(b)},"Transferir de leito"):null,
@@ -1542,8 +1578,8 @@ function docBodyEnf(st,logoSrc){
     const quando=(x.data?fmtDate(x.data)+(x.hora?" "+esc(x.hora):""):(x.hora?esc(x.hora):""));
     return `<div class="atb"><b>${esc(x.nome)}</b>${quando?" – "+quando:""}${x.medico?" · "+esc(x.medico):""}${x.feito?" · <b>realizado ✔</b>":""}</div>`;
   }).join("");
-  const rows=st.beds.filter(b=>!b.extra||b.ativo).map(b=>{
-    const lab=b.extra?`Extra ${b.id.slice(1)}${b.local?"<br>"+esc(b.local):""}`:b.id.slice(1).padStart(2,"0");
+  const rows=ordemLeitos(st.beds).filter(b=>!b.extra||b.ativo).map(b=>{
+    const lab=printLab(b,st.beds);
     const dv=devTxt(b,ref);
     const has=b.nome||precTxt(b)||b.problemas.length||b.pend.length||(b.exm||[]).length||(b.proc||[]).length||dv;
     if(!has) return `<tr class="vago"><td class="b">${lab}</td><td colspan="6">Vago</td></tr>`;
@@ -1573,7 +1609,7 @@ function docBody(st,logoSrc){
   const list=a=>a.map(esc).join("; ");
   const sl=(t,first)=>`<div class="sl${first?" first":""}">${t}</div>`;
   const cell=blocks=>{ let first=true,h=""; blocks.forEach(([t,c])=>{ if(!c) return; h+=sl(t,first)+c; first=false; }); return h; };
-  const vis=st.beds.filter(b=>!b.extra||b.ativo);
+  const vis=ordemLeitos(st.beds).filter(b=>!b.extra||b.ativo);
   const occ=b=>!!(b.nome||precTxt(b)||b.problemas.length||b.atb.length||(b.culturas||[]).length||labEspTxt(b)||b.imagem.length||b.pend.length||b.condutas.length||(b.interc||[]).length||dev(b)||pfAny(b));
   const anyIc=vis.some(b=>occ(b)&&(b.interc||[]).some(x=>x.nome));
   const anyPC=vis.some(b=>occ(b)&&(b.pend.length||b.condutas.length||pfLines(b).length));
@@ -1582,7 +1618,7 @@ function docBody(st,logoSrc){
   const NC=W.length;
   let n=0;
   const rows=vis.map(b=>{
-    const lab=b.extra?`Extra ${b.id.slice(1)}${b.local?"<br>"+esc(b.local):""}`:b.id.slice(1).padStart(2,"0");
+    const lab=printLab(b,st.beds);
     if(!occ(b)) return `<tr class="vago"><td class="b">${lab}</td><td colspan="${NC-1}">Vago</td></tr>`;
     n++;
     const dd=b.admissao?daysSince(b.admissao,ref):null;
@@ -1627,11 +1663,11 @@ const LISTA_CSS=`
 .pl .c{text-align:center}.pl .b{font-weight:bold}
 `;
 function listaBody(st){
-  const ref=st.data, vis=st.beds.filter(b=>!b.extra||b.ativo);
+  const ref=st.data, vis=ordemLeitos(st.beds).filter(b=>!b.extra||b.ativo);
   const occ=b=>!!(b.nome||b.idade||b.admissao||b.plano);
   let n=0;
   const rows=vis.map(b=>{
-    const lab=b.extra?`Extra ${b.id.slice(1)}${b.local?"<br>"+esc(b.local):""}`:b.id.slice(1).padStart(2,"0");
+    const lab=printLab(b,st.beds);
     if(!occ(b)) return `<tr class="vago"><td class="c b">${lab}</td><td colspan="4">Leito vago</td></tr>`;
     n++;
     const dd=b.admissao?daysSince(b.admissao,ref):null;
@@ -1724,21 +1760,35 @@ function clearBedAll(id){
     const nb=newBed(id,bd.extra); SVC_KEYS.forEach(f=>{ bd[f]=nb[f]; }); bd.upd=Date.now();
   });
   const p=pacOf(id), d=defaultPac(id); PAC_MOVE.forEach(f=>{ p[f]=d[f]; });
+  juntoAposSaida(id);
+}
+/* O leito A ficou vazio (alta ou transferência): o paciente do B passa a ser o próprio leito e o extra é liberado.
+   O B ficou vazio: o extra é liberado e o A volta a ser o leito comum. */
+function juntoAposSaida(id){
+  const beds=SV.med.beds, b=beds.find(x=>x.id===id); if(!b) return;
+  const e=b.extra?b:parDe(b,beds); if(!e||!e.junto) return;
+  const fx=beds.find(x=>x.id===e.junto);
+  if(!b.extra&&fx&&SVCS.some(k=>{ const y=SV[k].beds.find(x=>x.id===e.id); return y&&bedHasPatient(y); })){ movePatient(e,fx,false); if(selected===e.id) selected=fx.id; }
+  e.ativo=false; e.junto=""; e.local="";
 }
 function transferModal(src){
-  const opts=S.beds.filter(x=>x.id!==src.id);
+  const opts=ordemLeitos(S.beds).filter(x=>x.id!==src.id&&!(x.extra&&x.ativo&&x.junto===src.id));
   const status=x=>(x.extra&&!x.ativo)?"não utilizado":(bedHasPatient(x)?(x.nome||"paciente sem nome")+" (ocupado)":"vago");
   const sel=el("select",{class:"txt","aria-label":"Leito de destino"},
     ...opts.map(x=>el("option",{value:x.id},bedLabel(x)+(x.extra&&x.local?" · "+x.local:"")+" — "+status(x))));
   const info=el("div",{style:"margin-top:12px"});
   const go=el("button",{class:"btn primary",type:"button"},"Transferir paciente");
-  let swapChk=null, localIn=null, close;
+  let swapChk=null, localIn=null, juntoV="", close;
   const dest=()=>opts.find(x=>x.id===sel.value);
   function draw(){
     info.innerHTML=""; const d=dest(); swapChk=null; localIn=null;
     if(d.extra){
-      localIn=el("input",{class:"txt",type:"text",value:d.local||"",placeholder:"Localização real (ex.: Sala de recuperação)"});
-      info.append(el("label",{class:"lbl"},"Localização do "+bedLabel(d)),localIn);
+      const jo=juntoOpts(d,src.extra?null:src.id); if(juntoV&&!jo.some(o=>o.ok&&o.b.id===juntoV)) juntoV="";
+      info.append(el("label",{class:"lbl"},"Junto ao leito"),juntoSelect(d,juntoV,src.extra?null:src.id,v=>{ juntoV=v; draw(); }));
+      if(!juntoV){
+        localIn=el("input",{class:"txt",type:"text",value:d.local||"",placeholder:"Localização real (ex.: Sala de recuperação)"});
+        info.append(el("label",{class:"lbl"},"Localização do extra"),localIn);
+      } else info.append(el("p",{class:"hint",style:"margin:6px 0 0"},"O leito "+juntoV.slice(1).padStart(2,"0")+" passa a ser "+juntoV.slice(1).padStart(2,"0")+"A e este extra, "+juntoV.slice(1).padStart(2,"0")+"B."));
     }
     if(bedHasPatient(d)&&!(d.extra&&!d.ativo)){
       swapChk=true;
@@ -1747,12 +1797,13 @@ function transferModal(src){
     }
     go.textContent=swapChk?"Trocar os dois de lugar":"Transferir paciente";
   }
-  sel.addEventListener("change",draw);
+  const initJ=()=>{ const d=dest(); juntoV=(d&&d.extra&&d.ativo)?(d.junto||""):""; };
+  sel.addEventListener("change",()=>{ initJ(); draw(); });
   go.addEventListener("click",()=>{ try{
     const d=dest(), swap=!!swapChk;
-    if(d.extra){ d.ativo=true; d.local=localIn?localIn.value.trim():d.local; }
+    if(d.extra){ d.ativo=true; d.junto=juntoV; d.local=juntoV?"":(localIn?localIn.value.trim():d.local); }
     movePatient(src,d,swap);
-    if(src.extra&&!swap){ src.ativo=false; src.local=""; }
+    if(!swap){ if(src.extra){ src.ativo=false; src.local=""; src.junto=""; } else juntoAposSaida(src.id); }
     selected=d.id; save();
     const msg=swap?`Pacientes trocados entre ${bedLabel(src)} e ${bedLabel(d)}`:`Paciente transferido do ${bedLabel(src)} para o ${bedLabel(d)}`;
     close(); toast(msg);
@@ -1762,7 +1813,7 @@ function transferModal(src){
       +(src.extra?" Como este é um leito extra, ele ficará como não utilizado após a transferência.":"")),
     el("label",{class:"lbl"},"Leito de destino"),sel,info,
     el("div",{style:"margin-top:16px;display:flex;gap:10px"},go));
-  draw(); close=openModal("Transferir de leito",body);
+  initJ(); draw(); close=openModal("Transferir de leito",body);
 }
 
 /* ============ Janelas ============ */
@@ -2475,7 +2526,7 @@ function renderPocus(){
   if(pre.length) inner.append(el("p",{class:"hint",style:"margin:-6px 0 12px"},"Blocos com achados: "+pre.map(B=>B.curto).join(", ")+". Todos entram juntos na impressão e no histórico."));
 
   /* 2. identificação (vem do passômetro) */
-  const bedOpts=SV.med.beds.filter(b=>!b.extra||b.ativo||b.id===d.leito);
+  const bedOpts=ordemLeitos(SV.med.beds).filter(b=>!b.extra||b.ativo||b.id===d.leito);
   const selL=el("select",{class:"txt","aria-label":"Leito"},el("option",{value:""},"Escolher leito…"),
     ...bedOpts.map(b=>el("option",{value:b.id},bedLabel(b)+(b.extra&&b.local?" · "+b.local:"")+" — "+(bedHasPatient(b)?(b.nome||"paciente"):"vago"))));
   selL.value=d.leito;
@@ -2922,7 +2973,7 @@ el("button",{class:"btn primary",type:"button",style:"font-weight:800",onclick:(
 }
 function xMenu(inner){
   const b=xBed();
-  const bedOpts=SV.med.beds.filter(x=>!x.extra||x.ativo||x.id===xd.leito);
+  const bedOpts=ordemLeitos(SV.med.beds).filter(x=>!x.extra||x.ativo||x.id===xd.leito);
   const sel=el("select",{class:"txt","aria-label":"Leito",onchange:e=>{ xFromBed(e.target.value); renderExames(); }},el("option",{value:""},"Escolher leito…"),
     ...bedOpts.map(x=>el("option",{value:x.id},bedLabel(x)+(x.extra&&x.local?" · "+x.local:"")+" — "+(bedHasPatient(x)?(x.nome||"paciente"):"vago"))));
   sel.value=xd.leito;
@@ -3259,7 +3310,7 @@ function parForm(inner){
   if(!novo&&r.pid){ const nb=SV.med.beds.find(x=>x.pid===r.pid); if(nb&&nb.id!==r.leito) r.leito=nb.id; }   /* paciente mudou de leito */
   const touch=()=>{ if(!novo) save(); };
   const f=(l,n)=>el("div",{},el("label",{class:"lbl"},l),n);
-  const bedOpts=SV.med.beds.filter(x=>(!x.extra||x.ativo||x.id===r.leito)&&(bedHasPatient(x)||x.id===r.leito));
+  const bedOpts=ordemLeitos(SV.med.beds).filter(x=>(!x.extra||x.ativo||x.id===r.leito)&&(bedHasPatient(x)||x.id===r.leito));
   const sel=el("select",{class:"txt","aria-label":"Leito",style:"width:100%;min-height:38px",onchange:e=>{ parDoBed(r,e.target.value); touch(); renderPareceres(); }},el("option",{value:""},"Escolher leito…"),
     ...bedOpts.map(x=>el("option",{value:x.id},bedLabel(x)+(x.extra&&x.local?" · "+x.local:"")+" — "+(bedHasPatient(x)?(x.nome||"paciente"):"vago"))));
   sel.value=r.leito;
