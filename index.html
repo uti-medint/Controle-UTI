@@ -101,18 +101,13 @@ nav.beds .group{font-size:13px;color:var(--muted);padding:10px 8px 4px;font-weig
 .ml-s{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ml-c{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
 .mapa-selo{position:absolute;top:-9px;right:10px;font-size:10.5px;font-weight:700;background:var(--accent);color:#fff;border-radius:4px;padding:1px 7px;text-transform:uppercase;letter-spacing:.04em}
-/* ficha: cabeçalho fixo e abas */
+/* ficha: cabeçalho fixo com resumo; ficha completa numa página só */
 .ficha-head{position:sticky;top:-20px;z-index:5;background:var(--bg);margin:-20px -28px 0;padding:14px 28px 8px;border-bottom:0}
 .ficha-head .bed-title{margin-bottom:6px}
 .ficha-info{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;font-size:14px;color:var(--muted)}
 .ficha-info b{font-size:16px;color:var(--ink)}
 .ficha-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
-.ficha-head{margin-bottom:14px!important;border-bottom:1px solid var(--line)!important;padding-bottom:0!important}
-.ficha-tabs{display:flex;gap:2px;overflow-x:auto;margin-top:8px;scrollbar-width:thin}
-.ft{border:0;background:none;padding:9px 12px;font-size:14px;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;margin-bottom:-1px}
-.ft:hover{color:var(--ink)}
-.ft.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
-.ft em{font-style:normal;font-size:11.5px;background:var(--warn-soft);color:var(--warn);border-radius:9px;padding:0 6px;margin-left:5px;font-weight:600}
+.ficha-head{margin-bottom:14px!important;border-bottom:1px solid var(--line)!important;padding-bottom:10px!important}
 
 section.editor{flex:1;overflow-y:auto;padding:20px 28px 60px}
 .editor-inner{max-width:980px;margin:0 auto}
@@ -724,7 +719,7 @@ const SHARED={lists:{},logo:"",logoRatio:0,ultimoResp:"",pocus:[],pac:{},reg:{},
 const SV={};
 const SEL={med:"L1",enf:"L1"};
 let S, selected="L1", view="hub";
-const MAPA={med:true,enf:true}, TAB={med:"id",enf:"id"};   /* passômetro abre no mapa; aba da ficha escolhida por serviço */
+const MAPA={med:true,enf:true};   /* passômetro abre no mapa */
 function noMapa(){ return !!(S&&S.svc&&MAPA[S.svc]); }
 function mkService(svc){
   const st={svc,unit:"UTI IOG",data:todayISO(),beds:freshBeds(),archive:[]};
@@ -1200,17 +1195,14 @@ function ordAplicar(box,p){
   marcar.forEach(([list,q,x])=>{ const r=q.rows()[list.indexOf(x)]; if(r){ r.classList.remove("ord-moveu"); void r.offsetWidth; r.classList.add("ord-moveu"); } });
 }
 let fichaRefresh=null;
-const FICHA_TABS={
-  med:[["id","Identificação e problemas"],["disp","Dispositivos"],["atb","Antibióticos e culturas"],["ex","Exames"],["cond","Intercorrências e condutas"],["pend","Pendências"],["all","Ver tudo"]],
-  enf:[["id","Identificação e problemas"],["disp","Dispositivos"],["img","Exames de imagem"],["proc","Procedimentos"],["pend","Atualizações e pendências"],["all","Ver tudo"]]};
 function renderEditor(){
   fichaRefresh=null;
   if(noMapa()){ renderMapa(); return; }
   const b=S.beds.find(x=>x.id===selected); const ed0=$("#editor"); ed0.innerHTML="";
-  // cabeçalho fixo da ficha: título, dados do paciente, resumo e abas
+  // cabeçalho fixo da ficha: título, dados do paciente e resumo; abaixo, a ficha completa
   const head=el("div",{class:"ficha-head"}); ed0.append(head);
   const ed=el("div",{class:"ficha-body"});
-  const put=(tab,node)=>{ node.dataset.tab=tab; ed.append(node); return node; };
+  const put=(tab,node)=>{ ed.append(node); return node; };
   const title=el("div",{class:"bed-title"},el("button",{class:"btn m-only",type:"button",onclick:()=>{ document.body.classList.remove("m-ed"); renderNav(); }},"← Leitos"),el("h2",{},bedLabel(b)));
   head.append(title);
   if(b.extra){
@@ -1240,10 +1232,9 @@ function renderEditor(){
     acoes);
   if(b.extra&&!b.ativo){ ed0.append(el("div",{class:"card"},el("p",{class:"hint",style:"margin:0"},"Marque “Leito extra em uso” para preencher este leito.")));return; }
   ordenarLeito(b);
-  const info=el("div",{class:"ficha-info"}), chips=el("div",{class:"ficha-chips"}), tabs=el("div",{class:"ficha-tabs",role:"tablist"});
-  head.append(info,chips,tabs);
+  const info=el("div",{class:"ficha-info"}), chips=el("div",{class:"ficha-chips"});
+  head.append(info,chips);
   ed0.append(ed);
-  const mostrar=()=>{ const t=TAB[S.svc]; ed.querySelectorAll(":scope>[data-tab]").forEach(c=>{ c.hidden=!(t==="all"||c.dataset.tab===t); }); };
   fichaRefresh=()=>{
     const dd=b.admissao?daysSince(b.admissao,S.data||todayISO()):null;
     info.innerHTML=""; info.append(el("b",{},b.nome||"(sem nome)"),
@@ -1251,11 +1242,6 @@ function renderEditor(){
       dd>0?el("span",{class:"ml-d"},"D"+dd):"");
     chips.innerHTML=""; const cs=mapaChips(b); cs.forEach(([c,t,ti])=>chips.append(el("span",{class:"chip"+(c?" "+c:""),title:ti||""},t)));
     chips.hidden=!cs.length;
-    const np=S.svc==="enf"?{img:(b.exm||[]).filter(x=>x.nome&&!x.feito).length,proc:(b.proc||[]).filter(x=>x.nome&&!x.feito).length}:{pend:mapaPend(b)};
-    tabs.innerHTML="";
-    FICHA_TABS[S.svc].forEach(([k,l])=>tabs.append(el("button",{type:"button",role:"tab",class:"ft"+(TAB[S.svc]===k?" on":""),"aria-selected":String(TAB[S.svc]===k),
-      onclick:()=>{ TAB[S.svc]=k; fichaRefresh(); mostrar(); const e=document.querySelector("section.editor"); if(e) e.scrollTop=0; }},
-      l,np[k]?el("em",{},String(np[k])):"")));
   };
   fichaRefresh();
 
@@ -1395,7 +1381,7 @@ function renderEditor(){
     renderProc();
     put("pend",listCard("Atualizações, Condutas, Pendências e Observações","npend","pend","Atualizações, condutas, pendências ou observações: clique para ver a lista ou digite uma nova"));
     ed.append(el("p",{class:"hint",id:"updInfo",style:"margin:4px 2px"},updText(b)));
-    mostrar(); return;
+    return;
   }
 
   // antibióticos
@@ -1506,7 +1492,6 @@ function renderEditor(){
     linesBox(b,"condutas","condutas","Ex.: Desmame de noradrenalina, alvo PAM ≥ 65")));
 
   ed.append(el("p",{class:"hint",id:"updInfo",style:"margin:4px 2px"},updText(b)));
-  mostrar();
 }
 
 /* ============ Documento do passômetro (impressão) ============ */
