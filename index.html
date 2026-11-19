@@ -451,6 +451,56 @@ textarea.par-ta:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2
 .par-mini-it{display:inline-flex;gap:4px;align-items:center}
 @media(max-width:900px){.par-id{grid-template-columns:1fr 1fr}}
 @media(max-width:700px){.par-id,.par-id2{grid-template-columns:minmax(0,1fr)}}
+/* ===== Evolução médica (módulo em teste: só logins da lista "teste") ===== */
+#evoApp{display:flex;flex-direction:column;height:100vh}#evoApp[hidden]{display:none}
+.hub-card.evo-new{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.ev-badge{font-size:11px;font-weight:700;background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:2px 8px;text-transform:uppercase;letter-spacing:.04em}
+.ev-user{font-size:13.5px;color:var(--muted);text-align:right;line-height:1.25}.ev-user b{color:var(--ink);display:block;font-size:14px}
+.ev-plantao{font-size:13px;font-weight:600;border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 10px;color:var(--accent)}
+.ev-st{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:1px 6px;margin-top:3px}
+.ev-st.ok{background:#e3f2e4;color:#2e7d32}.ev-st.falta{background:var(--warn-soft);color:var(--warn)}
+.ev-tabs{display:flex;gap:4px;margin:4px 0 14px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.ev-tabs button{border:0;background:none;padding:9px 14px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px}
+.ev-tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+.ev-tabs button:disabled{opacity:.45;cursor:not-allowed}
+.ev-tabs button small{font-weight:500;font-size:11px;margin-left:4px}
+.ev-g{display:grid;gap:12px;grid-template-columns:repeat(4,minmax(0,1fr))}.ev-g .s2{grid-column:span 2}
+.ev-calc{min-height:38px;border:1px solid #e1e8e6;background:#f3f7f6;border-radius:6px;padding:8px 10px;font-weight:700;color:var(--accent)}
+.ev-ro{min-height:38px;border:1px dashed var(--line);border-radius:6px;padding:8px 10px;color:var(--ink)}
+.ev-ro small,.ev-calc small{font-weight:500;color:var(--muted);font-size:12px}
+.ev-togs{display:flex;gap:6px;flex-wrap:wrap}
+.ev-req::after{content:" *";color:var(--danger);font-weight:700}
+.ev-warn{color:var(--danger);font-size:12.5px;font-weight:600;margin-top:4px;line-height:1.3}
+.ev-tag{display:inline-block;font-weight:800;font-size:12.5px;padding:3px 9px;border-radius:5px;background:var(--danger);color:#fff}
+.ev-tag.o{background:#fff;color:var(--ink);border:1.5px solid var(--ink)}
+.ev-sign{background:#f6f9f8;border:1px solid #e1e8e6;border-radius:8px;padding:10px 12px;font-size:14px}
+.ev-empty{color:var(--muted);padding:30px 0;text-align:center}
+@media(max-width:900px){.ev-g{grid-template-columns:1fr 1fr}}
+/* boas-vindas */
+.bv-ov{position:fixed;inset:0;z-index:150;display:flex;align-items:center;justify-content:center;padding:24px;overflow-y:auto}
+.bv-ov.dia{background:radial-gradient(1200px 600px at 15% 0%,#fff3cf 0%,rgba(255,243,207,0) 60%),radial-gradient(900px 600px at 100% 100%,#d6efe9 0%,rgba(214,239,233,0) 60%),#f4f8f6}
+.bv-ov.noite{background:radial-gradient(1000px 600px at 85% 0%,#2c4a6b 0%,rgba(44,74,107,0) 60%),radial-gradient(900px 700px at 0% 100%,#0f6b5e 0%,rgba(15,107,94,0) 55%),#14232f}
+.bv-card{width:min(760px,100%);background:#fff;border-radius:22px;box-shadow:0 24px 70px rgba(15,40,36,.2);padding:34px 40px 26px;margin:auto}
+.bv-top{display:flex;align-items:center;gap:14px;margin-bottom:16px}.bv-top img{max-height:46px;max-width:140px}
+.bv-when{margin-left:auto;font-size:14px;color:var(--muted);text-align:right}.bv-when b{display:block;color:var(--ink);font-size:15px}
+.bv-hero{width:60px;height:60px;border-radius:18px;display:flex;align-items:center;justify-content:center}
+.bv-hero svg{width:34px;height:34px;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.dia .bv-hero{background:linear-gradient(135deg,#ffe29a,#ffc75a)}.dia .bv-hero svg{stroke:#8a5a00}
+.noite .bv-hero{background:linear-gradient(135deg,#2f4f73,#1d3550)}.noite .bv-hero svg{stroke:#ffe7a3;fill:#ffe7a3}
+.bv-card h2{font-size:32px;margin:14px 0 6px;letter-spacing:-.02em}.bv-card h2 span{color:var(--accent)}
+.bv-lead{font-size:16.5px;line-height:1.55;color:#33413f;margin:0 0 16px}
+.bv-pills{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 22px}
+.bv-pill{background:#f1f6f5;border:1px solid #dbe6e3;border-radius:12px;padding:8px 13px;font-size:14px;color:#33413f}.bv-pill b{font-size:18px;color:var(--accent);margin-right:4px}
+.bv-q{font-weight:700;font-size:17px;margin:0 0 12px}
+.bv-opts{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.bv-opt{border:2px solid var(--line);border-radius:16px;padding:16px 16px 14px;display:flex;flex-direction:column;gap:5px;background:#fff;text-align:left;position:relative}
+.bv-opt.on{border-color:var(--accent);background:#eef8f5;box-shadow:0 0 0 4px #d7efe9}
+.bv-opt .t{font-size:17.5px;font-weight:700;color:var(--ink)}.bv-opt .h{font-size:14px;color:var(--muted)}.bv-opt .x{font-size:13px;color:var(--accent);font-weight:600;margin-top:3px}
+.bv-go{margin-top:22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.bv-go .btn.primary{border-radius:12px;padding:13px 24px;font-size:16px;font-weight:700}
+.bv-alt{font-size:14px;color:var(--muted)}.bv-alt button{border:0;background:none;color:var(--accent);font-weight:600;text-decoration:underline;padding:0}
+.bv-foot{margin-top:20px;padding-top:14px;border-top:1px solid #e7eceb;font-size:13.5px;color:#7d8e8b;font-style:italic;text-align:center}
+@media(max-width:700px){.bv-opts{grid-template-columns:1fr}.bv-card{padding:24px 20px}}
 </style>
 </head>
 <body>
@@ -473,6 +523,7 @@ textarea.par-ta:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2
 <div id="examApp" hidden></div>
 <div id="culApp" hidden></div>
 <div id="parApp" hidden></div>
+<div id="evoApp" hidden></div>
 <div id="app" hidden>
   <header class="top">
     <button class="btn" id="bMenu">← Menu</button>
@@ -510,7 +561,7 @@ setTimeout(function(){ if(window.__fbResolve) window.__fbResolve(null); },12000)
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import { getFirestore, collection, doc, onSnapshot, runTransaction, deleteDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getFirestore, collection, doc, onSnapshot, runTransaction, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCCiY25Gue_LO9FtDS3d0HSng6j0q-DmDY",
@@ -539,7 +590,8 @@ try{
       tx.set(ref,{v:cv+1,json:JSON.stringify(value),by:by||"",cid:cid||"",ts:Date.now()});
       return {v:cv+1};
     }),
-    remove:part=>deleteDoc(doc(db,"parts",part))
+    remove:part=>deleteDoc(doc(db,"parts",part)),
+    getAcesso:()=>getDoc(doc(db,"config","acesso")).then(s=>s.exists()?s.data():{})   /* lista de acesso e lista "teste" (abas novas) */
   };
   window.__fbResolve(window.FB);
 }catch(e){ console.error(e); window.__fbResolve(null); }
@@ -592,7 +644,7 @@ const N_FIXOS = 17, N_EXTRAS = 4;
 /* Cadastro único por leito, compartilhado entre passômetro médico, enfermagem e POCUS:
    identificação, lista de problemas, dispositivos invasivos e situação do leito ficam em SHARED.pac[idDoLeito]. */
 const PAC_KEYS=["pid","nome","idade","admissao","plano","problemas","disp","dd","ativo","local","junto","pf"];
-const PAC_MOVE=["pid","nome","idade","admissao","plano","problemas","disp","dd","pf"];
+const PAC_MOVE=["pid","nome","idade","admissao","plano","problemas","disp","dd","pf","evc"];   /* evc = cadastro da Evolução médica (nascimento, sexo, peso…) */
 const SVC_KEYS=["atb","culturas","imagem","pend","condutas","interc","exm","proc","labesp","resp"];
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
 function defaultDisp(){ return {svd:false,sne:false,gtt:false,tot:false,tqt:false,avp:false,prec:{on:false,resp:false,cont:false},cvc:{on:false,sitios:[]},cdl:{on:false,sitios:[]},pa:{on:false,sitios:[]},dreno:{on:false,sitios:[]},outros:[]}; }
@@ -2022,11 +2074,12 @@ function isOpen(n){
   if(view==="med"||view==="enf") return !noMapa()&&n==="pac:"+selected;
   if(view==="pocus") return !!(pdraft&&pdraft.leito&&n==="pac:"+pdraft.leito);
   if(view==="par") return !!(parState.cur&&n==="par:"+parState.cur);
+  if(view==="evo") return !!(EVO.sel&&n==="pac:"+EVO.sel);
   return false;
 }
 function rerenderActive(){
   if(editingNow()){ needRender=true; return; }
-  if(view==="pocus") renderPocus(); else if(view==="med"||view==="enf") renderEditor(); else if(view==="cult") renderCulturas(); else if(view==="par") renderPareceres();
+  if(view==="pocus") renderPocus(); else if(view==="med"||view==="enf") renderEditor(); else if(view==="cult") renderCulturas(); else if(view==="par") renderPareceres(); else if(view==="evo") renderEvo();
 }
 function partNames(){
   const out=["logo",...Object.keys(SHARED.lists).map(k=>"list:"+k),...SHARED.pocus.map(r=>"pocus:"+r.ts),...SHARED.ped.map(r=>"ped:"+r.ts),...SV.med.beds.map(b=>"pac:"+b.id),...Object.keys(Object.assign({[RID]:1},SHARED.reg)).map(r=>"reg:"+r),...SHARED.cul.map(r=>"cul:"+r.ts),"culmeta",...SHARED.par.map(r=>"par:"+r.ts)];
@@ -2113,7 +2166,7 @@ function unionList(a,b){
   return out.sort((x,y)=>x.localeCompare(y,"pt-BR",{sensitivity:"base"}));
 }
 function editingNow(){
-  const a=document.activeElement; return !!(a&&($("#editor").contains(a)||$("#pocusApp").contains(a)||$("#examApp").contains(a)||$("#culApp").contains(a)||$("#parApp").contains(a))&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+  const a=document.activeElement; return !!(a&&($("#editor").contains(a)||$("#pocusApp").contains(a)||$("#examApp").contains(a)||$("#culApp").contains(a)||$("#parApp").contains(a)||$("#evoApp").contains(a))&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
 }
 function setNet(up,stamp){ setNet0(up,stamp); mirrorMsg(); }
 function setNet0(up,stamp){
@@ -2252,6 +2305,7 @@ function showLogin(){
   const email=el("input",{class:"txt",type:"text",placeholder:"Usuário (ou e-mail)",autocomplete:"username",autocapitalize:"off",spellcheck:"false"});
   const pass=el("input",{class:"txt",type:"password",placeholder:"Senha",autocomplete:"current-password"});
   const err=el("p",{class:"hint",style:"color:var(--danger);min-height:20px;margin:8px 0"});
+  try{ if(sessionStorage.getItem("evo_saiu")){ sessionStorage.removeItem("evo_saiu"); err.style.color="var(--muted)"; err.textContent="Você foi desconectado após 1 hora sem uso. Entre novamente."; } }catch(e){}
   const go=el("button",{class:"btn primary",type:"button",style:"width:100%"},"Entrar");
   async function entrar(){
     err.style.color="var(--danger)"; err.textContent=""; go.disabled=true;
@@ -2317,7 +2371,7 @@ async function netStart(){
   $("#editor").addEventListener("focusout",()=>setTimeout(()=>{
     if(editingNow()) return; flushPending(); if(needRender){ needRender=false; rerenderActive(); }
   },250));
-  ["#pocusApp","#parApp"].forEach(id=>$(id).addEventListener("focusout",()=>setTimeout(()=>{
+  ["#pocusApp","#parApp","#evoApp"].forEach(id=>$(id).addEventListener("focusout",()=>setTimeout(()=>{
     if(editingNow()) return; flushPending(); if(needRender){ needRender=false; rerenderActive(); }
   },250)));
   save();
@@ -2333,6 +2387,7 @@ const ICONS={
   cult:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="9" cy="10" r="1.6"/><circle cx="14.6" cy="9" r="1.1"/><circle cx="13.4" cy="14.6" r="1.9"/><circle cx="8.6" cy="14.8" r="1"/></svg>',
   livre:'<svg viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/></svg>',
   par:'<svg viewBox="0 0 24 24"><path d="M5 5h14v10H10l-4 4v-4H5z"/><path d="M9 9h6M9 12h4"/></svg>',
+  evo:'<svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 13h6M9 16h4"/></svg>',
   visita:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.5 3-6 6-6s6 2.5 6 6"/><path d="M15.5 14.5c3 0 5.5 2 5.5 5.5"/></svg>'
 };
 function renderHub(){
@@ -2343,6 +2398,10 @@ function renderHub(){
     el("div",{class:"hub-ic",html:ic}),
     el("div",{class:"hub-t"},t,soon?el("span",{class:"badge"},"Em breve"):null),
     el("div",{class:"hub-d"},d));
+  if(EVO.on){   /* módulo em teste: só para os logins da lista "teste" */
+    const c=card(ICONS.evo,"Evolução médica","Cadastro do paciente, adendo de internação e evoluções diurna e noturna (em teste)",()=>showView("evo"));
+    c.classList.add("evo-new"); c.querySelector(".hub-t").append(el("span",{class:"ev-badge"},"Em teste")); g.append(c);
+  }
   g.append(
     card(ICONS.med,"Passômetro médico","Passagem de plantão médica dos leitos da UTI",()=>showView("med")),
     card(ICONS.enf,"Passômetro enfermagem","Passagem de plantão da enfermagem: dispositivos, pendências e exames de imagem",()=>showView("enf")),
@@ -2402,6 +2461,7 @@ function showView(v){
   $("#examApp").hidden=v!=="exames";
   $("#culApp").hidden=v!=="cult";
   $("#parApp").hidden=v!=="par";
+  $("#evoApp").hidden=v!=="evo";
   if(v==="med"||v==="enf"){
     S=SV[v]; selected=SEL[v]; MAPA[v]=true;
     $("#svcTitle").textContent=v==="enf"?"Passômetro de enfermagem":"Passômetro médico";
@@ -2412,6 +2472,7 @@ function showView(v){
   else if(v==="exames"){ renderExames(); avisoExames(); }
   else if(v==="cult"){ culState.tab="lista"; culState.mes=culMesAtual(); renderCulturas(); culAvisoImpressao(); }
   else if(v==="par"){ if(!VOLTA){ parState.tab="lista"; parState.draft=null; } renderPareceres(); }
+  else if(v==="evo") renderEvo();
   renderBanner();
   window.scrollTo(0,0);
 }
@@ -3935,6 +3996,293 @@ function culCsv(){
   download("culturas_"+m+".csv",new Blob(["﻿"+txt],{type:"text/csv"}));
 }
 
+/* ============ Evolução médica — MÓDULO EM TESTE ============
+   Só aparece para os logins da lista config/acesso → campo "teste" (console do Firebase).
+   Os demais logins não veem nenhuma diferença (sem aba nova, sem boas-vindas, sem saída automática).
+   Os dados novos do paciente ficam no cadastro do leito (parte "pac:<leito>"), no campo "evc":
+   vão junto na transferência de leito e são apagados no "Limpar leito", como o resto do cadastro. */
+const EVO={on:false,email:"",perfil:null,sel:null};
+/* Perfis dos logins de teste: nome, grupo, CRM e RQE (montam a assinatura das folhas). */
+const EVO_PERFIS={
+  "ava.martins@uti.local":{nome:"Ava Caroline Soares Martins",curto:"Ava",sexo:"F",grupo:"coord",crm:"8215",rqe:"Medicina Intensiva/Cardiologia: RQE 6807/4413"},
+  "wandervan.azevedo@uti.local":{nome:"Wandervan Antonio Azevedo",curto:"Wandervan",sexo:"M",grupo:"coord",crm:"7454",rqe:"Medicina Intensiva: RQE 4070"},
+  "leonardo.castro@uti.local":{nome:"Leonardo de Campos Castro",curto:"Leonardo",sexo:"M",grupo:"res",crm:"33065",rqe:""},
+  "rosana.mendanha@uti.local":{nome:"Rosana de Cássia Moreira Mendanha",curto:"Rosana",sexo:"F",grupo:"res",crm:"21955",rqe:""},
+  "residente@uti.local":{generico:true,grupo:"res"}       /* login genérico de residentes externos: assinatura só "Médico Residente" */
+};
+const EVO_GRUPO={coord:["Médico Diarista","Médica Diarista"],res:["Médico Residente","Médica Residente"],plant:["Médico Plantonista","Médica Plantonista"]};
+const EVO_IDLE_AVISO=55*60000, EVO_IDLE_SAIR=60*60000;
+function evoAssinatura(p){
+  p=p||EVO.perfil; if(!p) return "";
+  if(p.generico) return "Médico Residente";
+  const f=p.sexo==="F";
+  return `${EVO_GRUPO[p.grupo]?EVO_GRUPO[p.grupo][f?1:0]:EVO_GRUPO.plant[f?1:0]} ${f?"Dra":"Dr"} ${p.nome}${p.crm?" CRM-GO "+p.crm:""}${p.rqe?"/ "+p.rqe:""}`;
+}
+function evoTratamento(p){ p=p||EVO.perfil; if(!p) return ""; if(p.generico) return "Residente"; return (p.sexo==="F"?"Dra. ":"Dr. ")+(p.curto||p.nome); }
+function evoFem(){ return !!(EVO.perfil&&EVO.perfil.sexo==="F"); }
+
+async function evoInit(u){
+  try{
+    const email=String((u&&u.email)||"").toLowerCase();
+    const a=await FB.getAcesso();
+    const lista=Array.isArray(a&&a.teste)?a.teste.map(x=>String(x).trim().toLowerCase()):[];
+    if(!email||!lista.includes(email)) return;            /* login fora do teste: nada muda */
+    EVO.on=true; EVO.email=email;
+    const user=email.split("@")[0];
+    EVO.perfil=EVO_PERFIS[email]||{nome:user,curto:user,sexo:"M",grupo:"plant",crm:"",semCadastro:true};
+    const nm=evoTratamento(); $("#hubUser").textContent=nm; $("#userInfo").textContent=nm;
+    evoInatividade();
+    if(!evoTurnoAtivo()) evoBoasVindas();
+  }catch(e){ console.error("Evolução médica (teste):",e); EVO.on=false; }
+}
+
+/* ---- plantão do dia (escolhido nas boas-vindas; guardado neste computador) ---- */
+function evoTurnoKey(){ return "evo_turno_"+EVO.email; }
+function evoTurnoGet(){ try{ return JSON.parse(localStorage.getItem(evoTurnoKey())||"null"); }catch(e){ return null; } }
+function evoTurnoAtivo(){ const t=evoTurnoGet(); return !!(t&&t.fim&&Date.now()<t.fim); }
+function evoOpcoesTurno(now){
+  const d=new Date(now||Date.now()), h=d.getHours();
+  const at=(dd,hh)=>{ const x=new Date(d); x.setDate(x.getDate()+dd); x.setHours(hh,0,0,0); return x.getTime(); };
+  if(h>=7&&h<19) return {periodo:"dia",ops:[
+    {id:"diurno",t:"Plantão diurno",h:"07h às 19h",x:"Evoluções impressas ao longo do dia",fim:at(0,19),ic:"sol"},
+    {id:"24h",t:"Plantão de 24 horas",h:"Diurno e noturno · 07h às 07h de amanhã",x:"Ao final, imprime as duas evoluções em frente e verso",fim:at(1,7),ic:"solua"}]};
+  const dd=h>=19?1:0;                                     /* depois da meia-noite, o noturno termina às 07h de hoje */
+  return {periodo:"noite",ops:[
+    {id:"noturno",t:"Plantão noturno",h:"19h às 07h",x:"Evoluções impressas ao final do noturno",fim:at(dd,7),ic:"lua"},
+    {id:"24h",t:"Plantão de 24 horas",h:"Noturno e diurno "+(dd?"de amanhã":"de hoje")+" · 19h às 19h",x:"Ao final, imprime as duas evoluções em frente e verso",fim:at(dd,19),ic:"luasol"}]};
+}
+function evoTurnoTxt(){
+  const t=evoTurnoGet(); if(!t||!(Date.now()<t.fim)) return "Plantão não informado";
+  const f=new Date(t.fim), hh=String(f.getHours()).padStart(2,"0")+"h";
+  return t.t+" · até "+hh+(f.toDateString()!==new Date().toDateString()?" de amanhã":"");
+}
+const EVO_IC={
+  sol:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>',
+  lua:'<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>'
+};
+
+/* ---- boas-vindas (primeiro acesso do dia, ou quando o plantão escolhido já terminou) ---- */
+function evoBoasVindas(trocar){
+  const old=document.getElementById("bvOv"); if(old) old.remove();
+  const now=new Date(), h=now.getHours(), op=evoOpcoesTurno(now), noite=op.periodo==="noite";
+  const saud=h<5?"Boa noite":h<12?"Bom dia":h<18?"Boa tarde":"Boa noite";
+  const p=EVO.perfil||{}, f=evoFem(), vind=p.generico?"bem-vindo(a)":(f?"bem-vinda":"bem-vindo");
+  const lead=noite
+    ?`Seja muito ${vind} ao plantão. A noite na UTI pede cuidado e atenção — e a equipe conta com você. Bom trabalho e um plantão tranquilo!`
+    :"Que bom ter você com a gente hoje. Obrigado por cuidar dos nossos pacientes e das famílias deles — o seu plantão faz diferença na vida de muita gente.";
+  const ocup=SV.med.beds.filter(b=>b.nome);
+  const ontem=(()=>{ const x=new Date(); x.setDate(x.getDate()-1); return new Date(x-x.getTimezoneOffset()*60000).toISOString().slice(0,10); })();
+  const adm=ocup.filter(b=>b.admissao&&b.admissao>=ontem).length, alta=ocup.filter(b=>pfOf(b).alta==="24").length;
+  let esc0=op.ops[0].id; { const t=evoTurnoGet(); if(trocar&&t&&op.ops.some(o=>o.id===t.tipo)) esc0=t.tipo; }
+  const pill=(n,t)=>el("span",{class:"bv-pill"},el("b",{},String(n)),t);
+  const cards=op.ops.map(o=>{
+    const ic=o.ic==="sol"?EVO_IC.sol:o.ic==="lua"?EVO_IC.lua:o.ic==="solua"?EVO_IC.sol+EVO_IC.lua:EVO_IC.lua+EVO_IC.sol;
+    return el("button",{type:"button",class:"bv-opt"+(o.id===esc0?" on":""),"data-id":o.id,"aria-pressed":String(o.id===esc0),onclick:e=>{
+        esc0=o.id; ov.querySelectorAll(".bv-opt").forEach(b=>{ const on=b.dataset.id===esc0; b.classList.toggle("on",on); b.setAttribute("aria-pressed",String(on)); });
+      }},
+      el("div",{class:"t",html:'<span style="display:inline-flex;gap:2px;vertical-align:-4px;margin-right:8px;color:var(--accent)">'+ic.replace(/<svg /g,'<svg style="width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round" ')+'</span>'+esc(o.t)}),
+      el("div",{class:"h"},o.h),el("div",{class:"x"},o.x));
+  });
+  const dataExt=now.toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"});
+  const go=el("button",{class:"btn primary",type:"button",onclick:()=>{
+    const o=op.ops.find(x=>x.id===esc0);
+    try{ localStorage.setItem(evoTurnoKey(),JSON.stringify({tipo:o.id,t:o.t,fim:o.fim,ts:Date.now()})); }catch(e){}
+    ov.remove(); if(view==="evo") renderEvo();
+  }},trocar?"Confirmar":"Começar o plantão");
+  const ov=el("div",{class:"bv-ov "+(noite?"noite":"dia"),id:"bvOv",role:"dialog","aria-modal":"true","aria-label":"Boas-vindas"},
+    el("div",{class:"bv-card"},
+      el("div",{class:"bv-top"},SHARED.logo?el("img",{src:SHARED.logo,alt:""}):null,
+        el("div",{class:"bv-when"},el("b",{},dataExt.charAt(0).toUpperCase()+dataExt.slice(1)),now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}))),
+      el("div",{class:"bv-hero",html:noite?EVO_IC.lua:EVO_IC.sol}),
+      el("h2",{},saud+", ",el("span",{},evoTratamento()),"!"),
+      el("p",{class:"bv-lead"},lead),
+      el("div",{class:"bv-pills"},pill(ocup.length,"pacientes internados"),pill(adm,"admissões desde ontem"),pill(alta,alta===1?"alta prevista para hoje":"altas previstas para hoje")),
+      el("p",{class:"bv-q"},trocar?"Trocar o plantão:":(noite?"Como vai ser o seu plantão?":"Como vai ser o seu plantão hoje?")),
+      el("div",{class:"bv-opts"},cards),
+      el("div",{class:"bv-go"},go,
+        trocar?el("button",{class:"btn",type:"button",onclick:()=>ov.remove()},"Cancelar")
+              :el("span",{class:"bv-alt"},"Não é você? ",el("button",{type:"button",onclick:()=>FB.signOut().then(()=>location.reload())},"Entrar com outro usuário"))),
+      el("div",{class:"bv-foot"},noite?"Lembrete: o site desconecta após 1 hora sem uso, para proteger a sua assinatura."
+        :"Bom plantão! Você pode trocar essa escolha a qualquer momento em “Trocar plantão”, na Evolução médica.")));
+  document.body.append(ov); go.focus();
+}
+
+/* ---- saída automática após 1h sem uso (aviso aos 55 min). Vale para todas as abas abertas deste computador. ---- */
+let evoUlt=Date.now(), evoAvisoEl=null, evoSaindo=false;
+function evoUltimaAtividade(){ let s=0; try{ s=Number(localStorage.getItem("evo_ult_"+EVO.email))||0; }catch(e){} return Math.max(evoUlt,s); }
+function evoInatividade(){
+  let gravado=0;
+  const mark=()=>{
+    evoUlt=Date.now();
+    if(evoUlt-gravado>20000){ gravado=evoUlt; try{ localStorage.setItem("evo_ult_"+EVO.email,String(evoUlt)); }catch(e){} }
+    if(evoAvisoEl){ evoAvisoEl.remove(); evoAvisoEl=null; }
+  };
+  ["pointerdown","keydown","wheel","touchstart","mousemove","scroll"].forEach(ev=>document.addEventListener(ev,mark,{passive:true,capture:true}));
+  mark();
+  setInterval(()=>{
+    if(evoSaindo) return;
+    const idle=Date.now()-evoUltimaAtividade();
+    if(idle>=EVO_IDLE_SAIR){ evoSairInativo(); return; }
+    if(idle>=EVO_IDLE_AVISO){
+      const min=Math.max(1,Math.ceil((EVO_IDLE_SAIR-idle)/60000));
+      if(!evoAvisoEl){
+        evoAvisoEl=el("div",{class:"overlay",style:"z-index:160"},el("div",{class:"modal",style:"width:min(460px,100%)"},el("div",{class:"body"},
+          el("h3",{style:"margin:0 0 8px"},"Você ainda está aí?"),
+          el("p",{class:"evo-min",style:"margin:0 0 14px"}),
+          el("button",{class:"btn primary",type:"button",onclick:mark},"Continuar conectado"))));
+        document.body.append(evoAvisoEl);
+      }
+      evoAvisoEl.querySelector(".evo-min").textContent=`Por segurança, o site vai desconectar em ${min} minuto${min>1?"s":""} sem uso. Tudo o que foi digitado fica salvo.`;
+    }
+  },10000);
+}
+async function evoSairInativo(){
+  evoSaindo=true;
+  try{ save(); await Promise.race([pushDirty(),new Promise(r=>setTimeout(r,5000))]); }catch(e){}
+  try{ sessionStorage.setItem("evo_saiu","1"); }catch(e){}
+  FB.signOut().then(()=>location.reload());
+}
+
+/* ---- cadastro do paciente (campo "evc" do cadastro do leito) ---- */
+function evoC(id){ const p=pacOf(id); if(!p.evc||typeof p.evc!=="object") p.evc={}; return p.evc; }
+function evoSet(id,k,v){
+  const c=evoC(id);
+  if(v===""||v==null) delete c[k]; else c[k]=v;
+  c.upd=Date.now(); c.by=EVO.email; save();
+}
+function evoIdade(nasc,refISO){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(nasc||"")) return null;
+  const [y,m,d]=nasc.split("-").map(Number), [ry,rm,rd]=(refISO||todayISO()).split("-").map(Number);
+  let a=ry-y; if(rm<m||(rm===m&&rd<d)) a--; return a;
+}
+function evoNum(v){ const n=parseFloat(String(v==null?"":v).replace(",",".")); return isNaN(n)?null:n; }
+function evoAlturaM(v){ const n=evoNum(v); if(n==null||n<=0) return null; return n>3?n/100:n; }
+function evoIMC(c){
+  const p=evoNum(c.peso), a=evoAlturaM(c.altura);
+  if(!p||!a||a<0.5||a>2.5||p<1||p>400) return null;
+  return (p/(a*a)).toFixed(1).replace(".",",");
+}
+function evoDiasUTI(adm){ if(!adm||!/^\d{4}-\d{2}-\d{2}$/.test(adm)) return null; const d=daysSince(adm,todayISO())-1; return d>=0?d:null; }
+const EVO_REQ=[["nasc","data de nascimento"],["sexo","sexo"],["peso","peso"],["altura","altura"],["alergias","alergias"],["reanim","status de reanimação"]];
+function evoFaltam(id){ const c=evoC(id); return EVO_REQ.filter(([k])=>!c[k]||(k==="reanim"&&c.reanim==="lim"&&!String(c.reanimTxt||"").trim())).map(([,l])=>l); }
+
+function renderEvo(){
+  const root=$("#evoApp"); root.innerHTML="";
+  if(!EVO.on){ root.append(el("p",{style:"padding:30px"},"Acesso restrito aos logins em teste.")); return; }
+  const beds=SV.med.beds.filter(b=>b.nome);
+  if(EVO.sel&&!beds.some(b=>b.id===EVO.sel)) EVO.sel=null;
+  root.append(
+    el("header",{class:"top"},
+      el("button",{class:"btn",type:"button",onclick:()=>showView("hub")},"← Menu"),
+      el("h1",{},"Evolução médica"),el("span",{class:"ev-badge"},"Em teste"),
+      el("div",{class:"spacer"}),
+      el("button",{class:"ev-plantao",type:"button",title:"Trocar plantão",onclick:()=>evoBoasVindas(true)},evoTurnoTxt()+" · trocar"),
+      el("div",{class:"ev-user"},el("b",{},evoTratamento()),EVO.perfil&&!EVO.perfil.generico?EVO_GRUPO[EVO.perfil.grupo][evoFem()?1:0]:"Login de residentes")),
+    el("main",{},evoNav(beds),el("section",{class:"editor"},el("div",{class:"editor-inner",id:"evoEditor"},evoEditor()))));
+}
+function evoNav(beds){
+  const nav=el("nav",{class:"beds"},el("div",{class:"group"},"Pacientes internados ("+beds.length+")"));
+  if(!beds.length) nav.append(el("p",{class:"hint",style:"padding:8px"},"Nenhum paciente no passômetro."));
+  beds.forEach(b=>{
+    const falt=evoFaltam(b.id), d=evoDiasUTI(b.admissao);
+    nav.append(el("button",{class:"bed-btn"+(b.id===EVO.sel?" active":""),type:"button",onclick:()=>{ EVO.sel=b.id; renderEvo(); }},
+      el("div",{class:"l1"},el("span",{},bedLabel(b)),d!=null?el("span",{class:"bed-d"},"D"+d):null),
+      el("div",{class:"l2"},b.nome),
+      el("span",{class:"ev-st "+(falt.length?"falta":"ok")},falt.length?"Cadastro: falta"+(falt.length>1?"m ":" ")+falt.length:"Cadastro completo")));
+  });
+  return nav;
+}
+function evoEditor(){
+  if(!EVO.sel) return el("div",{class:"ev-empty"},
+    el("h2",{style:"color:var(--ink);margin:0 0 8px"},"Evolução médica"),
+    el("p",{},"Escolha um paciente na lista ao lado para completar o cadastro."),
+    el("p",{class:"hint"},"Nesta primeira etapa do teste está disponível o cadastro do paciente. Adendo, evoluções, intercorrências, linha do tempo e relatório chegam nas próximas etapas."),
+    el("div",{class:"ev-sign",style:"max-width:640px;margin:18px auto 0;text-align:left"},el("b",{},"Sua assinatura nas folhas: "),evoAssinatura()));
+  const id=EVO.sel, b=SV.med.beds.find(x=>x.id===id), p=pacOf(id), c=evoC(id), wrap=el("div");
+  const lab=(t,req)=>el("label",{class:"lbl"+(req?" ev-req":"")},t);
+  const inp=(k,attrs,onv)=>{ const i=el("input",Object.assign({class:"txt",value:c[k]||""},attrs||{})); i.addEventListener("input",()=>{ evoSet(id,k,i.value.trim()); if(onv) onv(); }); i.addEventListener("change",()=>evoNavRefresh()); return i; };
+  const tog=(k,opts,after)=>{
+    const box=el("div",{class:"ev-togs"});
+    const draw=()=>{ box.innerHTML=""; opts.forEach(([v,l])=>box.append(el("button",{type:"button",class:"tog"+(c[k]===v?" on":""),"aria-pressed":String(c[k]===v),onclick:()=>{ evoSet(id,k,c[k]===v?"":v); draw(); if(after) after(); evoNavRefresh(); evoHeadRefresh(); }},l))); };
+    draw(); return box;
+  };
+  /* cabeçalho do paciente */
+  const head=el("div");
+  const evoHeadRefresh=()=>{
+    head.innerHTML="";
+    const tags=[];
+    if(c.alergias) tags.push(el("span",{class:"ev-tag"},/^nega/i.test(c.alergias)?"ALERGIAS: NEGA":"ALERGIA: "+c.alergias.toUpperCase()));
+    if(c.reanim==="pleno") tags.push(el("span",{class:"ev-tag o"},"SUPORTE PLENO"));
+    if(c.reanim==="lim") tags.push(el("span",{class:"ev-tag o"},"LIMITAÇÃO DE SUPORTE"));
+    head.append(el("div",{class:"bed-title"},el("h2",{},bedLabel(b)+" · "+b.nome),...tags));
+  };
+  evoHeadRefresh();
+  wrap.append(head,
+    el("div",{class:"ev-tabs"},el("button",{class:"on",type:"button"},"Cadastro"),
+      ...["Adendo de internação","Evolução diária","Evolução de intercorrência","Linha do tempo","Relatório de alta"].map(t=>el("button",{type:"button",disabled:"disabled"},t,el("small",{},"em breve")))));
+  /* identificação (nome, admissão e convênio vêm do passômetro) */
+  const idadeOut=el("div",{class:"ev-calc"}), idadeAviso=el("div",{class:"ev-warn"});
+  const atualizaIdade=()=>{
+    const a=evoIdade(c.nasc); idadeAviso.textContent="";
+    if(c.nasc&&(a==null||a<0||c.nasc>todayISO())){ idadeOut.textContent="—"; idadeAviso.textContent="⚠ Data de nascimento inválida ou no futuro."; return; }
+    if(a!=null&&a>120){ idadeOut.textContent=a+" anos"; idadeAviso.textContent="⚠ Idade acima de 120 anos. Confira a data."; return; }
+    if(a!=null){
+      idadeOut.textContent=a+(a===1?" ano":" anos");
+      const dig=parseInt(p.idade,10);
+      if(c.idadeAnt==null&&!isNaN(dig)&&String(dig)!==String(a)) c.idadeAnt=dig;
+      if(String(p.idade||"")!==String(a)){ p.idade=String(a); save(); }   /* o passômetro passa a mostrar a idade calculada */
+      if(c.idadeAnt!=null&&Math.abs(c.idadeAnt-a)>1){
+        idadeAviso.append(`⚠ A idade digitada no passômetro era ${c.idadeAnt} anos; pela data de nascimento são ${a}. Confira a data. `,
+          el("button",{class:"btn small",type:"button",onclick:()=>{ evoSet(id,"idadeAnt",""); atualizaIdade(); }},"Data conferida"));
+      }
+      return;
+    }
+    idadeOut.innerHTML=""; idadeOut.append(p.idade?el("span",{},p.idade+" anos ",el("small",{},"(digitada no passômetro)")):el("small",{},"calculada pela data de nascimento"));
+  };
+  atualizaIdade();
+  const nasc=inp("nasc",{type:"date",max:todayISO()},atualizaIdade);
+  const imcOut=el("div",{class:"ev-calc"});
+  const atualizaIMC=()=>{ const v=evoIMC(c); imcOut.innerHTML=""; imcOut.append(v?v:el("small",{},"calculado")); };
+  atualizaIMC();
+  const dias=evoDiasUTI(b.admissao);
+  wrap.append(el("div",{class:"card"},el("h3",{},"Identificação"),
+    el("div",{class:"ev-g"},
+      el("div",{class:"s2"},lab("Nome"),el("div",{class:"ev-ro"},b.nome,el("small",{}," · editar no passômetro"))),
+      el("div",{},lab("Data de nascimento",true),nasc,idadeAviso),
+      el("div",{},lab("Idade"),idadeOut),
+      el("div",{},lab("Sexo",true),tog("sexo",[["F","Feminino"],["M","Masculino"]])),
+      el("div",{},lab("Nº de internação"),inp("nint",{inputmode:"numeric",placeholder:"obrigatório na 1ª evolução"})),
+      el("div",{},lab("Convênio"),el("div",{class:"ev-ro"},b.plano||"—")),
+      el("div",{},lab("Admissão na UTI"),el("div",{class:"ev-ro"},b.admissao?fmtDate(b.admissao,true):"—",dias!=null?el("small",{}," · "+dias+(dias===1?" dia":" dias")+" internado"+(dias===1?"":"s")+" na UTI"):null)))));
+  wrap.append(el("div",{class:"card"},el("h3",{},"Medidas"),
+    el("div",{class:"ev-g"},
+      el("div",{},lab("Peso (kg)",true),inp("peso",{inputmode:"decimal",placeholder:"ex.: 62"},atualizaIMC)),
+      el("div",{},lab("Altura (m)",true),inp("altura",{inputmode:"decimal",placeholder:"ex.: 1,60"},atualizaIMC)),
+      el("div",{},lab("IMC"),imcOut),
+      el("div",{},el("p",{class:"hint",style:"margin:22px 0 0"},"O peso é usado no cálculo das doses (mcg/kg/min). Pode ser atualizado a qualquer momento.")))));
+  /* alergias e status de reanimação */
+  const aler=inp("alergias",{placeholder:"Ex.: Dipirona, contraste iodado"},()=>evoHeadRefresh());
+  const limTxt=inp("reanimTxt",{placeholder:"Qual limitação? Ex.: não intubar, não iniciar diálise"},()=>{ evoHeadRefresh(); });
+  const limBox=el("div",{style:"margin-top:8px"},limTxt); limBox.hidden=c.reanim!=="lim";
+  wrap.append(el("div",{class:"card"},el("h3",{},"Alergias e status de reanimação"),
+    el("div",{class:"ev-g"},
+      el("div",{class:"s2"},lab("Alergias",true),el("div",{style:"display:flex;gap:8px"},aler,
+        el("button",{class:"btn",type:"button",onclick:()=>{ aler.value="Nega"; evoSet(id,"alergias","Nega"); evoHeadRefresh(); evoNavRefresh(); }},"Nega"))),
+      el("div",{class:"s2"},lab("Status de reanimação",true),tog("reanim",[["pleno","Suporte pleno"],["lim","Limitação de suporte"]],()=>{ limBox.hidden=c.reanim!=="lim"; }),limBox))));
+  wrap.append(el("div",{class:"ev-sign"},el("div",{id:"evoResumo"},evoResumo(id)),
+    el("div",{class:"hint",style:"margin:6px 0 0"},"Os dados são salvos automaticamente e ficam no cadastro do leito: vão junto numa transferência e são apagados no “Limpar leito”.")));
+  return wrap;
+}
+function evoResumo(id){
+  const falt=evoFaltam(id);
+  return falt.length?el("span",{style:"color:var(--warn);font-weight:600"},"Falta preencher: "+falt.join(", ")+"."):el("span",{style:"color:#2e7d32;font-weight:600"},"✓ Cadastro completo.");
+}
+function evoNavRefresh(){
+  if(view!=="evo") return;
+  const nav=$("#evoApp nav.beds"); if(nav) nav.replaceWith(evoNav(SV.med.beds.filter(b=>b.nome)));
+  const r=$("#evoResumo"); if(r&&EVO.sel){ r.innerHTML=""; r.append(evoResumo(EVO.sel)); }
+}
+
 /* ============ Inicialização ============ */
 async function init(){
   const fb=await window.fbReady;
@@ -3948,6 +4296,7 @@ async function init(){
       const sair=()=>FB.signOut().then(()=>location.reload());
       ["#bSair","#hubSair"].forEach(q=>{ const b=$(q); b.hidden=false; b.onclick=sair; });
       await netStart();
+      await evoInit(u);   /* só faz algo para os logins da lista "teste"; os demais seguem exatamente como antes */
     }catch(e){
       if(e&&e.code==="permission-denied"){ blockAccess(); return; }
       console.error(e);
