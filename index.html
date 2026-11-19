@@ -475,6 +475,13 @@ textarea.par-ta:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2
 .ev-tag.o{background:#fff;color:var(--ink);border:1.5px solid var(--ink)}
 .ev-sign{background:#f6f9f8;border:1px solid #e1e8e6;border-radius:8px;padding:10px 12px;font-size:14px}
 .ev-empty{color:var(--muted);padding:30px 0;text-align:center}
+.ev-admitir{background:#fff;border:2px dashed #9cc8bf;border-radius:16px;padding:24px;text-align:center;margin:0 auto 10px;max-width:820px}
+.ev-admitir .ic{width:56px;height:56px;border-radius:16px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center}
+.ev-admitir h2{margin:8px 0 6px;font-size:24px}
+.ev-adm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(115px,1fr));gap:10px;margin-top:16px}
+.ev-adm-grid button{border:1.5px solid #9cc8bf;background:#f3faf8;border-radius:10px;padding:12px 6px;font-weight:700;color:var(--accent);font-size:15px}
+.ev-adm-grid button:hover{background:var(--accent-soft);border-color:var(--accent)}
+.ev-adm-grid button small{display:block;font-weight:500;color:var(--muted);font-size:12px;margin-top:2px}
 @media(max-width:900px){.ev-g{grid-template-columns:1fr 1fr}}
 /* boas-vindas */
 .bv-ov{position:fixed;inset:0;z-index:150;display:flex;align-items:center;justify-content:center;padding:24px;overflow-y:auto}
@@ -4990,11 +4997,21 @@ function evoNav(beds){
   return nav;
 }
 function evoEditor(){
-  if(!EVO.sel) return el("div",{class:"ev-empty"},
-    el("h2",{style:"color:var(--ink);margin:0 0 8px"},"Evolução médica"),
-    el("p",{},"Escolha um paciente na lista ao lado para completar o cadastro."),
-    el("p",{class:"hint"},"Nesta primeira etapa do teste está disponível o cadastro do paciente. Adendo, evoluções, intercorrências, linha do tempo e relatório chegam nas próximas etapas."),
-    el("div",{class:"ev-sign",style:"max-width:640px;margin:18px auto 0;text-align:left"},el("b",{},"Sua assinatura nas folhas: "),evoAssinatura()));
+  if(!EVO.sel){
+    /* tela inicial: quadro "Admitir paciente" com os leitos vagos (ideia C aprovada) */
+    const vagos=SV.med.beds.filter(b=>!b.nome&&(!b.extra||b.ativo!==false));
+    const mais='<svg viewBox="0 0 24 24" style="width:32px;height:32px;stroke:var(--accent);fill:none;stroke-width:2.2;stroke-linecap:round"><path d="M12 5v14M5 12h14"/></svg>';
+    return el("div",{},
+      el("div",{class:"ev-admitir"},
+        el("div",{class:"ic",html:mais}),
+        el("h2",{},"Admitir paciente"),
+        el("p",{class:"hint",style:"font-size:14.5px;margin:0"},vagos.length?"Clique no leito vago onde o paciente vai ficar. Depois preencha o cadastro e o adendo de internação.":"Nenhum leito vago no momento."),
+        vagos.length?el("div",{class:"ev-adm-grid"},vagos.map(b=>el("button",{type:"button",onclick:()=>evoAdmitir(b.id)},bedLabel(b),el("small",{},"vago")))):null),
+      el("div",{class:"ev-empty",style:"padding-top:6px"},
+        el("p",{},"Para o cadastro ou o adendo de um paciente já internado, escolha-o na lista ao lado."),
+        el("p",{class:"hint"},"Evoluções diárias, intercorrências, linha do tempo e relatório chegam nas próximas etapas."),
+    el("div",{class:"ev-sign",style:"max-width:640px;margin:18px auto 0;text-align:left"},el("b",{},"Sua assinatura nas folhas: "),evoAssinatura())));
+  }
   const id=EVO.sel, b=SV.med.beds.find(x=>x.id===id), p=pacOf(id), c=evoC(id), wrap=el("div");
   const lab=(t,req)=>el("label",{class:"lbl"+(req?" ev-req":"")},t);
   const inp=(k,attrs,onv)=>{ const i=el("input",Object.assign({class:"txt",value:c[k]||""},attrs||{})); i.addEventListener("input",()=>{ evoSet(id,k,i.value.trim()); if(onv) onv(); }); i.addEventListener("change",()=>evoNavRefresh()); return i; };
