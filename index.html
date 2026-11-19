@@ -4592,6 +4592,7 @@ const EVO_PRINT_CSS=`@page evport{size:A4 portrait;margin:7mm 8mm}
 .evp .sup{display:inline-block;border-left:1.6pt solid #000;padding-left:1.2mm;margin-left:.6mm}
 .evp .hpp{display:grid;grid-template-columns:repeat(5,1fr);gap:.6mm 2mm}.evp .ck{display:inline-block;width:2.5mm;height:2.5mm;border:.6pt solid #000;vertical-align:-.3mm;margin-right:.6mm}.evp .ck.x{background:#000}
 .evp .sig{display:grid;grid-template-columns:1fr 1fr;gap:6mm;margin-top:8mm;break-inside:avoid}.evp .sig.um{grid-template-columns:1fr}.evp .sig.um .ln{width:95mm;margin-left:auto}
+.evp .pb{break-before:page;height:0}
 .evp .ln{border-top:.7pt solid #000;padding-top:.6mm;text-align:center;font-size:7.8pt}.evp .foot{margin-top:2mm;font-size:6.4pt;color:#555}`;
 function evoAdmHtml(id){
   const b=SV.med.beds.find(x=>x.id===id), p=pacOf(id), c=evoC(id), d=evoAdmDoc(id,false); if(!d) return "";
@@ -4634,13 +4635,14 @@ ${d.meds.trim()?`<h3>Medicações de uso contínuo</h3><p style="white-space:pre
 <div class="two"><div><h3>História social</h3><p>Tabagista: ${sn(soc.tab)}${soc.tabTxt?" ("+e(soc.tabTxt)+")":""} · Etilista: ${sn(soc.eti)} · Drogas ilícitas: ${sn(soc.drogas)}</p></div><div><h3>Antecedentes familiares</h3><p>${e(d.familiares||"—")}</p></div></div>
 <h3>Sinais vitais na admissão</h3><p>${svt}</p>
 <h3>Exame físico</h3><div>${ex}</div>
+<div class="pb"></div><div class="hd"><div>${logo}</div><div class="tt"><div class="u">UNIDADE DE TERAPIA INTENSIVA – IOG</div><div class="d">ADENDO DE INTERNAÇÃO (continuação)</div></div><div class="dt"><b>${e(p.nome)}</b><br>${e(bedLabel(b))} · ${dtx}</div></div>
 <div class="two"><div><h3>Dispositivos invasivos</h3><p>${devs||"—"}</p></div>${d.escores.saps3||d.escores.sofa?`<div><h3>Escores</h3><p>${d.escores.saps3?"<b>SAPS 3:</b> "+e(d.escores.saps3):""}${d.escores.saps3&&d.escores.sofa?" · ":""}${d.escores.sofa?"<b>SOFA:</b> "+e(d.escores.sofa):""}</p></div>`:"<div></div>"}</div>
 ${imgs||lab?`<h3>Exames de imagem e laboratoriais</h3><p>${[imgs,lab].filter(Boolean).join(" · ")}</p>`:""}
 <div class="two"><div><h3>Diagnósticos / lista de problemas</h3><p>${probs}</p></div><div><h3>CID-10 principal</h3><p><b>${e(d.cid.cod)}</b> — ${e(d.cid.desc)}</p></div></div>
 <h3>Conduta</h3><div>${conduta}</div>${protos}
 ${fx?`<p><b>${fx}</b></p>`:""}${k.livre.trim()?`<p style="white-space:pre-wrap">${e(k.livre)}</p>`:""}
 <div class="sig${diur?"":" um"}">${diur?`<div class="ln">${e(diar||"Diarista")}</div>`:""}<div class="ln">${assin}<br>Médico — assinatura e carimbo</div></div>
-<div class="foot">Adendo de internação · ${e(p.nome)} · ${e(bedLabel(b))}</div></div>`;
+<div class="foot">Adendo de internação · ${e(p.nome)} · ${e(bedLabel(b))} · página 2/2</div></div>`;
 }
 function evoAdmImprimir(id,previa){
   const h=evoAdmHtml(id); if(!h) return;
