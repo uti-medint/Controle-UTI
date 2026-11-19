@@ -475,6 +475,8 @@ textarea.par-ta:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2
 .ev-tag.o{background:#fff;color:var(--ink);border:1.5px solid var(--ink)}
 .ev-sign{background:#f6f9f8;border:1px solid #e1e8e6;border-radius:8px;padding:10px 12px;font-size:14px}
 .ev-empty{color:var(--muted);padding:30px 0;text-align:center}
+.ev-adm-big{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;border:0;border-radius:12px;background:var(--accent);color:#fff;font-weight:800;font-size:16.5px;padding:15px 12px;margin:2px 0 10px;box-shadow:0 4px 14px rgba(15,107,94,.25);cursor:pointer}
+.ev-adm-big:hover{background:#0b574c}.ev-adm-big svg{width:24px;height:24px;stroke:#fff;fill:none;stroke-width:2.4;stroke-linecap:round}
 .ev-admitir{background:#fff;border:2px dashed #9cc8bf;border-radius:16px;padding:24px;text-align:center;margin:0 auto 10px;max-width:820px}
 .ev-admitir .ic{width:56px;height:56px;border-radius:16px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center}
 .ev-admitir h2{margin:8px 0 6px;font-size:24px}
@@ -4370,19 +4372,27 @@ function evoCidCarregar(){ if(EVO_CID) return Promise.resolve(EVO_CID); if(!EVO_
 function evoCidBusca(q){ const t=norm(q).split(" ").filter(Boolean); if(!t.length||!EVO_CID) return []; const out=[]; for(const it of EVO_CID){ if(t.every(w=>it[2].includes(w))){ out.push(it); if(out.length>=30) break; } } return out; }
 
 /* ---- admitir paciente num leito vago ---- */
-function evoAdmitir(id){
-  const b=SV.med.beds.find(x=>x.id===id); if(!b) return;
+function evoAdmitir(id0){
+  /* sem leito (botão do topo da lista): a janela pede para escolher o leito vago */
+  const vagos=SV.med.beds.filter(x=>!x.nome&&(!x.extra||x.ativo!==false));
+  if(!id0&&!vagos.length){ alert("Nenhum leito vago no momento."); return; }
+  if(id0&&!SV.med.beds.some(x=>x.id===id0)) return;
+  const sLeito=id0?null:el("select",{class:"txt"},el("option",{value:""},"Escolha o leito vago…"),vagos.map(x=>el("option",{value:x.id},bedLabel(x))));
   const nome=el("input",{class:"txt",placeholder:"Nome completo",autocomplete:"off"});
   const agora=evoAgoraLocal(); let dIso=agora.slice(0,10), dHora=agora.slice(11,16);
   const dt=el("div",{style:"display:grid;grid-template-columns:minmax(0,1fr) 80px;gap:6px"},evoDataInput(dIso,v=>{ dIso=v; },{max:todayISO()}),evoHoraInput(dHora,h=>{ dHora=h; }));
   const pl=el("select",{class:"txt"},el("option",{value:""},"Convênio…"),(SHARED.lists.plano||[]).map(x=>el("option",{value:x},x)));
   const err=el("p",{class:"ev-warn"});
-  const body=el("div",{},el("p",{class:"hint"},`O paciente entra no ${bedLabel(b)} e aparece também nos passômetros médico e de enfermagem.`),
+  const b0=id0?SV.med.beds.find(x=>x.id===id0):null;
+  const body=el("div",{},el("p",{class:"hint"},b0?`O paciente entra no ${bedLabel(b0)} e aparece também nos passômetros médico e de enfermagem.`:"O paciente aparece também nos passômetros médico e de enfermagem."),
+    sLeito?el("div",{style:"margin-bottom:10px"},el("label",{class:"lbl ev-req"},"Leito"),sLeito):null,
     el("label",{class:"lbl ev-req"},"Nome completo"),nome,el("div",{style:"height:10px"}),
     el("div",{style:"display:grid;grid-template-columns:1fr 1fr;gap:10px"},el("div",{},el("label",{class:"lbl ev-req"},"Admissão na UTI (data e hora)"),dt),el("div",{},el("label",{class:"lbl"},"Convênio"),pl)),err,
     el("div",{style:"display:flex;justify-content:flex-end;gap:8px;margin-top:12px"},
       el("button",{class:"btn",type:"button",onclick:()=>fecha()},"Cancelar"),
       el("button",{class:"btn primary",type:"button",onclick:()=>{
+        const id=id0||(sLeito&&sLeito.value); if(!id){ err.textContent="Escolha o leito."; return; }
+        const b=SV.med.beds.find(x=>x.id===id);
         const nm=nome.value.trim().toUpperCase(); if(!nm){ err.textContent="Informe o nome."; return; }
         const dtv=(dIso||"")+"T"+(dHora||""); if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dtv)){ err.textContent="Informe a data e a hora da admissão."; return; }
         if(b.nome){ err.textContent="Este leito foi ocupado por outro computador agora há pouco."; return; }
@@ -4390,7 +4400,7 @@ function evoAdmitir(id){
         ensurePid(id); const d=evoAdmDoc(id,true); d.dataHora=dtv; evoDocSave(d);
         fecha(); EVO.sel=id; EVO.tab="adm"; renderEvo(); toast("Paciente admitido no "+bedLabel(b));
       }},"Admitir e abrir o adendo")));
-  const fecha=openModal("Admitir paciente — "+bedLabel(b),body); setTimeout(()=>nome.focus(),50);
+  const fecha=openModal(b0?"Admitir paciente — "+bedLabel(b0):"Admitir paciente",body); setTimeout(()=>(sLeito||nome).focus(),50);
 }
 
 /* ---- tela do adendo ---- */
@@ -4980,7 +4990,9 @@ function renderEvo(){
   root.append(el("main",{},evoNav(beds),el("section",{class:"editor"},el("div",{class:"editor-inner",id:"evoEditor"},evoEditor()))));
 }
 function evoNav(beds){
-  const nav=el("nav",{class:"beds"},el("div",{class:"group"},"Pacientes internados ("+beds.length+")"));
+  const nav=el("nav",{class:"beds"},
+    el("button",{class:"ev-adm-big",type:"button",onclick:()=>evoAdmitir(),html:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Admitir paciente'}),
+    el("div",{class:"group"},"Pacientes internados ("+beds.length+")"));
   if(!beds.length) nav.append(el("p",{class:"hint",style:"padding:8px"},"Nenhum paciente no passômetro."));
   beds.forEach(b=>{
     const falt=evoFaltam(b.id), d=evoDiasUTI(b.admissao);
@@ -4991,9 +5003,6 @@ function evoNav(beds){
       el("span",{class:"ev-st "+(falt.length?"falta":"ok")},falt.length?"Cadastro: falta"+(falt.length>1?"m ":" ")+falt.length:"Cadastro completo"),
       adm?el("span",{class:"ev-st "+(adm.impresso?"ok":"falta"),style:"margin-left:4px"},adm.impresso?"Adendo ✓":"Adendo em andamento"):null));
   });
-  const vagos=SV.med.beds.filter(b=>!b.nome&&(!b.extra||b.ativo!==false));
-  if(vagos.length) nav.append(el("div",{class:"nav-vagos"},el("div",{class:"nv-t"},"Leitos vagos — clique para admitir"),
-    el("div",{class:"nv-l"},vagos.map(b=>el("button",{class:"nv-b",type:"button",title:"Admitir paciente",onclick:()=>evoAdmitir(b.id)},bedLabel(b).replace(/^Leito /,""))))));
   return nav;
 }
 function evoEditor(){
