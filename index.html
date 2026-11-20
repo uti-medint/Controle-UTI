@@ -475,6 +475,34 @@ textarea.par-ta:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2
 .ev-tag.o{background:#fff;color:var(--ink);border:1.5px solid var(--ink)}
 .ev-sign{background:#f6f9f8;border:1px solid #e1e8e6;border-radius:8px;padding:10px 12px;font-size:14px}
 .ev-empty{color:var(--muted);padding:30px 0;text-align:center}
+#evoApp main{position:relative}
+#evoApp.gv-on section.editor{padding-right:100px}
+@media (min-width:1500px){#evoApp.gv-open section.editor{padding-right:556px}}
+.ev-rail{position:absolute;right:0;top:0;bottom:0;width:78px;background:#fff;border-left:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:14px;z-index:6}
+.ev-rail button{width:66px;border:0;background:none;border-radius:10px;padding:9px 2px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--muted);position:relative;cursor:pointer}
+.ev-rail button:hover{background:#f3f7f6;color:var(--ink)}
+.ev-rail button.on{background:var(--accent-soft);color:var(--accent)}
+.ev-rail .ic svg,.ev-gv-h .ic svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;display:block}
+.ev-rail .n{position:absolute;top:4px;right:9px;background:var(--danger);color:#fff;border-radius:9px;font-size:10px;padding:0 5px;line-height:16px}
+.ev-gv{position:absolute;right:78px;top:0;bottom:0;width:456px;max-width:calc(100% - 120px);background:#fff;border-left:1px solid var(--line);box-shadow:-12px 0 30px rgba(0,0,0,.10);z-index:5;display:flex;flex-direction:column}
+.ev-gv-h{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.ev-gv-h .ic{color:var(--accent)}
+.ev-gv-h h3{margin:0;font-size:16.5px;flex:1;min-width:0;line-height:1.2}
+.ev-gv-h h3 small{display:block;font-size:12.5px;font-weight:500;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev-gv-b{padding:12px 14px;overflow:auto;flex:1;font-size:14px}
+.ev-gv-b .card{margin:0 0 12px;padding:12px;box-shadow:none}
+.ev-gv-s{margin:0 0 12px}
+.ev-gv-s h4{margin:0 0 6px;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.ev-gv-togs{display:flex;flex-wrap:wrap;gap:6px}
+.ev-gv-it{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-bottom:1px dashed var(--line);font-size:13.5px}
+.ev-gv-it>div{flex:1;min-width:0}.ev-gv-it.col{flex-direction:column;gap:2px}
+.ev-gv-it .t{color:var(--muted);font-size:13px}.ev-gv-it ul{margin:4px 0 0;padding-left:18px;font-size:13px}
+.ev-gv-resp{background:#f3f7f6;border-radius:8px;padding:8px 10px;font-size:13px;white-space:pre-wrap;margin-top:4px}
+.ev-gv-cp{font-size:12px;border:1px solid var(--line);background:#fff;border-radius:6px;padding:3px 8px;color:var(--accent);font-weight:600;white-space:nowrap;cursor:pointer}
+.ev-gv-prec{background:#fbe4e2;color:var(--danger);font-weight:700;border-radius:8px;padding:6px 10px;margin-bottom:10px;font-size:13px}
+.ev-gv-f{padding:10px 14px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;background:#f7faf9}
+.ev-gv .rowbox.cul-row{grid-template-columns:1fr 1fr 34px}.ev-gv .rowbox.cul-row>*:nth-child(3){grid-column:1/3}
+.ev-gv-ck{display:flex;gap:6px;align-items:center;font-size:13px;margin-right:auto}
 .ev-adm-big{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;border:0;border-radius:12px;background:var(--accent);color:#fff;font-weight:800;font-size:16.5px;padding:15px 12px;margin:2px 0 10px;box-shadow:0 4px 14px rgba(15,107,94,.25);cursor:pointer}
 .ev-adm-big:hover{background:#0b574c}.ev-adm-big svg{width:24px;height:24px;stroke:#fff;fill:none;stroke-width:2.4;stroke-linecap:round}
 .ev-nr{background:#fff6d6;border:1px solid #e6c25a;border-radius:8px;padding:10px 12px;margin-top:8px}
@@ -1064,6 +1092,7 @@ function afterChange(){
   const b=inSvc?S.beds.find(x=>x.id===selected):null;
   if(b&&(b.nome||b.problemas.length)&&!b.pid) b.pid=uid();
   if(b){ b.upd=Date.now(); const u=document.getElementById("updInfo"); if(u) u.textContent=updText(b); }
+  if(!inSvc&&view==="evo"&&EVO.sel){ const be=SV.med.beds.find(x=>x.id===EVO.sel); if(be) be.upd=Date.now(); }
   save(); if(inSvc){ renderNav(); if(b&&!noMapa()&&typeof fichaRefresh==="function") fichaRefresh(); }
 }
 
@@ -2254,7 +2283,7 @@ function applyRemote(ev){
   } else if(view==="pocus"&&(ev.part.startsWith("pac:")||ev.part.startsWith("pocus:"))) rerenderActive();
   else if(view==="cult"&&/^(cul|pac:|bed:)/.test(ev.part)) rerenderActive();
   else if(view==="par"&&/^(par:|pac:)/.test(ev.part)) rerenderActive();
-  else if(view==="evo"&&/^(pac:|bed:|cfgevo:|usr:|evo:)/.test(ev.part)) rerenderActive();
+  else if(view==="evo"&&/^(pac:|bed:|cfgevo:|usr:|evo:|ped:|par:|pocus:)/.test(ev.part)) rerenderActive();
   else if(view==="hub") renderHub();
 }
 function onRemote(ev){
@@ -2477,7 +2506,9 @@ function avisoExames(){
 function showView(v){
   document.body.classList.remove("m-ed");   /* no celular, sempre começa pela lista de leitos */
   if(S&&S.svc&&(view==="med"||view==="enf")) SEL[S.svc]=selected;
-  if(v==="hub"||v==="med"||v==="enf") VOLTA=null;      /* "← Passômetro" só vale enquanto se está no pedido aberto pelo leito */
+  if(v==="hub"||v==="med"||v==="enf") VOLTA=null;
+  if(v==="hub"||v==="evo") VOLTA_EVO=false;
+  { const bm=$("#bMenu"); if(bm) bm.textContent=VOLTA_EVO&&v==="med"?"← Evolução":"← Menu"; }      /* "← Passômetro" só vale enquanto se está no pedido aberto pelo leito */
   view=v;
   $("#hub").hidden=v!=="hub";
   $("#app").hidden=!(v==="med"||v==="enf");
@@ -2651,7 +2682,7 @@ function renderPocus(){
   const msg=el("span",{class:"saved netmsg"}); const sm=$("#savedMsg"); msg.textContent=sm.textContent; if(sm.classList.contains("bad")) msg.classList.add("bad");
   const touch=()=>{ d.salvo=false; const sb=document.getElementById("pocSalvar"); if(sb) sb.textContent="Salvar exame"; };
   const head=el("header",{class:"top"},
-    el("button",{class:"btn",type:"button",onclick:()=>showView("hub")},"← Menu"),
+    el("button",{class:"btn",type:"button",onclick:()=>{ if(!evoVolta()) showView("hub"); }},VOLTA_EVO?"← Evolução":"← Menu"),
     el("h1",{},"POCUS"),el("div",{class:"spacer"}),msg,
     el("button",{class:"btn no-mobile",type:"button",onclick:logoModal},"Logo"),
     el("button",{class:"btn",type:"button",onclick:pocusHist},"Histórico"),
@@ -3103,7 +3134,7 @@ function renderExames(){
   const titles={menu:"",lab:" · Laboratoriais",img:" · Imagem",livre:" · Solicitação livre"};
   const msg=el("span",{class:"saved netmsg"}); const sm=$("#savedMsg"); msg.textContent=sm.textContent; if(sm.classList.contains("bad")) msg.classList.add("bad");
   root.append(el("header",{class:"top"},
-    el("button",{class:"btn",type:"button",onclick:()=>{ if(xd.tab==="menu") voltar(); else { xd.tab="menu"; renderExames(); } }},xd.tab==="menu"?(VOLTA?"← Passômetro":"← Menu"):"← Solicitação"),
+    el("button",{class:"btn",type:"button",onclick:()=>{ if(xd.tab==="menu") voltar(); else { xd.tab="menu"; renderExames(); } }},xd.tab==="menu"?(VOLTA?(VOLTA_EVO?"← Evolução":"← Passômetro"):"← Menu"):"← Solicitação"),
 el("button",{class:"btn primary",type:"button",style:"font-weight:800",onclick:()=>{ if(!xd.lab.sel.length&&!xd.img.length&&!xd.livre.length&&!xd.lab.gaso||confirm("Começar um novo pedido? O pedido atual será descartado (se já foi impresso, está no histórico).")){ xd=xdNew(); renderExames(); } }},"NOVO PEDIDO"),
     el("h1",{},"Solicitação de exames"+titles[xd.tab]),el("div",{class:"spacer"}),msg,
     el("button",{class:"btn",type:"button",onclick:xHist},"Histórico de pedidos")));
@@ -3259,7 +3290,7 @@ function xReview(){
       el("button",{class:"btn primary",type:"button",onclick:()=>{
         if(warn.length&&!confirm("Há avisos neste pedido. Imprimir mesmo assim?")) return;
         const rec=xRecord(); SHARED.ped.unshift(rec); pedLimite(); save();
-        xPrintHtml(html);
+        xPrintHtml(html); if(view==="evo"){ document.querySelectorAll(".overlay").forEach(o=>o.remove()); evoPedidoImpresso(rec); }
       }},"Imprimir e salvar no histórico")),prev);
   openModal("Revisar pedido",body); fitFields(prev);
 }
@@ -3344,15 +3375,18 @@ function parAbrir(ts){ parState.cur=ts; parState.draft=null; parState.tab="form"
 function voltar(){
   if(view==="par"&&parState.draft&&String(parState.draft.pedido||"").trim()&&!confirm("O pedido de parecer ainda não foi salvo. Sair e descartar?")) return;
   if(view==="par") parState.draft=null;
+  if(evoVolta()) return;
   const v=VOLTA; VOLTA=null;
   if(!v){ showView("hub"); return; }
   SEL.med=v; showView("med"); MAPA.med=false; document.body.classList.add("m-ed"); renderNav(); renderEditor();
 }
 function parDoPassometro(b){           /* botão "Pedir parecer" do passômetro médico */
+  if(view!=="evo") VOLTA_EVO=false;
   VOLTA=b.id; parState.cur=null; parState.draft=parNovo(b.id); parState.tab="form"; showView("par");
 }
-function parAbrirDoPassometro(b,ts){ VOLTA=b.id; parAbrir(ts); showView("par"); }
+function parAbrirDoPassometro(b,ts){ if(view!=="evo") VOLTA_EVO=false; VOLTA=b.id; parAbrir(ts); showView("par"); }
 function examesDoPassometro(b){        /* botão "Pedir exames": abre a solicitação já com o paciente do leito */
+  if(view!=="evo") VOLTA_EVO=false;
   const busy=xd&&(xd.lab.sel.length||xd.lab.gaso||(xd.lab.livres||[]).length||xd.img.length||xd.livre.length);
   if(busy&&xd.leito!==b.id&&!confirm("Há um pedido de exames em andamento para outro paciente ("+(xd.nome||"sem nome")+"). Descartar e começar um pedido para este leito?")) return;
   if(!xd||xd.leito!==b.id){ xd=xdNew(); xFromBed(b.id); }
@@ -3420,7 +3454,7 @@ function renderPareceres(){
   if(parState.tab==="form"&&!parState.draft&&!parRec(parState.cur)) parState.tab="lista";
   const form=parState.tab==="form";
   root.append(el("header",{class:"top"},
-    el("button",{class:"btn",type:"button",onclick:()=>{ if(form&&!VOLTA){ parState.tab="lista"; parState.draft=null; renderPareceres(); } else voltar(); }},form&&!VOLTA?"← Pareceres":(VOLTA?"← Passômetro":"← Menu")),
+    el("button",{class:"btn",type:"button",onclick:()=>{ if(form&&!VOLTA){ parState.tab="lista"; parState.draft=null; renderPareceres(); } else voltar(); }},form&&!VOLTA?"← Pareceres":(VOLTA?(VOLTA_EVO?"← Evolução":"← Passômetro"):"← Menu")),
     el("h1",{},"Parecer médico"),el("div",{class:"spacer"}),el("span",{class:"saved netmsg"}),
     el("button",{class:"btn no-mobile",type:"button",onclick:()=>parPrint({},{blank:true})},"Folha em branco"),
     el("button",{class:"btn primary",type:"button",onclick:()=>{ parState.cur=null; parState.draft=parNovo(""); parState.tab="form"; renderPareceres(); }},"Novo parecer")));
@@ -3722,7 +3756,7 @@ function renderCulturas(){
   const mesSel=el("select",{class:"txt","aria-label":"Mês",onchange:e=>{ culState.mes=e.target.value; culState.edit=null; renderCulturas(); }},
     ...meses.map(x=>el("option",Object.assign({value:x},x===m?{selected:""}:{}),culMesNome(x,true)+(x===culMesAtual()?" (atual)":""))));
   root.append(el("header",{class:"top"},
-    el("button",{class:"btn",type:"button",onclick:()=>showView("hub")},"← Menu"),
+    el("button",{class:"btn",type:"button",onclick:()=>{ if(!evoVolta()) showView("hub"); }},VOLTA_EVO?"← Evolução":"← Menu"),
     el("h1",{},"Controle de culturas"),
     el("div",{class:"spacer"}),
     el("span",{class:"saved netmsg"}),
@@ -5425,6 +5459,165 @@ function evoCfgUsr(body){
     evoCfgHist(n));
 }
 
+/* ---- barra de atalhos à direita + gaveta: passômetro, exames, POCUS, pareceres e culturas do paciente aberto ---- */
+let VOLTA_EVO=false;               /* a tela foi aberta pela evolução: o botão de voltar leva de volta para ela */
+const EVO_GAV_IC={
+  pass:'<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',
+  exam:'<svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/><path d="M7.5 15h9"/></svg>',
+  pocus:'<svg viewBox="0 0 24 24"><path d="M12 3c-1.5 0-3 1-3 3v3H7a2 2 0 0 0-2 2v1h14v-1a2 2 0 0 0-2-2h-2V6c0-2-1.5-3-3-3z"/><path d="M5 12l1.5 8h11L19 12"/></svg>',
+  par:'<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>',
+  cul:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="10" cy="10" r="1.5"/><circle cx="14.5" cy="13.5" r="1.5"/><circle cx="9.5" cy="15" r="1"/></svg>'};
+const EVO_GAV=[["pass","Passômetro","Passômetro médico"],["exam","Exames","Pedido de exames"],["pocus","POCUS","POCUS"],["par","Pareceres","Pareceres"],["cul","Culturas","Culturas"]];
+function evoVolta(){ if(!VOLTA_EVO) return false; VOLTA_EVO=false; VOLTA=null; showView("evo"); return true; }
+function evoGavBed(){ const b=EVO.sel&&SV.med.beds.find(x=>x.id===EVO.sel); return b&&b.nome?b:null; }
+function evoGavConta(k,b){
+  if(k==="pass") return pfLines(b).length+(b.pend||[]).filter(t=>String(t||"").trim()).length;
+  if(k==="par") return parDoLeito(b).filter(r=>!parRespondido(r)).length;
+  if(k==="cul") return culValidas(b.culturas).filter(c=>culRes(c)==="pend").length;
+  return 0;
+}
+/* abre a tela completa já com o paciente; o "voltar" de lá traz de volta para a evolução */
+function evoIrPara(k,b,extra){
+  if(k==="pass"){ VOLTA_EVO=true; SEL.med=b.id; showView("med"); MAPA.med=false; document.body.classList.add("m-ed"); renderNav(); renderEditor(); return; }
+  if(k==="exam"){ VOLTA_EVO=true; examesDoPassometro(b); if(view!=="exames") VOLTA_EVO=false; return; }
+  if(k==="par"){ VOLTA_EVO=true; if(extra) parAbrirDoPassometro(b,extra); else parDoPassometro(b); return; }
+  if(k==="cul"){ VOLTA_EVO=true; showView("cult"); return; }
+  if(k==="pocus"){
+    if(pdraft&&pocusHasData(pdraft)&&!pdraft.salvo&&pdraft.leito!==b.id&&!confirm("Há um POCUS em andamento e não salvo para outro paciente. Descartar e começar um para este leito?")) return;
+    if(!pdraft||pdraft.leito!==b.id||pdraft.salvo){ pdraft=pocusNew(null); Object.assign(pdraft,{leito:b.id,pid:ensurePid(b.id),nome:b.nome,nomeAuto:true}); }
+    VOLTA_EVO=true; showView("pocus");
+  }
+}
+/* a evolução (ou o adendo) aberta agora, para receber texto na conduta */
+function evoDocAlvo(){
+  if(!EVO.sel) return null;
+  if(EVO.tab==="dia"&&EVO.evoKey&&EVO_DOCS[EVO.evoKey]) return EVO_DOCS[EVO.evoKey];
+  if(EVO.tab==="adm") return evoAdmDoc(EVO.sel)||null;
+  return null;
+}
+function evoParaConduta(txt,silencioso){
+  const d=evoDocAlvo();
+  if(!d){ if(!silencioso) alert("Abra a evolução diária (ou o adendo) do paciente para levar o texto para a conduta."); return false; }
+  const c=d.conduta, at=String(c.livre||"").replace(/\s+$/,"");
+  if(at.split("\n").some(l=>l.trim()===txt.trim())){ if(!silencioso) toast("Já está na conduta"); return false; }
+  c.livre=(at?at+"\n":"")+txt; evoDocSave(d); renderEvo(); toast("Levado para a conduta da "+(d.turno?"evolução":"admissão")); return true;
+}
+function evoPedTxt(r){
+  const d=r.d||{}, L=d.lab||{}, it=[];
+  (L.sel||[]).forEach(x=>it.push(x));
+  if(L.gaso) it.push("gasometria "+({arterial:"arterial",venosa:"venosa",venosa_central:"venosa de acesso central"}[L.tipo]||""));
+  (L.livres||[]).forEach(x=>it.push(x));
+  (d.img||[]).filter(i=>i&&i.nome).forEach(i=>it.push(i.nome+((i.sitios||[]).length?" de "+i.sitios.join(", ").toLowerCase():"")));
+  (d.livre||[]).filter(i=>i&&i.nome).forEach(i=>it.push(i.nome));
+  return it.length?"Solicitados: "+it.join(", ")+".":"";
+}
+function evoPedidoImpresso(rec){        /* chamado pela revisão do pedido de exames */
+  if(view!=="evo") return;
+  const b=evoGavBed(); if(!b||rec.leito!==b.id) return;
+  xd=xdNew(); xFromBed(b.id);
+  if(EVO.gavCond!==false){ const t=evoPedTxt(rec); if(t) evoParaConduta(t,true); }
+  evoGavRedraw();
+}
+function evoGavRail(b){
+  const k=EVO.gav||"";
+  return el("nav",{class:"ev-rail","aria-label":"Atalhos do paciente"},...EVO_GAV.map(([id,curto,longo])=>{
+    const n=evoGavConta(id,b);
+    return el("button",{type:"button",class:k===id?"on":"",title:longo,"aria-pressed":String(k===id),onclick:()=>{ EVO.gav=k===id?"":id; renderEvo(); }},
+      el("span",{class:"ic",html:EVO_GAV_IC[id]}),curto,n?el("span",{class:"n"},String(n)):null);
+  }));
+}
+function evoGavRedraw(){
+  const old=document.getElementById("evoGav"), b=evoGavBed(); if(!old||!b) return;
+  const sc=old.querySelector(".ev-gv-b"), st=sc?sc.scrollTop:0;
+  const nv=evoGavDrawer(b); old.replaceWith(nv); const s2=nv.querySelector(".ev-gv-b"); if(s2) s2.scrollTop=st;
+  const r=document.querySelector("#evoApp .ev-rail"); if(r) r.replaceWith(evoGavRail(b));
+}
+function evoGavDrawer(b){
+  const k=EVO.gav, def=EVO_GAV.find(x=>x[0]===k);
+  const body=el("div",{class:"ev-gv-b"}), foot=el("div",{class:"ev-gv-f"});
+  const box=el("aside",{class:"ev-gv",id:"evoGav"},
+    el("div",{class:"ev-gv-h"},el("span",{class:"ic",html:EVO_GAV_IC[k]}),el("h3",{},def[2],el("small",{},bedLabel(b)+" · "+b.nome)),
+      el("button",{class:"btn small",type:"button",onclick:()=>evoIrPara(k,b)},"Abrir tela completa"),
+      el("button",{class:"btn small",type:"button","aria-label":"Fechar",onclick:()=>{ EVO.gav=""; renderEvo(); }},"✕")),body,foot);
+  ({pass:evoGavPass,exam:evoGavExam,pocus:evoGavPocus,par:evoGavPar,cul:evoGavCul})[k](b,body,foot);
+  if(!foot.childNodes.length) foot.remove();
+  return box;
+}
+const evoGavSec=(t,...k)=>el("div",{class:"ev-gv-s"},el("h4",{},t),...k);
+function evoGavPass(b,body,foot){
+  const pr=precTxt(b);
+  if(pr) body.append(el("div",{class:"ev-gv-prec"},"Precaução: "+pr));
+  body.append(evoGavSec("Problemas",picker({key:"problemas",placeholder:"Escolher ou digitar um problema",get:()=>b.problemas,set:v=>{ b.problemas=v; afterChange(); }})));
+  body.append(pfCard(b,el("div",{},el("label",{class:"lbl pf-outras"},"Outras pendências (uma por linha)"),linesBox(b,"pend","pend","Ex.: Conversar com a família às 16h"))));
+  body.append(evoGavSec("Condutas do passômetro",linesBox(b,"condutas","condutas","Ex.: Desmame de noradrenalina, alvo PAM ≥ 65")));
+  const ic=(b.interc||[]).filter(x=>x&&x.nome);
+  if(ic.length) body.append(evoGavSec("Intercorrências (passômetro)",el("ul",{},...ic.map(x=>el("li",{},(x.data?fmtDate(x.data)+" · ":"")+x.nome)))));
+  body.append(el("p",{class:"hint"},"É o mesmo passômetro médico: o que mudar aqui já aparece lá, e vice-versa."));
+  foot.append(el("button",{class:"btn",type:"button",onclick:()=>evoIrPara("pass",b)},"Abrir passômetro completo"));
+}
+function evoGavExam(b,body,foot){
+  const vivos=SHARED.ped.filter(r=>r.leito===b.id&&pedVivo(r,Date.now()));
+  if(vivos.length) body.append(evoGavSec("Pedidos válidos deste paciente",...vivos.map(r=>{ const t=evoPedTxt(pedDados(r)?{d:pedDados(r)}:r);
+    return el("div",{class:"ev-gv-it"},el("div",{},el("b",{},new Date(r.ts).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})),r.por?" · "+String(r.por).split("@")[0]:"",el("div",{class:"t"},t.replace(/^Solicitados: /,""))),
+      t?el("button",{class:"ev-gv-cp",type:"button",title:"Acrescentar à conduta da evolução aberta",onclick:()=>evoParaConduta(t)},"→ conduta"):null); })));
+  const busy=xd&&xd.leito&&xd.leito!==b.id&&(xd.lab.sel.length||xd.lab.gaso||(xd.lab.livres||[]).length||xd.img.length||xd.livre.length);
+  if(busy){ body.append(el("div",{class:"ev-warn"},`Há um pedido em andamento para outro paciente (${xd.nome||"sem nome"}).`,el("div",{style:"margin-top:8px"},
+      el("button",{class:"btn small",type:"button",onclick:()=>{ xd=xdNew(); xFromBed(b.id); evoGavRedraw(); }},"Descartar e começar para este leito")))); return; }
+  if(!xd||xd.leito!==b.id){ xd=xdNew(); xFromBed(b.id); }
+  const L=xd.lab, sel=L.sel, has=n=>sel.includes(n), all=a=>a.every(has), re=()=>evoGavRedraw();
+  const flip=n=>{ const i=sel.indexOf(n); if(i>=0) sel.splice(i,1); else sel.push(n); re(); };
+  const setMany=(a,on)=>a.forEach(n=>{ const i=sel.indexOf(n); if(on&&i<0) sel.push(n); if(!on&&i>=0) sel.splice(i,1); });
+  const grp=(t,arr)=>evoGavSec(t,el("div",{class:"ev-gv-togs"},...arr.map(n=>xTog(n,has(n),()=>flip(n)))));
+  body.append(el("p",{class:"hint",style:"margin:4px 0 8px"},"Novo pedido de laboratório. Imagem e solicitação livre ficam na tela completa."),
+    evoGavSec("Pacotes",el("div",{class:"ev-gv-togs"},xTog("Rotina",all(X_ROT),()=>{ setMany(X_ROT,!all(X_ROT)); re(); }),xTog("Culturas",all(X_CULT),()=>{ setMany(X_CULT,!all(X_CULT)); re(); }),
+      xTog("Limpar",false,()=>{ L.sel=[]; L.gaso=false; L.livres=[]; re(); }))),
+    grp("Rotina",X_ROT),
+    evoGavSec("Gasometria",el("div",{class:"ev-gv-togs"},xTog("Gasometria",L.gaso,()=>{ L.gaso=!L.gaso; re(); }),
+      ...(L.gaso?[["arterial","Arterial"],["venosa","Venosa"],["venosa_central","Venosa central"]].map(([v,l])=>xTog(l,L.tipo===v,()=>{ L.tipo=v; re(); })):[]))),
+    grp("Culturas",X_CULT),grp("Somente na admissão",X_ADM),
+    evoGavSec("Outros exames",picker({key:"examLab",placeholder:"Digite o exame e tecle Enter",get:()=>L.livres,set:v=>{ L.livres=v; }})));
+  if(!xGuia(xd)){ const g=el("select",{class:"txt",onchange:e=>{ xd.guia=e.target.value; re(); }},el("option",{value:"auto"},"Escolher a guia…"),...Object.keys(X_GUIAS).map(k=>el("option",{value:k},X_GUIAS[k])));
+    body.append(evoGavSec("Guia",el("p",{class:"hint",style:"margin:0 0 6px"},"O convênio do paciente não foi reconhecido."),g)); }
+  const ck=el("input",{type:"checkbox"}); ck.checked=EVO.gavCond!==false; ck.onchange=()=>{ EVO.gavCond=ck.checked; };
+  foot.append(el("label",{class:"ev-gv-ck"},ck,"Levar para a conduta da evolução"),
+    el("button",{class:"btn",type:"button",onclick:()=>evoIrPara("exam",b)},"Imagem e outros…"),
+    el("button",{class:"btn primary",type:"button",onclick:()=>xReview()},"Revisar e imprimir"));
+}
+function evoGavPocus(b,body,foot){
+  const rs=b.pid?SHARED.pocus.filter(r=>r.pid===b.pid).sort((x,y)=>y.ts-x.ts):[];
+  if(!rs.length) body.append(el("p",{class:"hint"},"Nenhum POCUS registrado para este paciente."));
+  rs.slice(0,8).forEach(r=>{ const bl=recBlocos(r), alt=pocusAlteracoes(bl);
+    body.append(el("div",{class:"ev-gv-it col"},
+      el("div",{},el("b",{},new Date(r.ts).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"})),r.examinador?" · "+r.examinador:""),
+      el("div",{class:"t"},blocosPreenchidos(bl).map(x=>x.curto).join(", ")),
+      alt.length?el("ul",{},...alt.slice(0,8).map(a=>el("li",{},a.nome+": "+a.txt))):el("div",{class:"t",style:"color:#2e7d32"},"Sem alterações marcadas"))); });
+  if(rs.length>8) body.append(el("p",{class:"hint"},`Mais ${rs.length-8} exame(s) no histórico do POCUS.`));
+  foot.append(el("button",{class:"btn",type:"button",onclick:()=>pocusHist()},"Histórico"),
+    el("button",{class:"btn primary",type:"button",onclick:()=>evoIrPara("pocus",b)},"Novo POCUS deste paciente"));
+}
+function evoGavPar(b,body,foot){
+  const rs=parDoLeito(b).slice().sort((x,y)=>y.ts-x.ts);
+  if(!rs.length) body.append(el("p",{class:"hint"},"Nenhum parecer pedido para este paciente."));
+  rs.forEach(r=>{ const ok=parRespondido(r), esp=r.espec||"Sem especialidade";
+    const t=ok?`Parecer da ${esp} respondido${r.respEm?" em "+new Date(r.respEm).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}):""}.`:`Aguarda parecer da ${esp} (pedido em ${new Date(r.ts).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}).`;
+    body.append(el("div",{class:"ev-gv-it col"},
+      el("div",{style:"display:flex;gap:8px;align-items:center"},el("b",{style:"flex:1"},esp),el("span",{class:"par-st "+(ok?"resp":"pend")},ok?"Respondido":"Pendente")),
+      el("div",{class:"t"},"Pedido em "+parQuando(r.ts)),
+      parTemTexto(r)?el("div",{class:"ev-gv-resp"},String(r.resp).slice(0,400)+(String(r.resp).length>400?"…":"")):null,
+      el("div",{style:"display:flex;gap:6px;margin-top:6px"},el("button",{class:"btn small",type:"button",onclick:()=>evoIrPara("par",b,r.ts)},"Abrir"),
+        el("button",{class:"ev-gv-cp",type:"button",onclick:()=>evoParaConduta(t)},"→ conduta")))); });
+  foot.append(el("button",{class:"btn primary",type:"button",onclick:()=>evoIrPara("par",b)},"Pedir parecer"));
+}
+function evoGavCul(b,body,foot){
+  const draw=()=>{ body.innerHTML="";
+    if(!b.culturas.length) body.append(el("p",{class:"hint"},"Nenhuma cultura registrada no passômetro."));
+    b.culturas.forEach((c,i)=>body.append(culRowEditor(c,()=>afterChange(),()=>{ b.culturas.splice(i,1); afterChange(); draw(); },()=>{})));
+    body.append(el("button",{class:"btn",type:"button",onclick:()=>{ b.culturas.push(culNova(todayISO())); afterChange(); draw(); }},"+ Adicionar cultura"),
+      el("p",{class:"hint"},"São as mesmas culturas do passômetro médico. As positivas entram na evolução.")); };
+  draw();
+  foot.append(el("button",{class:"btn",type:"button",onclick:()=>evoIrPara("cul",b)},"Abrir controle de culturas"));
+}
+
 function evoTopo(){ const s=$("#evoApp section.editor"); if(s) s.scrollTop=0; }
 function renderEvo(){
   const root=$("#evoApp"), sc0=root.querySelector("section.editor"), scroll=sc0?sc0.scrollTop:0;
@@ -5443,7 +5636,10 @@ function renderEvo(){
       el("button",{class:"ev-plantao",type:"button",title:"Trocar plantão",onclick:()=>evoBoasVindas(true)},evoTurnoTxt()+" · trocar"),
       el("div",{class:"ev-user"},el("b",{},evoTratamento()),EVO.perfil&&!EVO.perfil.generico?(EVO_GRUPO[EVO.perfil.grupo]||EVO_GRUPO.plant)[evoFem()?1:0]:"Login de residentes")));
   if(cfg){ renderEvoCfg(root); return; }
-  root.append(el("main",{},evoNav(beds),el("section",{class:"editor"},el("div",{class:"editor-inner",id:"evoEditor"},evoEditor()))));
+  const gb=evoGavBed(); if(EVO.gav&&!gb) EVO.gav="";
+  root.classList.toggle("gv-on",!!gb); root.classList.toggle("gv-open",!!(gb&&EVO.gav));
+  root.append(el("main",{},evoNav(beds),el("section",{class:"editor"},el("div",{class:"editor-inner",id:"evoEditor"},evoEditor())),
+    gb?evoGavRail(gb):null,gb&&EVO.gav?evoGavDrawer(gb):null));
 }
 function evoNav(beds){
   const nav=el("nav",{class:"beds"},
@@ -5604,7 +5800,7 @@ async function init(){
     pop.addEventListener("click",fecha);
     document.addEventListener("click",e=>{ if(!pop.hidden&&!$("#maisWrap").contains(e.target)) fecha(); });
     document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&!pop.hidden){ fecha(); bt.focus(); } }); }
-  $("#bMenu").onclick=()=>showView("hub"); $("#hubLogoBtn").onclick=logoModal;
+  $("#bMenu").onclick=()=>{ if(!evoVolta()) showView("hub"); }; $("#hubLogoBtn").onclick=logoModal;
   showView("hub");
 }
 init();
