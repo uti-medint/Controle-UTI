@@ -503,6 +503,17 @@ textarea.par-ta:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2
 .ev-gv-f{padding:10px 14px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;background:#f7faf9}
 .ev-gv .rowbox.cul-row{grid-template-columns:1fr 1fr 34px}.ev-gv .rowbox.cul-row>*:nth-child(3){grid-column:1/3}
 .ev-gv-ck{display:flex;gap:6px;align-items:center;font-size:13px;margin-right:auto}
+.ev-busca{margin:0 0 8px;font-size:13.5px;padding:7px 10px}
+.ev-tl{position:relative;margin-left:4px}
+.ev-tl-dia{font-weight:700;font-size:13px;color:var(--muted);text-transform:none;margin:16px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+.ev-tl-dia:first-child{margin-top:0}
+.ev-tl-it{display:grid;grid-template-columns:52px 14px minmax(0,1fr) auto;gap:10px;align-items:start;padding:8px 6px;border-radius:8px}
+.ev-tl-it:hover{background:#f3f7f6}
+.ev-tl-it .h{font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px;padding-top:1px}
+.ev-tl-it .dot{width:10px;height:10px;border-radius:50%;margin-top:5px}
+.ev-tl-it .tp{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-right:8px}
+.ev-tl-it .s{color:var(--muted);font-size:13px;margin-top:2px}
+.ev-tl-it .a{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .ev-adm-big{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;border:0;border-radius:12px;background:var(--accent);color:#fff;font-weight:800;font-size:16.5px;padding:15px 12px;margin:2px 0 10px;box-shadow:0 4px 14px rgba(15,107,94,.25);cursor:pointer}
 .ev-adm-big:hover{background:#0b574c}.ev-adm-big svg{width:24px;height:24px;stroke:#fff;fill:none;stroke-width:2.4;stroke-linecap:round}
 .ev-nr{background:#fff6d6;border:1px solid #e6c25a;border-radius:8px;padding:10px 12px;margin-top:8px}
@@ -4738,7 +4749,7 @@ function evoAdmConduta(id,d,b,onRe,onCh){
   /* protocolos */
   const P=evoData("cfgevo:protocolos").lista.filter(x=>x.ativo!==false);
   const protos=el("div",{},
-    el("div",{class:"ev-togs",style:"margin-bottom:8px"},P.map(pr=>{ const on=(k.protos||[]).some(x=>x.id===pr.id); return el("button",{type:"button",class:"btn small"+(on?" primary":""),onclick:()=>{ if(on) k.protos=k.protos.filter(x=>x.id!==pr.id); else k.protos=(k.protos||[]).concat([{id:pr.id,nome:pr.nome,texto:pr.texto,exames:pr.exames||[]}]); onRe(); }},(on?"✓ ":"+ ")+pr.nome); })),
+    el("div",{class:"ev-togs",style:"margin-bottom:8px"},P.map(pr=>{ const on=(k.protos||[]).some(x=>x.id===pr.id); return el("button",{type:"button",class:"btn small"+(on?" primary":""),onclick:()=>{ if(on) k.protos=k.protos.filter(x=>x.id!==pr.id); else { k.protos=(k.protos||[]).concat([{id:pr.id,nome:pr.nome,texto:pr.texto,exames:pr.exames||[]}]); if(EVO.sel&&evoProtoPedido(EVO.sel,pr)){ onRe(); renderEvo(); return; } } onRe(); }},(on?"✓ ":"+ ")+pr.nome); })),
     (k.protos||[]).map(pr=>{ const t=el("textarea",{class:"par-ta",style:"min-height:56px"}); t.value=pr.texto; t.addEventListener("input",()=>{ pr.texto=t.value; onCh(); });
       return el("div",{style:"margin-bottom:8px"},el("div",{class:"hint",style:"margin:0 0 2px"},"Protocolo · ",el("b",{},pr.nome)," (editável só para este paciente)",pr.exames&&pr.exames.length?" · exames: "+pr.exames.join(", "):""),t); }));
   const fx=[["adm","Faço admissão em UTI"],["exames","Solicito exames admissionais"],["vig","Vigilância e cuidados intensivos"]];
@@ -4889,7 +4900,10 @@ function evoDiaEditor(id){
       el("div",{},lab("HGT > 150"),seg(sv,"hgt",[["nao","Não"],["sim","Sim"]]),sv.hgt==="sim"?el("div",{style:"margin-top:6px"},txt(sv,"hgtX","Vezes (ex.: 3)")):null))));
   /* intercorrências */
   const it=el("textarea",{class:"par-ta",style:"min-height:60px",placeholder:"Texto livre (ex.: febre de 38,9 °C às 23h; agitação psicomotora)…"}); it.value=d.interc||""; it.addEventListener("input",()=>{ d.interc=it.value; onCh(); });
-  wrap.append(card("Intercorrências do plantão anterior",it));
+  const iqs=evoIqDoPeriodo(id,d);
+  wrap.append(card("Intercorrências do plantão anterior",it,iqs.length?el("div",{style:"margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"},
+    el("button",{class:"btn small",type:"button",onclick:()=>evoIqTraz(id,d,iqs)},`Trazer ${iqs.length===1?"a intercorrência registrada":"as "+iqs.length+" intercorrências registradas"}`),
+    el("span",{class:"hint",style:"margin:0"},iqs.map(n=>evoIqRotulo(EVO_DOCS[n])).join(" · "))):null));
   /* exame físico e suporte */
   wrap.append(evoExForm(d.ex,{onCh,onRe,fem,kg,rev:d.rev,evo:true,titulo:"Exame físico e suporte por sistema"}));
   /* problemas, antibióticos, culturas */
@@ -4916,7 +4930,7 @@ function evoDiaEditor(id){
     el("div",{class:"ev-togs",style:"margin-bottom:8px"},
       [["presc","Faço prescrição"],["exames","Solicito exames"],["vig","Vigilância e cuidados intensivos"]].map(([kk,l])=>el("button",{type:"button",class:"tog"+(k.fixos[kk]?" on":""),onclick:()=>{ k.fixos[kk]=!k.fixos[kk]; onRe(); }},l)),
       el("button",{type:"button",class:"tog"+(alta?" on":""),title:"Marca também a previsão de alta 24h no passômetro",onclick:()=>{ const q=pacOf(id); q.pf=fixPf(q.pf); q.pf.alta=alta?"":"24"; save(); onRe(); }},"Programo alta para amanhã")),
-    el("div",{class:"ev-togs",style:"margin-bottom:8px"},P.map(pr=>{ const on=(k.protos||[]).some(x=>x.id===pr.id); return el("button",{type:"button",class:"btn small"+(on?" primary":""),onclick:()=>{ if(on) k.protos=k.protos.filter(x=>x.id!==pr.id); else k.protos=(k.protos||[]).concat([{id:pr.id,nome:pr.nome,texto:pr.texto,exames:pr.exames||[]}]); onRe(); }},(on?"✓ ":"+ ")+pr.nome); })),
+    el("div",{class:"ev-togs",style:"margin-bottom:8px"},P.map(pr=>{ const on=(k.protos||[]).some(x=>x.id===pr.id); return el("button",{type:"button",class:"btn small"+(on?" primary":""),onclick:()=>{ if(on) k.protos=k.protos.filter(x=>x.id!==pr.id); else { k.protos=(k.protos||[]).concat([{id:pr.id,nome:pr.nome,texto:pr.texto,exames:pr.exames||[]}]); if(EVO.sel&&evoProtoPedido(EVO.sel,pr)){ onRe(); renderEvo(); return; } } onRe(); }},(on?"✓ ":"+ ")+pr.nome); })),
     (k.protos||[]).map(pr=>{ const tt=el("textarea",{class:"par-ta",style:"min-height:50px"}); tt.value=pr.texto; tt.addEventListener("input",()=>{ pr.texto=tt.value; onCh(); });
       return el("div",{style:"margin-bottom:8px"},el("div",{class:"hint",style:"margin:0 0 2px"},"Protocolo · ",el("b",{},pr.nome)," (editável só para este paciente)"),tt); }),
     livre,el("p",{class:"hint",style:"margin:6px 0 0"},"Basta um item. Na folha saem só os itens marcados. “Programo alta para amanhã” marca também a previsão de alta 24h no passômetro.")));
@@ -5618,6 +5632,203 @@ function evoGavCul(b,body,foot){
   foot.append(el("button",{class:"btn",type:"button",onclick:()=>evoIrPara("cul",b)},"Abrir controle de culturas"));
 }
 
+/* ============ Fase 6: evolução de intercorrência, linha do tempo e busca (+ protocolo marca exames no pedido) ============ */
+const EVO_IQ_TIT="Evolução de intercorrência";
+function evoIqPre(id){ const p=pacOf(id); return p&&p.pid?"evo:"+p.pid+":i:":""; }
+function evoIqTs(d){ if(!d||!d.data) return d&&d.criado||0; return new Date(d.data+"T"+(d.hora||"12:00")).getTime(); }
+function evoIqLista(id){
+  const pre=evoIqPre(id); if(!pre) return [];
+  return Object.keys(EVO_DOCS).filter(n=>n.startsWith(pre)&&EVO_DOCS[n]&&!EVO_DOCS[n].excluida)
+    .sort((a,b)=>evoIqTs(EVO_DOCS[a])-evoIqTs(EVO_DOCS[b])||(EVO_DOCS[a].criado||0)-(EVO_DOCS[b].criado||0));
+}
+function evoIqRotulo(d){ return fmtDate(d.data||todayISO())+(d.hora?" "+d.hora:"")+(d.titulo&&d.titulo!==EVO_IQ_TIT?" · "+d.titulo:""); }
+function evoIqFaltam(d){ const f=[]; if(!d.data) f.push("data"); if(!String(d.texto||"").trim()) f.push("texto da intercorrência"); return f; }
+function evoIqDoc(){ const k=EVO.iqKey; return k?(EVO_DOCS[k]||(EVO.iqDraft&&EVO.iqDraftKey===k?EVO.iqDraft:null)):null; }
+function evoIqNova(id){
+  ensurePid(id); const pre=evoIqPre(id), now=evoAgoraLocal();
+  EVO.iqDraft={tipo:"interc",pid:pacOf(id).pid,leito:id,autor:EVO.email,criado:Date.now(),upd:Date.now(),titulo:EVO_IQ_TIT,data:now.slice(0,10),hora:now.slice(11,16),texto:""};
+  EVO.iqDraftKey=EVO.iqKey=pre+uid();
+}
+/* grava só quando já existe texto (rascunho vazio não ocupa espaço) */
+function evoIqSalva(d){ const k=EVO.iqKey; if(!EVO_DOCS[k]){ if(!String(d.texto||"").trim()) return; EVO_DOCS[k]=d; EVO.iqDraft=null; } evoDocSave(d); }
+function evoIqEditor(id){
+  const wrap=el("div"), L=evoIqLista(id), pre=evoIqPre(id);
+  if(EVO.iqKey&&(!pre||!EVO.iqKey.startsWith(pre))){ EVO.iqKey=""; EVO.iqDraft=null; }
+  if(EVO.iqKey&&!evoIqDoc()) EVO.iqKey="";
+  if(!EVO.iqKey&&L.length) EVO.iqKey=L[L.length-1];
+  const novo=()=>{ evoIqNova(id); evoTopo(); renderEvo(); setTimeout(()=>{ const t=document.querySelector("#evoIqTexto"); if(t) t.focus(); },60); };
+  wrap.append(el("div",{style:"display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 14px"},el("span",{class:"hint",style:"margin:0"},"Intercorrências desta internação:"),
+    ...L.map(n=>el("button",{type:"button",class:"tog sm"+(n===EVO.iqKey?" on":""),...(n===EVO.iqKey?{id:"evoIqChip"}:{}),onclick:()=>{ EVO.iqKey=n; EVO.iqDraft=null; evoTopo(); renderEvo(); }},evoIqRotulo(EVO_DOCS[n])+(EVO_DOCS[n].impresso?" ✓":""))),
+    EVO.iqDraft&&EVO.iqKey===EVO.iqDraftKey?el("button",{type:"button",class:"tog sm on",id:"evoIqChip"},"Nova (sem texto)"):null,
+    el("button",{type:"button",class:"btn primary small",onclick:novo},"+ Nova intercorrência")));
+  const d=evoIqDoc();
+  if(!d){ wrap.append(el("div",{class:"card",style:"text-align:center;padding:30px"},el("p",{style:"font-size:16px;margin:0 0 12px"},"Nenhuma evolução de intercorrência registrada nesta internação."),
+      el("p",{class:"hint"},"Use para eventos fora da evolução do plantão: PCR, intubação, piora clínica, procedimento, conversa com a família…"),
+      el("button",{class:"btn primary",type:"button",onclick:novo},"+ Registrar intercorrência"))); return wrap; }
+  const salvo=!!EVO_DOCS[EVO.iqKey], onCh=()=>{ evoIqSalva(d); evoIqBarra(id,d); const ch=document.getElementById("evoIqChip"); if(ch&&EVO_DOCS[EVO.iqKey]) ch.textContent=evoIqRotulo(d)+(d.impresso?" ✓":""); }, lab=(t,r)=>el("label",{class:"lbl"+(r?" ev-req":"")},t);
+  if(d.impresso) wrap.append(el("div",{class:"ev-sign",style:"margin-bottom:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"},
+    el("span",{style:"flex:1"},`Impressa em ${new Date(d.impresso).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})} por ${String(d.impressoPor||"").split("@")[0]}`+(d.upd>d.impresso+5000?" · editada depois da impressão":"")),
+    (d.versoes||[]).length?el("button",{class:"btn small",type:"button",onclick:()=>evoVerVersao(d.versoes[d.versoes.length-1])},"Ver versão impressa"):null));
+  const tit=el("input",{class:"txt",value:d.titulo||EVO_IQ_TIT}); tit.addEventListener("input",()=>{ d.titulo=tit.value.trim()||EVO_IQ_TIT; onCh(); });
+  const tx=el("textarea",{class:"par-ta",id:"evoIqTexto",style:"min-height:300px",placeholder:"Descreva a intercorrência: o que aconteceu, achados, condutas tomadas e como o paciente ficou…"}); tx.value=d.texto||"";
+  tx.addEventListener("input",()=>{ d.texto=tx.value; onCh(); });
+  wrap.append(el("div",{class:"card"},el("h3",{},"Evolução de intercorrência"),
+    el("div",{style:"display:grid;grid-template-columns:minmax(0,1fr) 170px 110px;gap:12px;margin-bottom:12px"},
+      el("div",{},lab("Título da folha"),tit),
+      el("div",{},lab("Data",true),evoDataInput(d.data,v=>{ d.data=v; onCh(); },{max:todayISO()})),
+      el("div",{},lab("Hora (opcional)"),evoHoraInput(d.hora||"",v=>{ d.hora=v; onCh(); }))),
+    lab("Texto",true),tx,
+    el("p",{class:"hint",style:"margin:6px 0 0"},"Texto livre. Sai em folha própria, com a identificação do paciente. Não tem campo de diarista.")));
+  wrap.append(el("div",{class:"card"},el("h3",{},"Assinatura"),
+    el("div",{class:"ev-sign"},el("span",{class:"hint"},"Assina como: "),el("b",{},evoAssinatura(evoPerfil(d.autor)||EVO.perfil)),
+      d.autor!==EVO.email?el("div",{style:"margin-top:8px"},el("button",{class:"btn small",type:"button",onclick:()=>{ if(!confirm("Assumir esta intercorrência? A assinatura da folha passa a ser a sua.")) return; d.assumidoDe=d.autor; d.autor=EVO.email; d.assumidoEm=Date.now(); evoIqSalva(d); renderEvo(); }},"Assumir esta intercorrência")):null),
+    salvo&&!d.impresso?el("div",{style:"margin-top:10px"},el("button",{class:"btn small",type:"button",style:"color:var(--danger)",onclick:()=>{
+      if(!confirm("Excluir esta intercorrência? Ela some da lista e da linha do tempo.")) return; d.excluida=Date.now(); d.excluidaPor=EVO.email; evoDocSave(d); EVO.iqKey=""; renderEvo(); }},"Excluir intercorrência")):null));
+  wrap.append(el("div",{class:"card",id:"evoIqBar",style:"position:sticky;bottom:0;display:flex;gap:12px;align-items:center;box-shadow:0 -4px 16px rgba(0,0,0,.06)"}));
+  setTimeout(()=>evoIqBarra(id,d),0);
+  return wrap;
+}
+function evoIqBarra(id,d){
+  const bar=document.getElementById("evoIqBar"); if(!bar) return; bar.innerHTML="";
+  const f=evoIqFaltam(d);
+  bar.append(el("div",{style:"flex:1;font-weight:600;color:"+(f.length?"var(--danger)":"#2e7d32")},f.length?"Para imprimir, falta: "+f.join(" · "):"✓ Pronta para imprimir"),
+    el("button",{class:"btn",type:"button",onclick:()=>evoIqImprimir(id,EVO.iqKey,true)},"Pré-visualizar"),
+    el("button",{class:"btn primary",type:"button",...(f.length?{disabled:"disabled"}:{}),onclick:()=>evoIqImprimir(id,EVO.iqKey,false)},"Imprimir intercorrência"));
+}
+function evoIqHtml(id,d){
+  const b=SV.med.beds.find(x=>x.id===id), p=pacOf(id), c=evoC(id), adm=evoAdmDoc(id,false);
+  const e=x=>esc(String(x==null?"":x).replace(EVO_ESPACOS," ")), idade=evoIdade(c.nasc), imc=evoIMC(c), dias=evoDiasUTI(p.admissao);
+  const cel=(span,l,v,cls)=>`<div class="${cls||""}" style="grid-column:span ${span}"><label>${l}</label><div class="v">${e(v||"—")}</div></div>`;
+  const tags=[];
+  if(c.alergias) tags.push(/^nega/i.test(c.alergias)?'<span class="tag o">ALERGIAS: NEGA</span>':`<span class="tag">ALERGIA: ${e(c.alergias.toUpperCase())}</span>`);
+  if(b&&precTxt(b)) tags.push(`<span class="tag">PRECAUÇÃO ${e(precTxt(b))}</span>`);
+  if(c.reanim==="pleno") tags.push('<span class="tag o">SUPORTE PLENO</span>'); if(c.reanim==="lim") tags.push(`<span class="tag o">LIMITAÇÃO DE SUPORTE${c.reanimTxt?": "+e(c.reanimTxt.toUpperCase()):""}</span>`);
+  const probs=[evoPOTxt(adm&&adm.cir),...(p.problemas||[])].filter(Boolean);
+  const autor=evoPerfil(d.autor)||EVO.perfil, logo=SHARED.logo?`<img src="${SHARED.logo}" alt="">`:"";
+  const sem=d.data?new Date(d.data+"T12:00").toLocaleDateString("pt-BR",{weekday:"long"}).replace(/^./,m=>m.toUpperCase()):"";
+  return `<div class="evd evq">
+<div class="hd"><div>${logo}</div><div class="tt"><div class="u">UNIDADE DE TERAPIA INTENSIVA – IOG</div><div class="d">${e((d.titulo||EVO_IQ_TIT).toUpperCase())}</div></div><div class="dt">${sem}, <b>${fmtDate(d.data,true)}</b>${d.hora?`<br>Hora <b>${e(d.hora)}</b>`:""}</div></div>
+<div class="id">${cel(5,"Nome",p.nome,"nm")}${cel(3,"Nascimento · idade",(c.nasc?fmtDate(c.nasc,true):"")+(idade!=null?" · "+idade+" anos":""))}${cel(1,"Sexo",c.sexo)}${cel(1,"Leito",b?bedLabel(b).replace(/^Leito /,""):"")}${cel(2,"Nº internação",c.nint)}
+${cel(3,"Convênio",p.plano)}${cel(2,"Admissão UTI",p.admissao?fmtDate(p.admissao,true):"")}${cel(3,"Dias internados na UTI",dias!=null?dias+(dias===1?" dia":" dias"):"")}${cel(3,"Peso · altura",(c.peso?c.peso+" kg":"")+(c.altura?" · "+c.altura+" m":""))}${cel(1,"IMC",imc)}</div>
+<div class="alerts">${tags.join("")}</div>
+<div class="box"><div class="bt">Lista de problemas</div>${probs.length?e(probs.join(" · ")):"—"}</div>
+<div class="box" style="min-height:120mm"><div class="bt">Intercorrência</div><div style="white-space:pre-wrap;font-size:10pt;line-height:1.45">${e(d.texto)}</div></div>
+<div class="sig um"><div class="ln">${e(evoAssinatura(autor))}<br>Médico — assinatura e carimbo</div></div>
+<div class="foot"><span>${e(d.titulo||EVO_IQ_TIT)} · ${fmtDate(d.data,true)}${d.hora?" "+e(d.hora):""} · ${b?e(bedLabel(b)):""}</span><span></span></div></div>`;
+}
+function evoIqImprimir(id,n,previa){
+  const d=EVO_DOCS[n]||evoIqDoc(); if(!d) return;
+  if(!previa&&evoIqFaltam(d).length){ alert("Preencha a data e o texto antes de imprimir."); return; }
+  const html=evoIqHtml(id,d);
+  if(previa){
+    const fr=el("iframe",{style:"width:100%;height:75vh;border:1px solid var(--line);border-radius:8px;background:#fff"});
+    openModal("Pré-visualização da intercorrência",el("div",{},fr),evoIqFaltam(d).length?[]:[el("button",{class:"btn primary",type:"button",onclick:()=>{ document.querySelectorAll(".overlay").forEach(o=>o.remove()); evoIqImprimir(id,n,false); }},"Imprimir")]);
+    setTimeout(()=>{ const dc=fr.contentDocument; dc.open(); dc.write(`<!doctype html><meta charset="utf-8"><body style="margin:0;padding:7mm 8mm;background:#fff"><style>${EVO_DIA_CSS}</style>${html}</body>`); dc.close(); evoFitIframe(fr); },30);
+    return;
+  }
+  if(!EVO_DOCS[n]) evoIqSalva(d);
+  $("#printArea").innerHTML=`<style>${EVO_DIA_CSS}</style>`+html; window.print();
+  evoGuardaVersao(d,html); if(view==="evo") renderEvo();
+}
+/* intercorrências registradas que caem no período da evolução (do início do plantão anterior ao fim deste) */
+function evoIqDoPeriodo(id,d){
+  const ini=new Date(d.data+"T"+(d.turno==="D"?"07:00":"19:00")).getTime(), de=ini-12*3600000, ate=ini+12*3600000, usadas=d.iqUsadas||[];
+  return evoIqLista(id).filter(n=>{ const t=evoIqTs(EVO_DOCS[n]); return t>=de&&t<ate&&!usadas.includes(n); });
+}
+function evoIqTraz(id,d,lista){
+  const linhas=lista.map(n=>{ const q=EVO_DOCS[n], h=q.hora?q.hora.replace(":","h")+" — ":"", t=q.titulo&&q.titulo!==EVO_IQ_TIT?q.titulo+": ":""; return h+t+String(q.texto||"").replace(/\s*\n\s*/g," ").trim(); });
+  const at=String(d.interc||"").replace(/\s+$/,"");
+  d.interc=(at?at+"\n":"")+linhas.join("\n"); d.iqUsadas=(d.iqUsadas||[]).concat(lista); evoDocSave(d); renderEvo();
+}
+
+/* ---- linha do tempo da internação ---- */
+const EVO_TL_TIPOS=[["evo","Evoluções","#0f6b5e","Evolução"],["iq","Intercorrências","#b3261e","Intercorrência"],["exam","Exames","#2f5fb3","Exames"],["par","Pareceres","#7a4fb0","Parecer"],["pocus","POCUS","#8a6100","POCUS"],["cul","Culturas e ATB","#5a6b2f","Infecção"]];
+function evoTlEventos(id){
+  const b=SV.med.beds.find(x=>x.id===id), p=pacOf(id), ev=[], dt=s=>new Date(s).getTime();
+  const fh=ts=>new Date(ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+  const add=(ts,tipo,tit,sub,acoes,semHora)=>{ if(ts&&!isNaN(ts)) ev.push({ts,tipo,tit,sub:sub||"",acoes:acoes||[],semHora:!!semHora}); };
+  const bt=(t,fn,pri)=>el("button",{class:"btn small"+(pri?" primary":""),type:"button",onclick:fn},t);
+  const quem=e=>String(e||"").split("@")[0];
+  const vers=d=>(d.versoes||[]).length?bt("Versão impressa",()=>evoVerVersao(d.versoes[d.versoes.length-1])):null;
+  const ir=(tab,extra)=>()=>{ EVO.tab=tab; Object.assign(EVO,extra||{}); evoTopo(); renderEvo(); };
+  const gav=k=>()=>{ EVO.gav=k; renderEvo(); };
+  if(p.admissao) add(dt(p.admissao+"T00:00"),"evo","Admissão na UTI",p.plano?"Convênio "+p.plano:"",[],true);
+  const adm=evoAdmDoc(id,false);
+  if(adm) add(adm.dataHora?dt(adm.dataHora):adm.criado,"evo","Adendo de internação",(adm.impresso?"impresso":"em andamento")+" · "+quem(adm.autor),[bt("Abrir",ir("adm"))]);
+  evoDiaLista(id).forEach(n=>{ const d=EVO_DOCS[n], f=evoDiaFaltam(id,d);
+    add(d.dataHora?dt(d.dataHora):dt(d.data+"T"+(d.turno==="D"?"07:00":"19:00")),"evo","Evolução "+(d.turno==="D"?"diurna":"noturna")+" · plantão de "+fmtDate(d.data),
+      [quem(d.autor),d.impresso?"impressa"+(d.upd>d.impresso+5000?" (editada depois)":""):f.length?"em andamento":"pronta, não impressa",d.retro?"registrada depois":""].filter(Boolean).join(" · "),
+      [bt("Abrir",ir("dia",{evoKey:n})),vers(d),bt("Imprimir",()=>evoDiaImprimir(id,n,true))]); });
+  evoIqLista(id).forEach(n=>{ const d=EVO_DOCS[n];
+    add(evoIqTs(d),"iq",d.titulo||EVO_IQ_TIT,[quem(d.autor),d.impresso?"impressa":"não impressa",String(d.texto||"").replace(/\s+/g," ").slice(0,140)+(String(d.texto||"").length>140?"…":"")].join(" · "),
+      [bt("Abrir",ir("iq",{iqKey:n})),vers(d)],!d.hora); });
+  const iniAdm=p.admissao?dt(p.admissao+"T00:00"):0;
+  SHARED.ped.filter(r=>r.leito===id&&r.ts>=iniAdm&&(!r.ctx||!r.ctx.nome||r.ctx.nome===p.nome)).forEach(r=>{
+    add(r.ts,"exam","Pedido de exames",[quem(r.por),evoPedTxt(r).replace(/^Solicitados: /,"")].filter(Boolean).join(" · "),[bt("Exames",gav("exam"))]); });
+  if(b) parDoLeito(b).forEach(r=>{ const esp=r.espec||"Sem especialidade";
+    add(r.ts,"par","Parecer pedido · "+esp,String(r.pedido||"").replace(/\s+/g," ").slice(0,140),[bt("Pareceres",gav("par"))]);
+    if(parRespondido(r)&&r.respEm) add(r.respEm,"par","Parecer respondido · "+esp,parTemTexto(r)?String(r.resp).replace(/\s+/g," ").slice(0,160):"respondido fora do sistema",[bt("Pareceres",gav("par"))]); });
+  if(p.pid) SHARED.pocus.filter(r=>r.pid===p.pid).forEach(r=>{ const bl=recBlocos(r), alt=pocusAlteracoes(bl);
+    add(r.ts,"pocus","POCUS · "+blocosPreenchidos(bl).map(x=>x.curto).join(", "),[r.examinador||"",alt.length?alt.length+" achado(s) alterado(s)":"sem alterações marcadas"].filter(Boolean).join(" · "),[bt("POCUS",gav("pocus"))]); });
+  if(b){ culValidas(b.culturas).forEach(c=>{ if(!c.data) return; const r=culRes(c);
+      add(dt(c.data+"T12:00"),"cul","Cultura · "+(c.sitio||"sem sítio"),culResLabel(r,c)+(r==="pos"&&culGermeTxt(c)?": "+culGermeTxt(c):""),[bt("Culturas",gav("cul"))],true); });
+    (b.atb||[]).filter(a=>a.nome&&a.ini).forEach(a=>{ add(dt(a.ini+"T12:00"),"cul","Antimicrobiano iniciado · "+a.nome,"",[],true);
+      if(a.fim) add(dt(a.fim+"T12:01"),"cul","Antimicrobiano finalizado · "+a.nome,"",[],true); }); }
+  return ev.sort((x,y)=>y.ts-x.ts);
+}
+function evoTlEditor(id){
+  const wrap=el("div"), ev=evoTlEventos(id), f=EVO.tlFiltro||"";
+  const cnt=k=>ev.filter(x=>x.tipo===k).length;
+  wrap.append(el("div",{class:"ev-togs",style:"margin:0 0 14px"},
+    el("button",{type:"button",class:"tog sm"+(!f?" on":""),onclick:()=>{ EVO.tlFiltro=""; renderEvo(); }},"Tudo ("+ev.length+")"),
+    ...EVO_TL_TIPOS.map(([k,l])=>el("button",{type:"button",class:"tog sm"+(f===k?" on":""),...(cnt(k)?{}:{disabled:"disabled"}),onclick:()=>{ EVO.tlFiltro=f===k?"":k; renderEvo(); }},l+" ("+cnt(k)+")"))));
+  const vis=ev.filter(x=>!f||x.tipo===f);
+  if(!vis.length){ wrap.append(el("p",{class:"hint"},"Nada registrado ainda.")); return wrap; }
+  let dia="";
+  const lista=el("div",{class:"ev-tl"});
+  vis.forEach(x=>{
+    const d=new Date(x.ts), iso=new Date(x.ts-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+    if(iso!==dia){ dia=iso; lista.append(el("div",{class:"ev-tl-dia"},d.toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"}).replace(/^./,m=>m.toUpperCase()))); }
+    const t=EVO_TL_TIPOS.find(y=>y[0]===x.tipo);
+    lista.append(el("div",{class:"ev-tl-it"},
+      el("div",{class:"h"},x.semHora?"—":d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})),
+      el("span",{class:"dot",style:"background:"+t[2]}),
+      el("div",{class:"c"},el("div",{},el("span",{class:"tp",style:"color:"+t[2]},t[3]),el("b",{},x.tit)),x.sub?el("div",{class:"s"},x.sub):null),
+      el("div",{class:"a"},...x.acoes.filter(Boolean))));
+  });
+  wrap.append(lista);
+  return wrap;
+}
+
+/* ---- busca de pacientes (lista da esquerda) ---- */
+function evoBuscaBate(b,q){
+  const c=evoC(b.id), nq=norm(q).trim(); if(!nq) return true;
+  const dig=q.replace(/\D/g,"");
+  if(nq.split(/\s+/).every(w=>norm(b.nome||"").includes(w))) return true;
+  if(dig&&String(c.nint||"").replace(/\D/g,"").includes(dig)) return true;
+  if(dig.length>=4&&c.nasc){ const [y,m,d]=c.nasc.split("-"); if((d+m+y).startsWith(dig)||(d+m+y.slice(2))===dig) return true; }
+  if(/^(leito\s*)?\d{1,2}$/.test(nq)&&bedLabel(b).replace(/\D/g,"").replace(/^0/,"")===dig.replace(/^0/,"")) return true;
+  return false;
+}
+/* protocolo marcado na conduta: os exames dele já entram marcados no pedido da gaveta */
+function evoProtoPedido(id,pr){
+  const ex=(pr.exames||[]).filter(Boolean); if(!ex.length) return false;
+  const b=SV.med.beds.find(x=>x.id===id); if(!b) return false;
+  const busy=xd&&xd.leito&&xd.leito!==id&&(xd.lab.sel.length||xd.lab.gaso||(xd.lab.livres||[]).length||xd.img.length||xd.livre.length);
+  if(busy){ toast("Há um pedido de exames em andamento para outro paciente; os exames do protocolo não foram marcados."); return false; }
+  if(!xd||xd.leito!==id){ xd=xdNew(); xFromBed(id); }
+  const L=xd.lab, cat=[].concat(X_ROT,X_CULT,X_ADM);
+  ex.forEach(nome=>{ const n=norm(nome);
+    if(n.includes("gasometria")){ L.gaso=true; L.tipo=n.includes("venosa")?(n.includes("central")?"venosa_central":"venosa"):"arterial"; return; }
+    const raiz=n.replace(/s\b/g,"").split(/\s+/)[0];
+    const hit=cat.find(x=>norm(x)===n)||cat.find(x=>norm(x).replace(/s\b/g,"").startsWith(raiz));
+    if(hit){ if(!L.sel.includes(hit)) L.sel.push(hit); }
+    else if(!(L.livres||[]).some(x=>norm(x)===n)) L.livres=(L.livres||[]).concat([nome]);
+  });
+  EVO.gav="exam"; toast("Exames do protocolo "+pr.nome+" marcados no pedido. Confira e imprima na gaveta Exames.");
+  return true;
+}
+
 function evoTopo(){ const s=$("#evoApp section.editor"); if(s) s.scrollTop=0; }
 function renderEvo(){
   const root=$("#evoApp"), sc0=root.querySelector("section.editor"), scroll=sc0?sc0.scrollTop:0;
@@ -5645,8 +5856,14 @@ function evoNav(beds){
   const nav=el("nav",{class:"beds"},
     el("button",{class:"ev-adm-big",type:"button",onclick:()=>evoAdmitir(),html:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Admitir paciente'}),
     el("div",{class:"group"},"Pacientes internados ("+beds.length+")"));
+  const q=EVO.busca||"";
+  const bi=el("input",{class:"txt ev-busca",type:"search",id:"evoBusca",placeholder:"Buscar paciente…",title:"Nome, data de nascimento ou nº de internação",value:q,"aria-label":"Buscar paciente"});
+  bi.addEventListener("input",()=>{ EVO.busca=bi.value; evoNavRefresh(); });
+  if(beds.length) nav.append(bi);
   if(!beds.length) nav.append(el("p",{class:"hint",style:"padding:8px"},"Nenhum paciente no passômetro."));
-  beds.forEach(b=>{
+  const achados=beds.filter(b=>evoBuscaBate(b,q));
+  if(q&&!achados.length) nav.append(el("p",{class:"hint",style:"padding:8px"},"Nenhum paciente internado encontrado. Pacientes com alta entram na busca junto com o arquivo de altas."));
+  achados.forEach(b=>{
     const falt=evoFaltam(b.id), d=evoDiasUTI(b.admissao);
     const adm=EVO_DOCS[evoAdmPart(b.id)];
     nav.append(el("button",{class:"bed-btn"+(b.id===EVO.sel?" active":""),type:"button",onclick:()=>{ EVO.sel=b.id; EVO.evoKey=""; evoTopo(); renderEvo(); }},
@@ -5672,7 +5889,7 @@ function evoEditor(){
       SV.med.beds.some(b=>b.nome)?evoPainel():null,
       el("div",{class:"ev-empty",style:"padding-top:6px"},
         el("p",{},"Para o cadastro, o adendo ou a evolução de um paciente, escolha-o na lista ao lado ou no painel."),
-        el("p",{class:"hint"},"Evolução de intercorrência, linha do tempo, busca e relatório chegam nas próximas etapas."),
+        el("p",{class:"hint"},"Relatório de alta e arquivo de pacientes com alta chegam na próxima etapa."),
     el("div",{class:"ev-sign",style:"max-width:640px;margin:18px auto 0;text-align:left"},el("b",{},"Sua assinatura nas folhas: "),evoAssinatura())));
   }
   const id=EVO.sel, b=SV.med.beds.find(x=>x.id===id), p=pacOf(id), c=evoC(id), wrap=el("div");
@@ -5694,14 +5911,18 @@ function evoEditor(){
     head.append(el("div",{class:"bed-title"},el("h2",{},bedLabel(b)+" · "+b.nome),...tags));
   };
   evoHeadRefresh();
-  const tab=["adm","dia"].includes(EVO.tab)?EVO.tab:"cad";
+  const tab=["adm","dia","iq","tl"].includes(EVO.tab)?EVO.tab:"cad";
   wrap.append(head,
     el("div",{class:"ev-tabs"},
       el("button",{class:tab==="cad"?"on":"",type:"button",onclick:()=>{ EVO.tab="cad"; evoTopo(); renderEvo(); }},"Cadastro"),
       el("button",{class:tab==="adm"?"on":"",type:"button",onclick:()=>{ EVO.tab="adm"; evoTopo(); renderEvo(); }},"Adendo de internação"),
       el("button",{class:tab==="dia"?"on":"",type:"button",onclick:()=>{ EVO.tab="dia"; evoTopo(); renderEvo(); }},"Evolução diária"),
-      ...["Evolução de intercorrência","Linha do tempo","Relatório de alta"].map(t=>el("button",{type:"button",disabled:"disabled"},t,el("small",{},"em breve")))));
+      el("button",{class:tab==="iq"?"on":"",type:"button",onclick:()=>{ EVO.tab="iq"; evoTopo(); renderEvo(); }},"Evolução de intercorrência"),
+      el("button",{class:tab==="tl"?"on":"",type:"button",onclick:()=>{ EVO.tab="tl"; evoTopo(); renderEvo(); }},"Linha do tempo"),
+      el("button",{type:"button",disabled:"disabled"},"Relatório de alta",el("small",{},"em breve"))));
   if(tab==="adm"){ wrap.append(evoAdmEditor(id)); return wrap; }
+  if(tab==="iq"){ wrap.append(evoIqEditor(id)); return wrap; }
+  if(tab==="tl"){ wrap.append(evoTlEditor(id)); return wrap; }
   if(tab==="dia"){ wrap.append(evoDiaEditor(id)); return wrap; }
   /* identificação (nome, admissão e convênio vêm do passômetro) */
   const idadeOut=el("div",{class:"ev-calc"}), idadeAviso=el("div",{class:"ev-warn"});
@@ -5762,7 +5983,9 @@ function evoResumo(id){
 }
 function evoNavRefresh(){
   if(view!=="evo") return;
-  const nav=$("#evoApp nav.beds"); if(nav) nav.replaceWith(evoNav(SV.med.beds.filter(b=>b.nome)));
+  const nav=$("#evoApp nav.beds"), foc=document.activeElement&&document.activeElement.id==="evoBusca", pos=foc?document.activeElement.selectionStart:0;
+  if(nav) nav.replaceWith(evoNav(SV.med.beds.filter(b=>b.nome)));
+  if(foc){ const i=$("#evoBusca"); if(i){ i.focus(); try{ i.setSelectionRange(pos,pos); }catch(e){} } }
   const r=$("#evoResumo"); if(r&&EVO.sel){ r.innerHTML=""; r.append(evoResumo(EVO.sel)); }
 }
 
