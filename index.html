@@ -4219,6 +4219,10 @@ function evoAdmDoc(id,criar){
   return d||null;
 }
 function evoDocSave(d){ d.upd=Date.now(); save(); }
+/* texto colado de outros sistemas costuma trazer espaços "inquebráveis" (a linha não quebra): vira espaço comum */
+const EVO_ESPACOS=/[\u00A0\u2007\u202F\u2000-\u200A\u3000]/g;
+document.addEventListener("input",e=>{ const t=e.target; if(!t||!t.closest||!t.closest("#evoApp,.modal")) return;
+  if((t.tagName==="TEXTAREA"||(t.tagName==="INPUT"&&t.type==="text"))&&EVO_ESPACOS.test(t.value)){ const pos=t.selectionStart; t.value=t.value.replace(EVO_ESPACOS," "); try{ t.setSelectionRange(pos,pos); }catch(x){} } },true);
 
 /* ---- exame físico e suporte (o mesmo formulário do adendo e, na Fase 4, das evoluções) ---- */
 function evoExNovo(){ return {geral:{},neuro:{},cv:{tg:[]},resp:{tg:[],sup:""},abd:{tg:[]},memb:{tg:[]},renal:{}}; }
@@ -4300,7 +4304,13 @@ function evoExForm(ex,ctx){
     const pend=rev[key]==="pend";
     const tag=pend?el("span",{class:"ev-nrt"},"copiado — confirmar"):el("span",{class:"ev-rvt"},"✓ revisado");
     const bt=pend?el("button",{class:"btn small",type:"button",onclick:()=>{ rev[key]="ok"; onRe(); }},"✓ Confirmar"):null;
-    return el("div",{class:pend?"ev-nr":"",style:pend?"":"margin-top:0"},el("div",{style:"display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px"},el("b",{style:"font-size:12.5px;color:var(--accent);text-transform:uppercase"},titulo),tag,bt),node);
+    const box=el("div",{class:pend?"ev-nr":"",style:pend?"":"margin-top:0"},el("div",{style:"display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px"},el("b",{style:"font-size:12.5px;color:var(--accent);text-transform:uppercase"},titulo),tag,bt),node);
+    if(pend){   /* mudar qualquer coisa dentro do bloco já conta como revisado */
+      const confirma=ev=>{ if(rev[key]!=="pend"||ev.target===bt) return; rev[key]="ok"; box.className=""; tag.className="ev-rvt"; tag.textContent="✓ revisado"; if(bt) bt.remove(); onCh(); };
+      box.addEventListener("input",confirma,true); box.addEventListener("change",confirma,true);
+      box.addEventListener("click",ev=>{ if(ev.target.closest("button")&&ev.target.closest("button")!==bt) confirma(ev); },true);
+    }
+    return box;
   };
   const lab=(t,req)=>el("label",{class:"lbl"+(req?" ev-req":"")},t);
   const seg=(obj,k,opts,after)=>el("div",{class:"ev-togs"},opts.map(([v,l])=>el("button",{type:"button",class:"tog"+(obj[k]===v?" on":""),"aria-pressed":String(obj[k]===v),onclick:()=>{ obj[k]=obj[k]===v?"":v; if(after) after(); onRe(); }},l)));
@@ -4890,7 +4900,7 @@ function evoDiaResumo(id,d){
 
 /* ---- folha da evolução (1 página A4; a fonte diminui até 7,5 pt e o laboratório passa de 5 para 3 datas se precisar) ---- */
 const EVO_DIA_CSS=`@page evdia{size:A4 portrait;margin:7mm 8mm}
-.evd{page:evdia;width:194mm;font-family:Arial,Helvetica,sans-serif;color:#000;font-size:8.6pt;line-height:1.28;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.evd{page:evdia;width:194mm;overflow-wrap:anywhere;font-family:Arial,Helvetica,sans-serif;color:#000;font-size:8.6pt;line-height:1.28;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .evd *{box-sizing:border-box}.evd .hd{display:grid;grid-template-columns:32mm 1fr 52mm;align-items:center;border-bottom:1.6pt solid #000;padding-bottom:1.5mm;margin-bottom:1.6mm}
 .evd .hd img{max-height:13mm;max-width:32mm}.evd .tt{text-align:center}.evd .tt .u{font-size:11.5pt;font-weight:900;letter-spacing:.04em}.evd .tt .d{font-size:10.5pt;font-weight:700;margin-top:.6mm}
 .evd .dt{text-align:right;font-size:8.2pt;line-height:1.45}.evd .id{display:grid;grid-template-columns:repeat(12,1fr);border:.8pt solid #000;margin-bottom:1.4mm}
@@ -4912,7 +4922,7 @@ const EVO_DIA_CSS=`@page evdia{size:A4 portrait;margin:7mm 8mm}
 function evoDiaHtml(id,n,nDatas){
   const d=EVO_DOCS[n]; if(!d) return "";
   const b=SV.med.beds.find(x=>x.id===id), p=pacOf(id), c=evoC(id), adm=evoAdmDoc(id,false), prev=evoDiaAnterior(id,n);
-  const e=esc, fem=c.sexo==="F", ref=d.data, idade=evoIdade(c.nasc), imc=evoIMC(c), dias=evoDiasUTI(p.admissao);
+  const e=x=>esc(String(x==null?"":x).replace(EVO_ESPACOS," ")), fem=c.sexo==="F", ref=d.data, idade=evoIdade(c.nasc), imc=evoIMC(c), dias=evoDiasUTI(p.admissao);
   const cel=(span,l,v,cls)=>`<div class="${cls||""}" style="grid-column:span ${span}"><label>${l}</label><div class="v">${e(v||"—")}</div></div>`;
   const diur=d.turno==="D", dh=d.dataHora||"";
   const tags=[];
@@ -5018,7 +5028,7 @@ function evoDiaImprimir(id,n,previa){
 
 /* ---- impressão do adendo (A4 retrato, 2 páginas em fluxo contínuo) ---- */
 const EVO_PRINT_CSS=`@page evport{size:A4 portrait;margin:7mm 8mm}
-.evp{page:evport;font-family:Arial,Helvetica,sans-serif;color:#000;font-size:9pt;line-height:1.35;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.evp{page:evport;overflow-wrap:anywhere;word-break:normal;font-family:Arial,Helvetica,sans-serif;color:#000;font-size:9pt;line-height:1.35;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .evp *{box-sizing:border-box}.evp .hd{display:grid;grid-template-columns:32mm 1fr 52mm;align-items:center;border-bottom:1.6pt solid #000;padding-bottom:1.5mm;margin-bottom:1.6mm}
 .evp .hd img{max-height:13mm;max-width:32mm}.evp .tt{text-align:center}.evp .tt .u{font-size:11.5pt;font-weight:900;letter-spacing:.04em}.evp .tt .d{font-size:10.5pt;font-weight:700;margin-top:.6mm}
 .evp .dt{text-align:right;font-size:8.2pt;line-height:1.45}.evp .id{display:grid;grid-template-columns:repeat(12,1fr);border:.8pt solid #000;margin-bottom:1.4mm}
@@ -5036,7 +5046,7 @@ const EVO_PRINT_CSS=`@page evport{size:A4 portrait;margin:7mm 8mm}
 .evp .ln{border-top:.7pt solid #000;padding-top:.6mm;text-align:center;font-size:7.8pt}.evp .foot{margin-top:2mm;font-size:6.4pt;color:#555}`;
 function evoAdmHtml(id){
   const b=SV.med.beds.find(x=>x.id===id), p=pacOf(id), c=evoC(id), d=evoAdmDoc(id,false); if(!d) return "";
-  const fem=c.sexo==="F", e=esc, dh=d.dataHora||"", dtx=dh?fmtDate(dh.slice(0,10),true)+" às "+dh.slice(11,16):"";
+  const fem=c.sexo==="F", e=x=>esc(String(x==null?"":x).replace(EVO_ESPACOS," ")), dh=d.dataHora||"", dtx=dh?fmtDate(dh.slice(0,10),true)+" às "+dh.slice(11,16):"";
   const idade=evoIdade(c.nasc), imc=evoIMC(c);
   const cel=(span,l,v,cls)=>`<div class="${cls||""}" style="grid-column:span ${span}"><label>${l}</label><div class="v">${e(v||"—")}</div></div>`;
   const tags=[];
