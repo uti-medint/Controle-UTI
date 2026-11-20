@@ -5266,11 +5266,14 @@ function evoAdmAjusta(html){
     let z=1;
     while(alt()<lim&&z<1.2){ z=+(z+0.01).toFixed(2); zoom(z); }
     while(alt()>lim&&z>0.85){ z=+(z-0.01).toFixed(2); zoom(z); }
-    const hs=[...c.querySelectorAll("h3")], sobra=lim-alt();
-    if(sobra>0&&hs.length){ const extra=Math.min(sobra/hs.length,9*mm)/z; hs.forEach(h=>h.style.marginTop=`calc(2.4mm + ${extra.toFixed(1)}px)`); }
-    const lr=c.querySelectorAll(".lr .v,.lr .k"), sob2=lim-alt();
-    if(sob2>0&&lr.length){ const pad=(0.6*mm+Math.min(sob2/lr.length/z,10)).toFixed(1)+"px"; lr.forEach(x=>{ x.style.paddingTop=pad; x.style.paddingBottom=pad; }); }
-    while(alt()>lim){ const h=hs.find(x=>x.style.marginTop); if(!h) break; hs.forEach(x=>x.style.marginTop=""); lr.forEach(x=>{ x.style.paddingTop=""; x.style.paddingBottom=""; }); }
+    /* o que sobrar vira espaço entre as seções e nas linhas do exame físico; se passar do limite, reduz aos poucos */
+    const hs=[...c.querySelectorAll("h3")], lr=[...c.querySelectorAll(".lr .v,.lr .k")], linhas=c.querySelectorAll(".lr").length, sobra=lim-alt();
+    if(sobra>0&&hs.length){
+      const eH=Math.min(sobra*0.7/hs.length,9*mm)/z, eL=linhas?Math.min(sobra*0.3/linhas/2,2*mm)/z:0;
+      const aplica=f=>{ hs.forEach(h=>h.style.marginTop=`calc(2.4mm + ${(eH*f).toFixed(1)}px)`); lr.forEach(x=>{ const v=`calc(.6mm + ${(eL*f).toFixed(1)}px)`; x.style.paddingTop=v; x.style.paddingBottom=v; }); };
+      let f=1.6; aplica(f);
+      while(alt()>lim&&f>0){ f=+(f-0.05).toFixed(2); aplica(Math.max(f,0)); }
+    }
     return box.innerHTML;
   }catch(e){ return html; } finally{ box.remove(); }
 }
