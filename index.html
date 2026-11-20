@@ -5253,8 +5253,29 @@ ${fx?`<p><b>${fx}</b></p>`:""}${k.livre.trim()?`<p style="white-space:pre-wrap">
 <div class="sig${diur?"":" um"}">${diur?`<div class="ln">${e(diar||"Diarista")}</div>`:""}<div class="ln">${assin}<br>Médico — assinatura e carimbo</div></div>
 <div class="foot">Adendo de internação · ${e(p.nome)} · ${e(bedLabel(b))} · página 2/2</div></div>`;
 }
+/* página 1 do adendo preenchida: letra até 20% maior e espaço extra entre as seções; com história longa, letra até 15% menor para caber */
+function evoAdmAjusta(html){
+  if(!html) return html;
+  const box=el("div",{style:"position:absolute;left:-10000px;top:0;width:194mm;visibility:hidden"}); document.body.append(box); box.innerHTML=html;
+  try{
+    const evp=box.querySelector(".evp"), pb=evp&&evp.querySelector(".pb"); if(!pb) return html;
+    const kids=[...evp.children], c=el("div",{class:"p1c"});
+    kids.slice(1,kids.indexOf(pb)).forEach(k=>c.append(k)); evp.insertBefore(c,pb);
+    const mm=96/25.4, lim=281*mm, alt=()=>pb.getBoundingClientRect().top-evp.getBoundingClientRect().top;
+    const zoom=z=>{ c.style.zoom=z; c.style.width=(194/z)+"mm"; };
+    let z=1;
+    while(alt()<lim&&z<1.2){ z=+(z+0.01).toFixed(2); zoom(z); }
+    while(alt()>lim&&z>0.85){ z=+(z-0.01).toFixed(2); zoom(z); }
+    const hs=[...c.querySelectorAll("h3")], sobra=lim-alt();
+    if(sobra>0&&hs.length){ const extra=Math.min(sobra/hs.length,9*mm)/z; hs.forEach(h=>h.style.marginTop=`calc(2.4mm + ${extra.toFixed(1)}px)`); }
+    const lr=c.querySelectorAll(".lr .v,.lr .k"), sob2=lim-alt();
+    if(sob2>0&&lr.length){ const pad=(0.6*mm+Math.min(sob2/lr.length/z,10)).toFixed(1)+"px"; lr.forEach(x=>{ x.style.paddingTop=pad; x.style.paddingBottom=pad; }); }
+    while(alt()>lim){ const h=hs.find(x=>x.style.marginTop); if(!h) break; hs.forEach(x=>x.style.marginTop=""); lr.forEach(x=>{ x.style.paddingTop=""; x.style.paddingBottom=""; }); }
+    return box.innerHTML;
+  }catch(e){ return html; } finally{ box.remove(); }
+}
 function evoAdmImprimir(id,previa){
-  const h=evoAdmHtml(id); if(!h) return;
+  const h=evoAdmAjusta(evoAdmHtml(id)); if(!h) return;
   if(previa){
     const fr=el("iframe",{style:"width:100%;height:75vh;border:1px solid var(--line);border-radius:8px;background:#fff"});
     openModal("Pré-visualização do adendo",el("div",{},fr),[el("button",{class:"btn primary",type:"button",onclick:()=>{ if(evoAdmFaltam(id,evoAdmDoc(id,false)).length){ alert("Ainda há campos obrigatórios. Veja a barra no fim do adendo."); return; } evoAdmImprimir(id,false); }},"Imprimir")]);
