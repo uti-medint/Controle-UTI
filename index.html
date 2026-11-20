@@ -656,7 +656,7 @@ const N_FIXOS = 17, N_EXTRAS = 4;
 /* Cadastro único por leito, compartilhado entre passômetro médico, enfermagem e POCUS:
    identificação, lista de problemas, dispositivos invasivos e situação do leito ficam em SHARED.pac[idDoLeito]. */
 const PAC_KEYS=["pid","nome","idade","admissao","plano","problemas","disp","dd","ativo","local","junto","pf"];
-const PAC_MOVE=["pid","nome","idade","admissao","plano","problemas","disp","dd","pf","evc"];   /* evc = cadastro da Evolução médica (nascimento, sexo, peso…) */
+const PAC_MOVE=["pid","nome","idade","admissao","plano","problemas","disp","dd","pf","evc","ret"];   /* evc = cadastro da Evolução médica (nascimento, sexo, peso…) */
 const SVC_KEYS=["atb","culturas","imagem","pend","condutas","interc","exm","proc","labesp","resp"];
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
 function defaultDisp(){ return {svd:false,sne:false,gtt:false,tot:false,tqt:false,avp:false,prec:{on:false,resp:false,cont:false},cvc:{on:false,sitios:[]},cdl:{on:false,sitios:[]},pa:{on:false,sitios:[]},dreno:{on:false,sitios:[]},outros:[]}; }
@@ -701,8 +701,11 @@ function precHtml(b){ const t=precTxt(b); return t?`<br><span style="display:inl
 function devOn(b,k){ const v=b.disp[k]; return (v&&typeof v==='object')?!!v.on:!!v; }
 const DEV_OBJ=["cvc","cdl","pa","dreno"];
 function setDevOn(b,k,val){
+  const era=devOn(b,k);
   if(DEV_OBJ.includes(k)){ if(!b.disp[k]||typeof b.disp[k]!=='object') b.disp[k]={on:false,sitios:[]}; b.disp[k].on=val; }
   else b.disp[k]=val;
+  /* guarda a data da retirada (a evolução médica mostra "retirado em …"); some se o dispositivo voltar */
+  try{ const p=pacOf(b.id); if(era&&!val){ p.ret=Object.assign({},p.ret||{},{[k]:todayISO()}); } else if(val&&p.ret&&p.ret[k]){ p.ret=Object.assign({},p.ret); delete p.ret[k]; } }catch(e){}
 }
 function devEntries(b,ref){            /* todos os dispositivos em uso (fixos + "Outros"), com sítio, data e dia */
   const dd=b.dd||{}, out=[];
@@ -4805,7 +4808,8 @@ function evoDiaEditor(id){
   /* barra com as evoluções desta internação */
   const chips=el("div",{class:"ev-togs",style:"margin-bottom:12px;align-items:center"},el("span",{class:"hint",style:"margin:0 6px 0 0"},"Evoluções desta internação:"),
     L.map(n=>el("button",{type:"button",class:"tog sm"+(n===EVO.evoKey?" on":""),onclick:()=>{ EVO.evoKey=n; evoTopo(); renderEvo(); }},evoDiaRotulo(n)+(EVO_DOCS[n].impresso?" ✓":""))),
-    !EVO_DOCS[atual]?el("button",{type:"button",class:"btn primary small",onclick:()=>{ EVO.evoKey=evoDiaCriar(id,t); evoTopo(); renderEvo(); }},`+ Evolução ${EVO_TURNO[t.tipo]} de ${fmtDate(t.data)}`):null);
+    !EVO_DOCS[atual]?el("button",{type:"button",class:"btn primary small",onclick:()=>{ EVO.evoKey=evoDiaCriar(id,t); evoTopo(); renderEvo(); }},`+ Evolução ${EVO_TURNO[t.tipo]} de ${fmtDate(t.data)}`):null,
+    el("button",{type:"button",class:"btn small",title:"Para registrar uma evolução esquecida",onclick:()=>evoDiaOutra(id)},"+ Outra data ou turno"));
   wrap.append(chips);
   const n=EVO.evoKey, d=n?EVO_DOCS[n]:null;
   if(!d){
@@ -4822,6 +4826,10 @@ function evoDiaEditor(id){
   const seg=(o,k,opts)=>el("div",{class:"ev-togs"},opts.map(([v,l])=>el("button",{type:"button",class:"tog"+(o[k]===v?" on":""),"aria-pressed":String(o[k]===v),onclick:()=>{ o[k]=o[k]===v?"":v; onRe(); }},l)));
   const card=(tt,...k)=>el("div",{class:"card"},el("h3",{},tt),...k);
   const pend=Object.keys(d.rev).filter(k=>d.rev[k]==="pend");
+  if(d.retro) wrap.append(el("div",{class:"ev-sign",style:"margin-bottom:8px"},`Evolução registrada depois (em ${new Date(d.retro).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}, por ${String(d.retroPor||"").split("@")[0]}). A folha sai com a data e o turno do plantão.`));
+  if(d.impresso) wrap.append(el("div",{class:"ev-sign",style:"margin-bottom:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"},
+    el("span",{style:"flex:1"},`Impressa em ${new Date(d.impresso).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})} por ${String(d.impressoPor||"").split("@")[0]}`+(d.upd>d.impresso+5000?" · editada depois da impressão":"")),
+    (d.versoes||[]).length?el("button",{class:"btn small",type:"button",onclick:()=>evoVerVersao(d.versoes[d.versoes.length-1])},"Ver versão impressa"):null));
   if(d.copiadoDe) wrap.append(el("div",{class:"ev-sign",style:"margin-bottom:12px;background:#e6eefb;border-color:#b8cdf0;color:#1d4f9c"},
     `Copiada da ${d.copiadoDe}. `,pend.length?el("b",{},"Confirme os campos em amarelo antes de imprimir. "):null,"Conduta, intercorrências, sinais vitais e impressão clínica começam vazios."));
   /* data, hora e plantão */
@@ -4937,7 +4945,10 @@ function evoDiaHtml(id,n,nDatas){
   const probs=[evoPOTxt(adm&&adm.cir),...(p.problemas||[])].filter(Boolean);
   const hpp=adm?[...EVO_HPP.filter(([k])=>adm.hpp[k]).map(([,l])=>l),adm.hppOutros].filter(Boolean).join(", "):"";
   /* dispositivos */
-  const devs=devEntries(b,ref).map(x=>`<li>${e(x.l)}${x.sit?" "+e(x.sit):""}${x.data?" · "+fmtDate(x.data)+" · <b>D"+x.d+"</b>":""}${pData&&x.data&&x.data>pData?" "+NOVO:""}</li>`).join("");
+  const refFim=d.turno==="N"?(()=>{ const x=new Date(ref+"T12:00"); x.setDate(x.getDate()+1); return x.toISOString().slice(0,10); })():ref;   /* o noturno vai até as 07h do dia seguinte */
+  const desde=pData||(()=>{ const x=new Date(ref+"T12:00"); x.setDate(x.getDate()-2); return x.toISOString().slice(0,10); })();
+  const devs=devEntries(b,ref).map(x=>`<li>${e(x.l)}${x.sit?" "+e(x.sit):""}${x.data?" · "+fmtDate(x.data)+" · <b>D"+x.d+"</b>":""}${pData&&x.data&&x.data>pData?" "+NOVO:""}</li>`).join("")
+    +Object.entries(p.ret||{}).filter(([kk,dt])=>dt>=desde&&dt<=refFim&&!devOn(b,kk)).map(([kk,dt])=>`<li class="mut">${e((DEVS.find(x=>x[0]===kk)||[kk,kk])[1])} retirado em ${fmtDate(dt)}</li>`).join("");
   /* antimicrobianos e culturas */
   const atbs=(b.atb||[]).filter(a=>a.nome&&a.ini&&a.ini<=ref&&(!a.fim||daysSince(a.fim,ref)<=4)).map(a=>{ const inf=atbInfo(a,ref);
     return inf.fin?`<li class="mut">${e(a.nome)} ${fmtDate(a.ini)} a ${fmtDate(a.fim)} · finalizado ${inf.n} D</li>`:`<li><b>${e(a.nome)}</b> · ${fmtDate(a.ini)} · <b>${e(inf.txt)}</b>${pData&&a.ini>pData?" "+NOVO:""}</li>`; }).join("");
@@ -4992,38 +5003,138 @@ ${d.imp&&(d.imp.txt||"").trim()?`<div class="imp"><div class="bt">Impressão / a
 <div class="sig${diur?"":" um"}">${diur?`<div class="ln">Diarista: ${e(diar||"")}</div>`:""}<div class="ln">${e(evoAssinatura(autor))}<br>Médico — assinatura e carimbo</div></div>
 <div class="foot"><span>Evolução ${diur?"diurna":"noturna"} · ${fmtDate(dh.slice(0,10),true)} ${dh.slice(11,16)} · ${e(bedLabel(b))}<span class="evfs"></span></span><span>Página 1/1</span></div></div>`;
 }
-/* põe a folha na área de impressão e ajusta para caber numa página (5→3 datas no laboratório; fonte até 7,5 pt) */
-function evoDiaMontar(id,n){
-  const pa=$("#printArea"), lim=283*96/25.4, base=8.6, min=7.5;
-  pa.style.cssText="display:block;position:absolute;left:-10000px;top:0;width:194mm;visibility:hidden";
-  let ok=false, z=1;
+/* ajusta UMA folha para caber numa página (5→3 datas no laboratório; fonte até 7,5 pt). Devolve o HTML já ajustado. */
+function evoFolha(id,n){
+  const box=el("div",{style:"position:absolute;left:-10000px;top:0;width:194mm;visibility:hidden"}); document.body.append(box);
+  const lim=283*96/25.4, base=8.6, min=7.5; let ok=false, z=1, f=null;
   for(const nd of [5,3]){
-    pa.innerHTML=`<style>${EVO_DIA_CSS}</style>`+evoDiaHtml(id,n,nd);
-    const f=pa.querySelector(".evd"); z=1;
-    const alt=()=>f.getBoundingClientRect().height;
+    box.innerHTML=`<style>${EVO_DIA_CSS}</style>`+evoDiaHtml(id,n,nd);
+    f=box.querySelector(".evd"); z=1; const alt=()=>f.getBoundingClientRect().height;
     if(alt()<=lim){ ok=true; break; }
     while(alt()>lim&&base*z>min){ z-=0.01; f.style.zoom=z; f.style.width=(194/z)+"mm"; }
     if(alt()<=lim){ ok=true; break; }
   }
-  const fs=pa.querySelector(".evfs"); if(fs&&z<1) fs.textContent=" · fonte ajustada para "+(base*z).toFixed(1).replace(".",",")+" pt";
-  pa.style.cssText="";
-  return ok;
+  const fs=f.querySelector(".evfs"); if(fs&&z<1) fs.textContent=" · fonte ajustada para "+(base*z).toFixed(1).replace(".",",")+" pt";
+  const html=f.outerHTML; box.remove(); return {html,ok};
+}
+function evoDiaMontar(id,n){ const r=evoFolha(id,n); $("#printArea").innerHTML=`<style>${EVO_DIA_CSS}</style>`+r.html; return r.ok; }
+/* guarda a versão exata que foi para o papel (sem o logo, para não pesar) */
+function evoGuardaVersao(d,html){
+  d.impresso=Date.now(); d.impressoPor=EVO.email;
+  d.versoes=(d.versoes||[]).concat([{ts:d.impresso,by:EVO.email,html:String(html).replace(/<img src="data:[^"]*"/g,'<img data-logo=""')}]).slice(-3);
+  evoDocSave(d);
+}
+/* encolhe a folha A4 dentro da pré-visualização para caber na largura da janela */
+function evoFitIframe(fr){ try{ const w=fr.clientWidth-4, a4=210*96/25.4; if(w>0&&w<a4) fr.contentDocument.body.style.zoom=(w/a4).toFixed(3); }catch(e){} }
+function evoVerVersao(v){
+  const fr=el("iframe",{style:"width:100%;height:75vh;border:1px solid var(--line);border-radius:8px;background:#fff"});
+  openModal("Versão impressa em "+new Date(v.ts).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})+" · "+String(v.by||"").split("@")[0],el("div",{},fr));
+  const h=String(v.html||"").replace(/<img data-logo=""/g,SHARED.logo?`<img src="${SHARED.logo}"`:'<img alt=""');
+  setTimeout(()=>{ const dc=fr.contentDocument; dc.open(); dc.write(`<!doctype html><meta charset="utf-8"><body style="margin:0;padding:7mm 8mm;background:#fff"><style>${EVO_DIA_CSS}</style>${h}</body>`); dc.close(); evoFitIframe(fr); },30);
 }
 function evoDiaImprimir(id,n,previa){
   const d=EVO_DOCS[n]; if(!d) return;
   if(!previa&&evoDiaFaltam(id,d).length){ alert("Ainda há campos obrigatórios. Veja a barra no fim da evolução."); return; }
-  const ok=evoDiaMontar(id,n);
+  const r=evoFolha(id,n);
   if(previa){
-    const h=$("#printArea").innerHTML; $("#printArea").innerHTML="";
     const fr=el("iframe",{style:"width:100%;height:75vh;border:1px solid var(--line);border-radius:8px;background:#fff"});
-    openModal("Pré-visualização da evolução",el("div",{},ok?null:el("p",{class:"ev-warn"},"Mesmo com a fonte mínima (7,5 pt) a folha passa de uma página. Encurte algum texto longo (conduta, intercorrências ou registro livre)."),fr),
+    openModal("Pré-visualização da evolução",el("div",{},r.ok?null:el("p",{class:"ev-warn"},"Mesmo com a fonte mínima (7,5 pt) a folha passa de uma página. Encurte algum texto longo (conduta, intercorrências ou registro livre)."),fr),
       [el("button",{class:"btn primary",type:"button",onclick:()=>evoDiaImprimir(id,n,false)},"Imprimir")]);
-    setTimeout(()=>{ const dc=fr.contentDocument; dc.open(); dc.write(`<!doctype html><meta charset="utf-8"><body style="margin:0;padding:7mm 8mm;background:#fff">${h}</body>`); dc.close(); },30);
+    setTimeout(()=>{ const dc=fr.contentDocument; dc.open(); dc.write(`<!doctype html><meta charset="utf-8"><body style="margin:0;padding:7mm 8mm;background:#fff"><style>${EVO_DIA_CSS}</style>${r.html}</body>`); dc.close(); evoFitIframe(fr); },30);
     return;
   }
-  if(!ok&&!confirm("Mesmo com a fonte mínima a folha passa de uma página. Imprimir assim mesmo?")) return;
+  if(!r.ok&&!confirm("Mesmo com a fonte mínima a folha passa de uma página. Imprimir assim mesmo?")) return;
+  $("#printArea").innerHTML=`<style>${EVO_DIA_CSS}</style>`+r.html; window.print();
+  evoGuardaVersao(d,r.html); evoNavRefresh();
+}
+/* várias folhas de uma vez; itens null viram verso em branco (frente e verso) */
+function evoImprimirLote(itens,duplex){
+  const pags=[], feitos=[];
+  itens.forEach(it=>{ if(!it){ pags.push('<div class="evblank"></div>'); return; } const r=evoFolha(it.id,it.n); pags.push(r.html); feitos.push([it,r.html]); });
+  if(!feitos.length){ alert("Nenhuma evolução pronta para imprimir."); return; }
+  if(duplex&&!confirm("Na janela de impressão, marque “Imprimir nos dois lados” (frente e verso).\n\nO site não consegue ligar o frente e verso da impressora sozinho.")) return;
+  $("#printArea").innerHTML=`<style>${EVO_DIA_CSS} .evd,.evblank{break-after:page} .evblank{page:evdia;height:20mm} #printArea>:last-child{break-after:auto}</style>`+pags.join("");
   window.print();
-  d.impresso=Date.now(); d.impressoPor=EVO.email; evoDocSave(d); evoNavRefresh();
+  feitos.forEach(([it,html])=>{ const d=EVO_DOCS[it.n]; if(d) evoGuardaVersao(d,html); });
+  if(view==="evo") renderEvo();
+}
+
+/* ---- evolução de outra data ou turno (para quando a evolução foi esquecida) ---- */
+function evoDiaOutra(id){
+  let dIso="", tipo="D";
+  const err=el("p",{class:"ev-warn"});
+  const segT=el("div",{class:"ev-togs"}); const desenha=()=>{ segT.innerHTML=""; [["D","Diurna (07h–19h)"],["N","Noturna (19h–07h)"]].forEach(([v,l])=>segT.append(el("button",{type:"button",class:"tog"+(tipo===v?" on":""),onclick:()=>{ tipo=v; desenha(); }},l))); }; desenha();
+  const p=pacOf(id);
+  const body=el("div",{},el("p",{class:"hint"},"Para registrar uma evolução esquecida. A folha sai com a data e o turno escolhidos; no sistema fica registrado que ela foi feita depois."),
+    el("div",{style:"display:grid;grid-template-columns:200px 1fr;gap:12px;align-items:end"},
+      el("div",{},el("label",{class:"lbl ev-req"},"Data do plantão"),evoDataInput("",v=>{ dIso=v; },{max:todayISO()})),
+      el("div",{},el("label",{class:"lbl ev-req"},"Turno"),segT)),err,
+    el("p",{class:"hint",style:"margin:8px 0 0"},"No plantão noturno, use a data em que ele começou (às 19h)."),
+    el("div",{style:"display:flex;justify-content:flex-end;gap:8px;margin-top:12px"},el("button",{class:"btn",type:"button",onclick:()=>fecha()},"Cancelar"),
+      el("button",{class:"btn primary",type:"button",onclick:()=>{
+        if(!dIso){ err.textContent="Informe a data (hoje ou anterior; não pode ser futura)."; return; }
+        if(p.admissao&&dIso<p.admissao){ err.textContent="A data é anterior à admissão na UTI ("+fmtDate(p.admissao,true)+")."; return; }
+        const t={tipo,data:dIso}, n=evoDiaPart(id,t);
+        if(!EVO_DOCS[n]){ evoDiaCriar(id,t); const d=EVO_DOCS[n]; d.retro=Date.now(); d.retroPor=EVO.email; evoDocSave(d); toast("Evolução "+EVO_TURNO[tipo]+" de "+fmtDate(dIso)+" criada"); }
+        EVO.evoKey=n; fecha(); evoTopo(); renderEvo();
+      }},"Abrir ou criar")));
+  const fecha=openModal("Evolução de outra data ou turno",body);
+}
+
+/* ---- painel do plantão (tela inicial da Evolução médica) ---- */
+function evoStatus(id,n){
+  const d=EVO_DOCS[n]; if(!d) return {k:"nao",txt:"não iniciada"};
+  if(d.impresso) return {k:"imp",txt:"impressa"+(d.upd>d.impresso+5000?" · editada depois":"")};
+  const f=evoDiaFaltam(id,d); return f.length?{k:"and",txt:"em andamento · falta"+(f.length>1?"m ":" ")+f.length}:{k:"pronta",txt:"pronta para imprimir"};
+}
+/* par de plantões de quem escolheu 24h: o mais antigo na frente, o mais novo no verso */
+function evoPar24(){
+  const t=evoTurnoGet(); if(!t||t.tipo!=="24h"||!t.fim) return null;
+  const f=new Date(t.fim), iso=x=>new Date(x-x.getTimezoneOffset()*60000).toISOString().slice(0,10), ant=new Date(f); ant.setDate(ant.getDate()-1);
+  return f.getHours()===7?[{tipo:"D",data:iso(ant)},{tipo:"N",data:iso(ant)}]:[{tipo:"N",data:iso(ant)},{tipo:"D",data:iso(f)}];
+}
+function evoPainel(){
+  const t=evoTurno(), beds=SV.med.beds.filter(b=>b.nome), par=evoPar24();
+  const st=beds.map(b=>({b,n:evoDiaPart(b.id,t),s:evoStatus(b.id,evoDiaPart(b.id,t))}));
+  const cnt=k=>st.filter(x=>x.s.k===k).length;
+  const pend24=par?beds.flatMap(b=>par.map(tt=>evoDiaPart(b.id,tt))).filter(n=>EVO_DOCS[n]&&!EVO_DOCS[n].impresso):[];
+  const box=el("div",{class:"card",style:"max-width:1000px;margin:0 auto 14px"},
+    el("div",{style:"display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px"},el("h3",{style:"margin:0;flex:1"},`Painel do plantão · ${t.tipo==="D"?"Diurno":"Noturno"} de ${fmtDate(t.data,true)}`),
+      el("button",{class:"btn primary",type:"button",onclick:()=>evoImprimirModal()},"Imprimir evoluções…")),
+    el("div",{class:"mapa-res"},[["",beds.length,"internados"],["",cnt("imp"),"impressas"],["",cnt("pronta"),"prontas para imprimir"],["",cnt("and"),"em andamento"],["alerta",cnt("nao"),"não iniciadas"]].map(([c,nn,l])=>el("div",{class:"mp-n "+c},el("strong",{},String(nn)),el("span",{},l)))));
+  if(par&&pend24.length&&Date.now()>=evoTurnoGet().fim-60*60000) box.append(el("div",{class:"ev-sign",style:"background:#fff6d6;border-color:#e6c25a;margin-bottom:10px"},
+    el("b",{},`Plantão de 24h: ${pend24.length} evoluç${pend24.length>1?"ões aguardam":"ão aguarda"} impressão frente e verso. `),el("button",{class:"btn small",type:"button",onclick:()=>evoImprimirModal()},"Imprimir agora")));
+  const cor={imp:"ok",pronta:"ok",and:"falta",nao:"falta"};
+  box.append(el("div",{class:"mapa-grid"},st.map(({b,n,s})=>el("button",{type:"button",class:"mapa-leito",onclick:()=>{ EVO.sel=b.id; EVO.tab="dia"; EVO.evoKey=EVO_DOCS[n]?n:""; evoTopo(); renderEvo(); }},
+    el("div",{class:"ml-t"},el("b",{},bedLabel(b)),evoDiasUTI(b.admissao)!=null?el("span",{class:"ml-d"},"D"+evoDiasUTI(b.admissao)):null),
+    el("div",{class:"ml-n"},b.nome),el("span",{class:"ev-st "+cor[s.k]},(t.tipo==="D"?"Diurna: ":"Noturna: ")+s.txt)))));
+  return box;
+}
+function evoImprimirModal(){
+  const t=evoTurno(), beds=SV.med.beds.filter(b=>b.nome), par=evoPar24();
+  const pronta=(id,n)=>EVO_DOCS[n]&&!evoDiaFaltam(id,EVO_DOCS[n]).length;
+  const rot=tt=>`${tt.tipo==="D"?"diurno":"noturno"} de ${fmtDate(tt.data)}`;
+  const ops=[];
+  if(par) ops.push({id:"24h",t:`Plantão de 24h — frente e verso (${rot(par[0])} → ${rot(par[1])})`,
+    d:"Para cada paciente: o plantão mais antigo na frente e o mais novo no verso; verso em branco quando houver só uma.",
+    itens:()=>beds.flatMap(b=>{ const a=evoDiaPart(b.id,par[0]), z=evoDiaPart(b.id,par[1]); const f=pronta(b.id,a)?{id:b.id,n:a}:null, v=pronta(b.id,z)?{id:b.id,n:z}:null; return f||v?[f||v,f&&v?v:null]:[]; }),duplex:true});
+  const turnos=par?par:[t];
+  turnos.forEach(tt=>ops.push({id:tt.tipo+tt.data,t:`Só o plantão ${rot(tt)}`,d:"Uma evolução por folha (todas as prontas).",itens:()=>beds.map(b=>({id:b.id,n:evoDiaPart(b.id,tt)})).filter(x=>pronta(x.id,x.n))}));
+  ops.push({id:"sel",t:"Escolher pacientes…",d:"Marque as evoluções que quer imprimir.",itens:null});
+  let esc0=ops[0].id; const lista=el("div");
+  const marcados=new Set();
+  const desenha=()=>{ wrap.innerHTML=""; ops.forEach(o=>{ const on=o.id===esc0; const its=o.itens?o.itens().filter(Boolean).length:null;
+      wrap.append(el("button",{type:"button",class:"bv-opt"+(on?" on":""),style:"width:100%;margin-bottom:8px",onclick:()=>{ esc0=o.id; desenha(); }},el("div",{class:"t",style:"font-size:15.5px"},o.t),el("div",{class:"h"},o.d+(its!=null?` · ${its} folha${its===1?"":"s"}`:"")))); });
+    lista.innerHTML="";
+    if(esc0==="sel"){ beds.forEach(b=>(par||[t]).forEach(tt=>{ const n=evoDiaPart(b.id,tt); if(!EVO_DOCS[n]) return; const ok=pronta(b.id,n);
+        const c=el("input",{type:"checkbox"}); c.checked=marcados.has(n); if(!ok) c.disabled=true; c.onchange=()=>{ if(c.checked) marcados.add(n); else marcados.delete(n); };
+        lista.append(el("label",{style:"display:flex;gap:8px;align-items:center;padding:4px 0"+(ok?"":";color:var(--muted)")},c,`${bedLabel(b)} · ${b.nome} · ${rot(tt)}${ok?(EVO_DOCS[n].impresso?" · já impressa":""):" · incompleta"}`)); })); }
+  };
+  const wrap=el("div"); desenha();
+  const fecha=openModal("Imprimir evoluções",el("div",{},wrap,lista,el("p",{class:"hint",style:"margin:8px 0 0"},"Só entram evoluções com todos os campos obrigatórios. Uma evolução também pode ser impressa sozinha a qualquer momento, na tela dela.")),
+    [el("button",{class:"btn primary",type:"button",onclick:()=>{ const o=ops.find(x=>x.id===esc0);
+      const its=o.itens?o.itens():[...marcados].map(n=>({id:SV.med.beds.find(b=>EVO_DOCS[n]&&pacOf(b.id).pid===EVO_DOCS[n].pid).id,n}));
+      fecha(); evoImprimirLote(its,!!o.duplex); }},"Imprimir")]);
 }
 
 /* ---- impressão do adendo (A4 retrato, 2 páginas em fluxo contínuo) ---- */
@@ -5347,7 +5458,7 @@ function evoNav(beds){
       el("div",{class:"l2"},b.nome),
       el("span",{class:"ev-st "+(falt.length?"falta":"ok")},falt.length?"Cadastro: falta"+(falt.length>1?"m ":" ")+falt.length:"Cadastro completo"),
       adm?el("span",{class:"ev-st "+(adm.impresso?"ok":"falta"),style:"margin-left:4px"},adm.impresso?"Adendo ✓":"Adendo em andamento"):null,
-      (()=>{ const t=evoTurno(), dn=EVO_DOCS[evoDiaPart(b.id,t)]; const r=(t.tipo==="D"?"Diurna":"Noturna"); return el("span",{class:"ev-st "+(dn&&dn.impresso?"ok":"falta"),style:"margin-left:4px"},dn?(dn.impresso?r+" ✓":r+" em andamento"):r+" pendente"); })()));
+      (()=>{ const t=evoTurno(), dn=EVO_DOCS[evoDiaPart(b.id,t)]; const r=(t.tipo==="D"?"Diurna":"Noturna"); return el("span",{class:"ev-st "+(dn&&dn.impresso?"ok":"falta"),style:"margin-left:4px"},dn?(dn.impresso?r+" ✓":(evoDiaFaltam(b.id,dn).length?r+" em andamento":r+" pronta")):r+" pendente"); })()));
   });
   return nav;
 }
@@ -5362,9 +5473,10 @@ function evoEditor(){
         el("h2",{},"Admitir paciente"),
         el("p",{class:"hint",style:"font-size:14.5px;margin:0"},vagos.length?"Clique no leito vago onde o paciente vai ficar. Depois preencha o cadastro e o adendo de internação.":"Nenhum leito vago no momento."),
         vagos.length?el("div",{class:"ev-adm-grid"},vagos.map(b=>el("button",{type:"button",onclick:()=>evoAdmitir(b.id)},bedLabel(b),el("small",{},"vago")))):null),
+      SV.med.beds.some(b=>b.nome)?evoPainel():null,
       el("div",{class:"ev-empty",style:"padding-top:6px"},
-        el("p",{},"Para o cadastro ou o adendo de um paciente já internado, escolha-o na lista ao lado."),
-        el("p",{class:"hint"},"Evoluções diárias, intercorrências, linha do tempo e relatório chegam nas próximas etapas."),
+        el("p",{},"Para o cadastro, o adendo ou a evolução de um paciente, escolha-o na lista ao lado ou no painel."),
+        el("p",{class:"hint"},"Evolução de intercorrência, linha do tempo, busca e relatório chegam nas próximas etapas."),
     el("div",{class:"ev-sign",style:"max-width:640px;margin:18px auto 0;text-align:left"},el("b",{},"Sua assinatura nas folhas: "),evoAssinatura())));
   }
   const id=EVO.sel, b=SV.med.beds.find(x=>x.id===id), p=pacOf(id), c=evoC(id), wrap=el("div");
