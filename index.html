@@ -612,7 +612,7 @@ setTimeout(function(){ if(window.__fbResolve) window.__fbResolve(null); },12000)
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import { getFirestore, collection, doc, onSnapshot, runTransaction, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getFirestore, collection, doc, onSnapshot, runTransaction, deleteDoc, getDoc, setDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCCiY25Gue_LO9FtDS3d0HSng6j0q-DmDY",
@@ -642,7 +642,12 @@ try{
       return {v:cv+1};
     }),
     remove:part=>deleteDoc(doc(db,"parts",part)),
-    getAcesso:()=>getDoc(doc(db,"config","acesso")).then(s=>s.exists()?s.data():{})   /* lista de acesso e lista "teste" (abas novas) */
+    getAcesso:()=>getDoc(doc(db,"config","acesso")).then(s=>s.exists()?s.data():{}),   /* lista de acesso e lista "teste" (abas novas) */
+    /* arquivo das internações encerradas (só logins em teste, pelas regras) */
+    arqSet:(id,data)=>setDoc(doc(db,"arquivo",id),data),
+    arqGet:id=>getDoc(doc(db,"arquivo",id)).then(s=>s.exists()?s.data():null),
+    arqDel:id=>deleteDoc(doc(db,"arquivo",id)),
+    arqIdx:()=>getDocs(query(collection(db,"arquivo"),where("tipo","==","idx"))).then(q=>q.docs.map(d=>d.data()))
   };
   window.__fbResolve(window.FB);
 }catch(e){ console.error(e); window.__fbResolve(null); }
@@ -2318,6 +2323,10 @@ function onRemote(ev){
   applyRemote(ev);
 }
 function onChange(c){
+  if(c.type==="removed"&&c.part.startsWith("evo:")){   /* internação levada para o arquivo por outro computador */
+    delete EVO_DOCS[c.part]; delete synced[c.part]; delete versions[c.part]; delete pending[c.part];
+    if(view==="evo") needRender=true; return;
+  }
   if(c.type==="removed"){
     const m=c.part.match(/^(arch:|narch:|pocus:|ped:|cul:|par:)(\d+)$/);
     if(m){
@@ -4107,6 +4116,7 @@ async function evoInit(u){
     evoPerfilRefresh();
     const nm=evoTratamento(); $("#hubUser").textContent=nm; $("#userInfo").textContent=nm;
     evoInatividade();
+    evoIdxCarrega(); setTimeout(evoIdSync,2500); setInterval(evoIdSync,60000);
     if(!evoTurnoAtivo()) evoBoasVindas();
   }catch(e){ console.error("Evolução médica (teste):",e); EVO.on=false; }
 }
@@ -4468,11 +4478,13 @@ function evoAdmitir(id0){
   const agora=evoAgoraLocal(); let dIso=agora.slice(0,10), dHora=agora.slice(11,16);
   const dt=el("div",{style:"display:grid;grid-template-columns:minmax(0,1fr) 80px;gap:6px"},evoDataInput(dIso,v=>{ dIso=v; },{max:todayISO()}),evoHoraInput(dHora,h=>{ dHora=h; }));
   const pl=el("select",{class:"txt"},el("option",{value:""},"Convênio…"),(SHARED.lists.plano||[]).map(x=>el("option",{value:x},x)));
-  const err=el("p",{class:"ev-warn"});
+  const err=el("p",{class:"ev-warn"}), ra=el("div");
+  nome.addEventListener("input",()=>{ ra.innerHTML=""; const L=evoReadmissoes(nome.value,"",null).slice(0,3);
+    if(L.length) ra.append(el("div",{class:"ev-sign",style:"background:#fff6d6;border-color:#e6c25a;margin-top:8px;font-size:13.5px"},el("b",{},"Já esteve na UTI: "),L.map(evoAltaRot).join(" | "),el("div",{class:"hint",style:"margin:4px 0 0"},"Depois de admitir, o cadastro mostra a internação anterior e permite copiar nascimento, sexo, altura e alergias."))); });
   const b0=id0?SV.med.beds.find(x=>x.id===id0):null;
   const body=el("div",{},el("p",{class:"hint"},b0?`O paciente entra no ${bedLabel(b0)} e aparece também nos passômetros médico e de enfermagem.`:"O paciente aparece também nos passômetros médico e de enfermagem."),
     sLeito?el("div",{style:"margin-bottom:10px"},el("label",{class:"lbl ev-req"},"Leito"),sLeito):null,
-    el("label",{class:"lbl ev-req"},"Nome completo"),nome,el("div",{style:"height:10px"}),
+    el("label",{class:"lbl ev-req"},"Nome completo"),nome,ra,el("div",{style:"height:10px"}),
     el("div",{style:"display:grid;grid-template-columns:1fr 1fr;gap:10px"},el("div",{},el("label",{class:"lbl ev-req"},"Admissão na UTI (data e hora)"),dt),el("div",{},el("label",{class:"lbl"},"Convênio"),pl)),err,
     el("div",{style:"display:flex;justify-content:flex-end;gap:8px;margin-top:12px"},
       el("button",{class:"btn",type:"button",onclick:()=>fecha()},"Cancelar"),
@@ -5767,41 +5779,46 @@ function evoIqTraz(id,d,lista){
 
 /* ---- linha do tempo da internação ---- */
 const EVO_TL_TIPOS=[["evo","Evoluções","#0f6b5e","Evolução"],["iq","Intercorrências","#b3261e","Intercorrência"],["exam","Exames","#2f5fb3","Exames"],["par","Pareceres","#7a4fb0","Parecer"],["pocus","POCUS","#8a6100","POCUS"],["cul","Culturas e ATB","#5a6b2f","Infecção"]];
-function evoTlEventos(id){
+function evoTlEventos(id,int){
   const b=SV.med.beds.find(x=>x.id===id), p=pacOf(id), ev=[], dt=s=>new Date(s).getTime();
   const fh=ts=>new Date(ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
   const add=(ts,tipo,tit,sub,acoes,semHora)=>{ if(ts&&!isNaN(ts)) ev.push({ts,tipo,tit,sub:sub||"",acoes:acoes||[],semHora:!!semHora}); };
   const bt=(t,fn,pri)=>el("button",{class:"btn small"+(pri?" primary":""),type:"button",onclick:fn},t);
   const quem=e=>String(e||"").split("@")[0];
-  const vers=d=>(d.versoes||[]).length?bt("Versão impressa",()=>evoVerVersao(d.versoes[d.versoes.length-1])):null;
+  const vers=d=>{ const v=(d.versoes||[]).slice().reverse().find(x=>x&&x.html); return v?bt("Versão impressa",()=>evoVerVersao(v)):null; };
   const ir=(tab,extra)=>()=>{ EVO.tab=tab; Object.assign(EVO,extra||{}); evoTopo(); renderEvo(); };
   const gav=k=>()=>{ EVO.gav=k; renderEvo(); };
+  const imp=(k,fn)=>int?bt("Imprimir",()=>evoArqImprimir(int,k)):bt("Imprimir",fn);   /* internação encerrada: imprime a partir do arquivo */
   if(p.admissao) add(dt(p.admissao+"T00:00"),"evo","Admissão na UTI",p.plano?"Convênio "+p.plano:"",[],true);
   const adm=evoAdmDoc(id,false);
-  if(adm) add(adm.dataHora?dt(adm.dataHora):adm.criado,"evo","Adendo de internação",(adm.impresso?"impresso":"em andamento")+" · "+quem(adm.autor),[bt("Abrir",ir("adm"))]);
+  if(adm) add(adm.dataHora?dt(adm.dataHora):adm.criado,"evo","Adendo de internação",(adm.impresso?"impresso":"em andamento")+" · "+quem(adm.autor),int?[imp(evoAdmPart(id))]:[bt("Abrir",ir("adm"))]);
   evoDiaLista(id).forEach(n=>{ const d=EVO_DOCS[n], f=evoDiaFaltam(id,d);
     add(d.dataHora?dt(d.dataHora):dt(d.data+"T"+(d.turno==="D"?"07:00":"19:00")),"evo","Evolução "+(d.turno==="D"?"diurna":"noturna")+" · plantão de "+fmtDate(d.data),
       [quem(d.autor),d.impresso?"impressa"+(d.upd>d.impresso+5000?" (editada depois)":""):f.length?"em andamento":"pronta, não impressa",d.retro?"registrada depois":""].filter(Boolean).join(" · "),
-      [bt("Abrir",ir("dia",{evoKey:n})),vers(d),bt("Imprimir",()=>evoDiaImprimir(id,n,true))]); });
+      int?[vers(d),imp(n)]:[bt("Abrir",ir("dia",{evoKey:n})),vers(d),bt("Imprimir",()=>evoDiaImprimir(id,n,true))]); });
   evoIqLista(id).forEach(n=>{ const d=EVO_DOCS[n];
     add(evoIqTs(d),"iq",d.titulo||EVO_IQ_TIT,[quem(d.autor),d.impresso?"impressa":"não impressa",String(d.texto||"").replace(/\s+/g," ").slice(0,140)+(String(d.texto||"").length>140?"…":"")].join(" · "),
-      [bt("Abrir",ir("iq",{iqKey:n})),vers(d)],!d.hora); });
+      int?[vers(d),imp(n)]:[bt("Abrir",ir("iq",{iqKey:n})),vers(d)],!d.hora); });
   const iniAdm=p.admissao?dt(p.admissao+"T00:00"):0;
   SHARED.ped.filter(r=>r.leito===id&&r.ts>=iniAdm&&(!r.ctx||!r.ctx.nome||r.ctx.nome===p.nome)).forEach(r=>{
-    add(r.ts,"exam","Pedido de exames",[quem(r.por),evoPedTxt(r).replace(/^Solicitados: /,"")].filter(Boolean).join(" · "),[bt("Exames",gav("exam"))]); });
+    add(r.ts,"exam","Pedido de exames",[quem(r.por),evoPedTxt(r).replace(/^Solicitados: /,"")].filter(Boolean).join(" · "),int?[]:[bt("Exames",gav("exam"))]); });
+  const rel=EVO_DOCS[evoRelKey(p.pid)];
+  if(rel) add(rel.impresso||rel.upd,"evo","Relatório de alta",(rel.impresso?"impresso":"em andamento")+" · "+quem(rel.autor),int?[imp(evoRelKey(p.pid))]:[bt("Abrir",ir("rel"))]);
+  if(int&&int.id.alta&&int.id.alta.data) add(dt(int.id.alta.data+"T"+(int.id.alta.hora||"23:59")),"evo","Saída da UTI",evoMotivoTxt(int.id.alta)||"motivo não informado",[],!int.id.alta.hora);
   if(b) parDoLeito(b).forEach(r=>{ const esp=r.espec||"Sem especialidade";
-    add(r.ts,"par","Parecer pedido · "+esp,String(r.pedido||"").replace(/\s+/g," ").slice(0,140),[bt("Pareceres",gav("par"))]);
-    if(parRespondido(r)&&r.respEm) add(r.respEm,"par","Parecer respondido · "+esp,parTemTexto(r)?String(r.resp).replace(/\s+/g," ").slice(0,160):"respondido fora do sistema",[bt("Pareceres",gav("par"))]); });
+    add(r.ts,"par","Parecer pedido · "+esp,String(r.pedido||"").replace(/\s+/g," ").slice(0,140),int?[]:[bt("Pareceres",gav("par"))]);
+    if(parRespondido(r)&&r.respEm) add(r.respEm,"par","Parecer respondido · "+esp,parTemTexto(r)?String(r.resp).replace(/\s+/g," ").slice(0,160):"respondido fora do sistema",int?[]:[bt("Pareceres",gav("par"))]); });
   if(p.pid) SHARED.pocus.filter(r=>r.pid===p.pid).forEach(r=>{ const bl=recBlocos(r), alt=pocusAlteracoes(bl);
-    add(r.ts,"pocus","POCUS · "+blocosPreenchidos(bl).map(x=>x.curto).join(", "),[r.examinador||"",alt.length?alt.length+" achado(s) alterado(s)":"sem alterações marcadas"].filter(Boolean).join(" · "),[bt("POCUS",gav("pocus"))]); });
+    add(r.ts,"pocus","POCUS · "+blocosPreenchidos(bl).map(x=>x.curto).join(", "),[r.examinador||"",alt.length?alt.length+" achado(s) alterado(s)":"sem alterações marcadas"].filter(Boolean).join(" · "),int?[]:[bt("POCUS",gav("pocus"))]); });
   if(b){ culValidas(b.culturas).forEach(c=>{ if(!c.data) return; const r=culRes(c);
-      add(dt(c.data+"T12:00"),"cul","Cultura · "+(c.sitio||"sem sítio"),culResLabel(r,c)+(r==="pos"&&culGermeTxt(c)?": "+culGermeTxt(c):""),[bt("Culturas",gav("cul"))],true); });
+      add(dt(c.data+"T12:00"),"cul","Cultura · "+(c.sitio||"sem sítio"),culResLabel(r,c)+(r==="pos"&&culGermeTxt(c)?": "+culGermeTxt(c):""),int?[]:[bt("Culturas",gav("cul"))],true); });
     (b.atb||[]).filter(a=>a.nome&&a.ini).forEach(a=>{ add(dt(a.ini+"T12:00"),"cul","Antimicrobiano iniciado · "+a.nome,"",[],true);
       if(a.fim) add(dt(a.fim+"T12:01"),"cul","Antimicrobiano finalizado · "+a.nome,"",[],true); }); }
   return ev.sort((x,y)=>y.ts-x.ts);
 }
-function evoTlEditor(id){
-  const wrap=el("div"), ev=evoTlEventos(id), f=EVO.tlFiltro||"";
+function evoTlEditor(id){ return evoTlLista(evoTlEventos(id)); }
+function evoTlLista(ev){
+  const wrap=el("div"), f=EVO.tlFiltro||"";
   const cnt=k=>ev.filter(x=>x.tipo===k).length;
   wrap.append(el("div",{class:"ev-togs",style:"margin:0 0 14px"},
     el("button",{type:"button",class:"tog sm"+(!f?" on":""),onclick:()=>{ EVO.tlFiltro=""; renderEvo(); }},"Tudo ("+ev.length+")"),
@@ -5853,6 +5870,332 @@ function evoProtoPedido(id,pr){
   return true;
 }
 
+/* ============ Fase 7: alta, arquivo de 1 ano, relatório de alta e readmissão ============
+   - "evo:<pid>:id": retrato do paciente (cadastro + ATB, culturas, imagem, laboratório), atualizado pelos logins em teste.
+   - Quando o paciente some do leito (Limpar leito, de qualquer login), a saída é registrada; 6 h depois a internação
+     inteira vai para a coleção "arquivo" (fora dos dados que todo computador carrega) e fica 1 ano.
+   - Nada muda para os logins fora do teste. */
+const EVO_MOTIVOS=["Alta para enfermaria","Alta hospitalar","Transferência para outro hospital","Óbito","Outro"];
+const EVO_ARQ_ESPERA=6*3600000, EVO_ARQ_DIAS=365, EVO_ARQ_PEDACO=700000;
+function evoIdKey(pid){ return "evo:"+pid+":id"; }
+function evoRelKey(pid){ return "evo:"+pid+":rel"; }
+function evoPidsLocais(){ const s=new Set(); Object.keys(EVO_DOCS).forEach(k=>{ const m=k.match(/^evo:([^:]+):/); if(m) s.add(m[1]); }); return [...s]; }
+function evoSnap(b){
+  const p=pacOf(b.id);
+  return {pac:JSON.parse(JSON.stringify(p)),bed:JSON.parse(JSON.stringify({atb:b.atb||[],culturas:b.culturas||[],imagem:b.imagem||[],labesp:b.labesp||{on:false,exames:[]}}))};
+}
+/* mantém o retrato de cada paciente internado e registra a saída de quem não está mais no leito */
+function evoIdSync(){
+  if(!EVO.on) return;
+  const presentes=new Set();
+  SV.med.beds.filter(b=>b.nome).forEach(b=>{
+    const p=pacOf(b.id); if(!p.pid) return; presentes.add(p.pid);
+    const k=evoIdKey(p.pid), s=evoSnap(b), cur=EVO_DOCS[k];
+    if(!cur){ EVO_DOCS[k]={tipo:"id",pid:p.pid,leito:b.id,pac:s.pac,bed:s.bed,criado:Date.now(),upd:Date.now()}; save(); return; }
+    let mud=false;
+    if(JSON.stringify({pac:cur.pac,bed:cur.bed})!==JSON.stringify(s)){ cur.pac=s.pac; cur.bed=s.bed; mud=true; }
+    if(cur.leito!==b.id){ cur.leito=b.id; mud=true; }
+    if(cur.alta){ delete cur.alta; mud=true; }                     /* estava marcado como saída, mas o paciente está no leito */
+    if(mud) evoDocSave(cur);
+  });
+  evoPidsLocais().forEach(pid=>{
+    if(presentes.has(pid)) return;
+    const k=evoIdKey(pid); let d=EVO_DOCS[k];
+    if(!d){                                                       /* folhas antigas, de antes do retrato existir */
+      const adm=EVO_DOCS["evo:"+pid+":adm"];
+      d=EVO_DOCS[k]={tipo:"id",pid,leito:adm&&adm.leito||"",pac:{pid,nome:"Paciente sem identificação",problemas:[],disp:{},dd:{},evc:{}},bed:{atb:[],culturas:[],imagem:[],labesp:{on:false,exames:[]}},criado:Date.now(),upd:Date.now()};
+    }
+    if(!d.alta){ d.alta={detectada:Date.now(),por:EVO.email,data:todayISO(),hora:"",motivo:"",outro:""}; evoDocSave(d); return; }
+    if(Date.now()-(d.alta.detectada||0)>EVO_ARQ_ESPERA) evoArquivar(pid);
+  });
+}
+/* ---- arquivo (coleção "arquivo"): índice pequeno para a busca + a internação em pedaços ---- */
+function evoArqOk(){ return !!(window.FB&&FB.arqSet&&FB.arqGet&&FB.arqIdx); }
+function evoIntLocal(pid){
+  const id=EVO_DOCS[evoIdKey(pid)]; if(!id) return null;
+  const docs={}; Object.keys(EVO_DOCS).forEach(k=>{ if(k.startsWith("evo:"+pid+":")&&k!==evoIdKey(pid)) docs[k]=EVO_DOCS[k]; });
+  return {pid,id,docs,arquivada:false};
+}
+function evoIdxDe(int){
+  const p=int.id.pac||{}, c=p.evc||{}, a=int.id.alta||{};
+  return {tipo:"idx",pid:int.pid,nome:p.nome||"",nn:norm(p.nome||""),nasc:c.nasc||"",nint:c.nint||"",sexo:c.sexo||"",leito:int.id.leito||"",admissao:p.admissao||"",
+    alta:{data:a.data||"",motivo:a.motivo||"",outro:a.outro||""},rel:!!int.docs[evoRelKey(int.pid)],ts:Date.now(),by:EVO.email};
+}
+async function evoArqGrava(int,nAntigo){
+  const s=JSON.stringify({id:int.id,docs:int.docs}), n=Math.max(1,Math.ceil(s.length/EVO_ARQ_PEDACO));
+  for(let i=0;i<n;i++) await FB.arqSet("int_"+int.pid+"_"+i,{tipo:"int",pid:int.pid,i,n,s:s.slice(i*EVO_ARQ_PEDACO,(i+1)*EVO_ARQ_PEDACO)});
+  const ix=Object.assign(evoIdxDe(int),{n}); await FB.arqSet("idx_"+int.pid,ix);
+  for(let i=n;i<(nAntigo||0);i++){ try{ await FB.arqDel("int_"+int.pid+"_"+i); }catch(e){} }
+  EVO.idx=(EVO.idx||[]).filter(x=>x.pid!==int.pid).concat([ix]);
+  return n;
+}
+EVO.arquivando={};
+async function evoArquivar(pid){
+  if(!evoArqOk()||EVO.arquivando[pid]) return;
+  const int=evoIntLocal(pid); if(!int) return;
+  EVO.arquivando[pid]=true;
+  try{
+    await evoArqGrava(int,0);
+    const ks=[evoIdKey(pid),...Object.keys(int.docs)];
+    for(const k of ks){ try{ await FB.remove(k); }catch(e){} delete EVO_DOCS[k]; delete synced[k]; delete versions[k]; }
+    EVO.arqCache[pid]={pid,id:int.id,docs:int.docs,arquivada:true,n:(EVO.idx.find(x=>x.pid===pid)||{}).n||1};
+    if(view==="evo") renderEvo();
+  }catch(e){ console.warn("Arquivo da internação:",e); }
+  finally{ delete EVO.arquivando[pid]; }
+}
+EVO.idx=[]; EVO.arqCache={};
+async function evoIdxCarrega(){
+  if(!EVO.on||!evoArqOk()) return;
+  try{
+    const L=await FB.arqIdx(), lim=Date.now()-EVO_ARQ_DIAS*86400000;
+    EVO.idx=[];
+    for(const x of L){
+      const dt=x.alta&&x.alta.data?new Date(x.alta.data+"T12:00").getTime():x.ts;
+      if(dt<lim){ for(let i=0;i<(x.n||1);i++){ try{ await FB.arqDel("int_"+x.pid+"_"+i); }catch(e){} } try{ await FB.arqDel("idx_"+x.pid); }catch(e){} continue; }   /* 1 ano: apaga */
+      EVO.idx.push(x);
+    }
+    if(view==="evo") evoNavRefresh();
+  }catch(e){ console.warn("Índice do arquivo:",e); }
+}
+async function evoIntCarrega(pid){
+  const loc=evoIntLocal(pid); if(loc) return loc;
+  if(EVO.arqCache[pid]) return EVO.arqCache[pid];
+  const ix=(EVO.idx||[]).find(x=>x.pid===pid); if(!ix) return null;
+  let s=""; for(let i=0;i<(ix.n||1);i++){ const d=await FB.arqGet("int_"+pid+"_"+i); if(!d) throw new Error("pedaço do arquivo ausente"); s+=d.s; }
+  const o=JSON.parse(s); return EVO.arqCache[pid]={pid,id:o.id,docs:o.docs||{},arquivada:true,n:ix.n||1};
+}
+let evoArqTimer=null;
+function evoIntSalva(int){                    /* mudança numa internação encerrada (saída ou relatório) */
+  if(!int.arquivada){ Object.keys(int.docs).forEach(k=>{ EVO_DOCS[k]=int.docs[k]; }); evoDocSave(int.id); return; }
+  int.id.upd=Date.now(); clearTimeout(evoArqTimer);
+  evoArqTimer=setTimeout(async()=>{ try{ const n0=int.n; int.n=await evoArqGrava(int,n0); }catch(e){ toast("Não foi possível gravar no arquivo agora. Tente de novo."); } },1500);
+}
+/* internações encerradas conhecidas (ainda nos dados do dia ou já no arquivo), sem repetição */
+function evoAltasTodas(){
+  const out=[], vis=new Set();
+  Object.keys(EVO_DOCS).forEach(k=>{ const m=k.match(/^evo:([^:]+):id$/); if(!m) return; const d=EVO_DOCS[k]; if(!d.alta) return;
+    vis.add(d.pid); out.push(Object.assign(evoIdxDe({pid:d.pid,id:d,docs:{[evoRelKey(d.pid)]:EVO_DOCS[evoRelKey(d.pid)]}}),{local:true,detectada:d.alta.detectada})); });
+  (EVO.idx||[]).forEach(x=>{ if(!vis.has(x.pid)) out.push(x); });
+  return out.sort((a,b)=>String(b.alta.data).localeCompare(String(a.alta.data)));
+}
+function evoAltaTxt(a){ return a&&a.data?fmtDate(a.data,true)+(a.hora?" às "+a.hora:"")+(evoMotivoTxt(a)?" · "+evoMotivoTxt(a):""):""; }
+function evoMotivoTxt(a){ return a&&a.motivo?(a.motivo==="Outro"&&a.outro?a.outro:a.motivo):""; }
+/* desenha folhas de uma internação encerrada: põe o paciente num leito "de mentira" só durante a montagem (sem gravar nada) */
+function evoComInt(int,fn){
+  const vid=int.id.leito||"L1", p0=SHARED.pac[vid], salvos={};
+  const bed=Object.assign(newBed(vid,String(vid).startsWith("E")),JSON.parse(JSON.stringify(int.id.bed||{})));
+  bindPac(bed);
+  Object.keys(int.docs).forEach(k=>{ salvos[k]=EVO_DOCS[k]; EVO_DOCS[k]=int.docs[k]; });
+  SHARED.pac[vid]=JSON.parse(JSON.stringify(int.id.pac||{})); SV.med.beds.unshift(bed);
+  try{ return fn(vid); }
+  finally{ SV.med.beds.shift(); if(p0) SHARED.pac[vid]=p0; else delete SHARED.pac[vid];
+    Object.keys(salvos).forEach(k=>{ if(salvos[k]===undefined) delete EVO_DOCS[k]; else EVO_DOCS[k]=salvos[k]; }); }
+}
+function evoPrevia(titulo,css,html){
+  const fr=el("iframe",{style:"width:100%;height:75vh;border:1px solid var(--line);border-radius:8px;background:#fff"});
+  const fecha=openModal(titulo,el("div",{},fr),[el("button",{class:"btn primary",type:"button",onclick:()=>{ fecha(); $("#printArea").innerHTML=(css?`<style>${css}</style>`:"")+html; window.print(); }},"Imprimir")]);
+  setTimeout(()=>{ const dc=fr.contentDocument; dc.open(); dc.write(`<!doctype html><meta charset="utf-8"><body style="margin:0;padding:7mm 8mm;background:#fff">${css?`<style>${css}</style>`:""}${html}</body>`); dc.close(); evoFitIframe(fr); },30);
+}
+function evoArqImprimir(int,k){
+  const d=int.docs[k]; if(!d) return;
+  const r=evoComInt(int,vid=>{
+    if(d.tipo==="adm") return {css:"",html:evoAdmAjusta(evoAdmHtml(vid))};
+    if(d.tipo==="interc") return {css:EVO_DIA_CSS,html:evoIqHtml(vid,d)};
+    if(d.tipo==="dia") return {css:EVO_DIA_CSS,html:evoFolha(vid,k).html};
+    if(d.tipo==="rel") return {css:"",html:evoRelHtml(vid,int)};
+    return null;
+  });
+  if(r) evoPrevia("Folha da internação encerrada",r.css,r.html);
+}
+
+/* ---- relatório de alta ---- */
+const EVO_REL_CAMPOS=[["admissao","Admissão"],["alta","Alta"],["problemas","Lista de problemas"],["comorb","Comorbidades"],["meds","Medicações de uso contínuo"],
+  ["devs","Dispositivos invasivos"],["atb","Antibióticos e culturas"],["hda","História de admissão"],["evolucao","Evolução durante a internação"],["exame","Exame físico"],
+  ["imagem","Exames de imagem"],["lab","Exames laboratoriais"],["conduta","Conduta"]];
+function evoUltimaDia(vid){ const L=evoDiaLista(vid); return L.length?EVO_DOCS[L[L.length-1]]:null; }
+function evoRelGera(vid,alta){
+  const b=SV.med.beds.find(x=>x.id===vid), p=pacOf(vid), c=evoC(vid), adm=evoAdmDoc(vid,false), ult=evoUltimaDia(vid), fem=c.sexo==="F";
+  const ref=alta&&alta.data?alta.data:todayISO(), L=[];
+  const dh=adm&&adm.dataHora||"", proc=adm?(adm.procedencia==="Outro"?adm.procedOutro:adm.procedencia):"";
+  const f={};
+  f.admissao=[p.admissao?fmtDate(p.admissao,true)+(dh?" às "+dh.slice(11,16):""):"",proc?"Procedência: "+proc:""].filter(Boolean).join(" · ");
+  f.alta=evoAltaTxt(alta);
+  f.problemas=[evoPOTxt(adm&&adm.cir),...(p.problemas||[])].filter(Boolean).join("\n");
+  f.comorb=adm?[...EVO_HPP.filter(([k])=>adm.hpp&&adm.hpp[k]).map(([,l])=>l),adm.hppOutros].filter(Boolean).join(", "):"";
+  f.meds=adm&&adm.meds||"";
+  const devs=devEntries(b,ref).map(x=>`${x.l}${x.sit?" "+x.sit:""}${x.data?" — desde "+fmtDate(x.data,true)+" (D"+x.d+")":""}`);
+  Object.entries(p.ret||{}).forEach(([k,dt])=>{ if(!devOn(b,k)) devs.push(`${(DEVS.find(x=>x[0]===k)||[k,k])[1]} — retirado em ${fmtDate(dt,true)}`); });
+  f.devs=devs.join("\n");
+  const atb=(b.atb||[]).filter(a=>a.nome&&a.ini).map(a=>{ const i=atbInfo(a,ref); return `${a.nome}: ${fmtDate(a.ini,true)}${a.fim?" a "+fmtDate(a.fim,true):" (em uso)"} · ${i.fin?i.n+" dias":i.txt}`; });
+  const cul=culValidas(b.culturas).map(x=>`${x.sitio||"Cultura"} ${x.data?fmtDate(x.data,true):""}: ${culResLabel(culRes(x),x).toLowerCase()}${culRes(x)==="pos"&&culGermeTxt(x)?" — "+culGermeTxt(x)+(culPerfilRel(x).length?" ("+culPerfilRel(x).join(", ")+")":""):""}`);
+  f.atb=[...atb,...(cul.length?["Culturas:",...cul]:[])].join("\n");
+  f.hda=adm?[adm.queixa?"Queixa principal: "+adm.queixa:"",String(adm.hda||"").replace(EVO_ESPACOS," ")].filter(Boolean).join("\n"):"";
+  f.evolucao="";
+  if(ult){ const sv=ult.sv||{};
+    f.exame=[ `Última evolução: ${ult.turno==="D"?"diurna":"noturna"} de ${fmtDate(ult.data,true)}`,
+      [sv.pamin&&"PA mín "+sv.pamin,sv.pamax&&"PA máx "+sv.pamax,sv.fc&&"FC "+sv.fc,sv.fr&&"FR "+sv.fr,sv.sat&&"SatO2 "+sv.sat+"%"].filter(Boolean).join(" · "),
+      ...evoExTexto(ult.ex,fem).map(([k,v,s])=>`${k}: ${v}${s?" | "+s:""}`)].filter(Boolean).join("\n"); }
+  else f.exame=adm?evoExTexto(adm.ex,fem).map(([k,v,s])=>`${k}: ${v}${s?" | "+s:""}`).join("\n"):"";
+  f.imagem=(b.imagem||[]).filter(x=>x.nome).sort((a,z)=>String(a.data).localeCompare(String(z.data))).map(x=>`${x.nome}${x.data?" "+fmtDate(x.data,true):""}${x.achado?": "+x.achado:""}`).join("\n");
+  f.lab=labEspOn(b)?(b.labesp.exames||[]).filter(x=>x.nome).map(x=>{ const r=(x.res||[]).filter(y=>y&&String(y.valor||"").trim()).sort(ordData); return `${x.nome}${x.unidade?" ("+x.unidade+")":""}: `+r.map(y=>`${y.valor}${y.data?" ("+fmtDate(y.data)+")":""}`).join(", "); }).join("\n"):"";
+  f.conduta="";
+  return f;
+}
+/* gravidade na última evolução (aviso ao dar alta, exceto óbito) */
+function evoGravidade(vid){
+  const u=evoUltimaDia(vid); if(!u||!u.ex) return null; const ex=u.ex, a=[];
+  if(ex.cv&&ex.cv.dva&&ex.cv.dva.on) a.push("droga vasoativa");
+  if(ex.resp&&ex.resp.sup==="vm") a.push("ventilação mecânica");
+  if(ex.geral&&ex.geral.estado==="Gravíssimo") a.push("estado gravíssimo");
+  return a.length?{txt:a.join(", "),rot:`${u.turno==="D"?"diurna":"noturna"} de ${fmtDate(u.data)}`}:null;
+}
+function evoRelHtml(vid,int){
+  const d=int.docs[evoRelKey(int.pid)]; if(!d) return "";
+  const b=SV.med.beds.find(x=>x.id===vid), p=pacOf(vid), c=evoC(vid), e=x=>esc(String(x==null?"":x).replace(EVO_ESPACOS," "));
+  const idade=evoIdade(c.nasc), cel=(span,l,v,cls)=>`<div class="${cls||""}" style="grid-column:span ${span}"><label>${l}</label><div class="v">${e(v||"—")}</div></div>`;
+  const autor=evoPerfil(d.autor)||EVO.perfil, logo=SHARED.logo?`<img src="${SHARED.logo}" alt="">`:"";
+  const sec=EVO_REL_CAMPOS.filter(([k])=>String(d.campos[k]||"").trim()&&!["admissao","alta"].includes(k)).map(([k,l])=>`<h3>${e(l)}</h3><p style="white-space:pre-wrap">${e(d.campos[k])}</p>`).join("");
+  const tags=[]; if(c.alergias) tags.push(`<span class="tag${/^nega/i.test(c.alergias)?" o":""}">${/^nega/i.test(c.alergias)?"ALERGIAS: NEGA":"ALERGIA: "+e(c.alergias.toUpperCase())}</span>`);
+  return `<style>${EVO_PRINT_CSS}</style><div class="evp">
+<div class="hd"><div>${logo}</div><div class="tt"><div class="u">UNIDADE DE TERAPIA INTENSIVA – IOG</div><div class="d">EVOLUÇÃO DE ALTA DA UTI</div></div><div class="dt"></div></div>
+<div class="id">${cel(5,"Nome",p.nome,"nm")}${cel(3,"Nascimento · idade",(c.nasc?fmtDate(c.nasc,true):"")+(idade!=null?" · "+idade+" anos":""))}${cel(1,"Sexo",c.sexo)}${cel(1,"Leito",b?bedLabel(b).replace(/^Leito /,""):"")}${cel(2,"Nº internação",c.nint)}
+${cel(2,"Convênio",p.plano)}${cel(5,"Admissão",d.campos.admissao)}${cel(5,"Alta",d.campos.alta)}</div>
+<div class="alerts">${tags.join("")}</div>${sec}
+<div class="sig um"><div class="ln">${e(evoAssinatura(autor))}<br>Médico — assinatura e carimbo</div></div>
+<div class="foot">Evolução de alta da UTI · ${e(p.nome)}</div></div>`;
+}
+/* texto para colar no Word: título, identificação e seções (com formatação simples) */
+function evoRelWord(vid,int){
+  const d=int.docs[evoRelKey(int.pid)], p=pacOf(vid), c=evoC(vid), e=x=>esc(String(x==null?"":x).replace(EVO_ESPACOS," ")), idade=evoIdade(c.nasc);
+  const id=[["Nome",p.nome],["Nascimento",(c.nasc?fmtDate(c.nasc,true):"")+(idade!=null?" ("+idade+" anos)":"")],["Nº internação",c.nint],["Convênio",p.plano],["Admissão",d.campos.admissao],["Alta",d.campos.alta]].filter(x=>x[1]);
+  const html=`<div style="font-family:Arial;font-size:11pt"><p style="font-size:13pt"><b>EVOLUÇÃO DE ALTA DA UTI</b></p>`+id.map(([k,v])=>`<b>${k}:</b> ${e(v)}`).join("<br>")
+    +EVO_REL_CAMPOS.filter(([k])=>String(d.campos[k]||"").trim()&&!["admissao","alta"].includes(k)).map(([k,l])=>`<p><b>${e(l.toUpperCase())}</b><br>${e(d.campos[k]).replace(/\n/g,"<br>")}</p>`).join("")
+    +`<p>${e(evoAssinatura(evoPerfil(d.autor)||EVO.perfil))}</p></div>`;
+  const txt="EVOLUÇÃO DE ALTA DA UTI\n"+id.map(([k,v])=>k+": "+v).join("\n")+"\n\n"
+    +EVO_REL_CAMPOS.filter(([k])=>String(d.campos[k]||"").trim()&&!["admissao","alta"].includes(k)).map(([k,l])=>l.toUpperCase()+"\n"+d.campos[k]).join("\n\n")+"\n\n"+evoAssinatura(evoPerfil(d.autor)||EVO.perfil);
+  return {html,txt};
+}
+async function evoCopiar(html,txt){
+  try{ if(navigator.clipboard&&window.ClipboardItem){ await navigator.clipboard.write([new ClipboardItem({"text/html":new Blob([html],{type:"text/html"}),"text/plain":new Blob([txt],{type:"text/plain"})})]); toast("Copiado. No Word, use Colar (Ctrl+V)."); return; } }catch(e){}
+  const div=el("div",{contenteditable:"true",style:"position:fixed;left:-9999px;top:0",html}); document.body.append(div);
+  const r=document.createRange(); r.selectNodeContents(div); const s=getSelection(); s.removeAllRanges(); s.addRange(r);
+  let ok=false; try{ ok=document.execCommand("copy"); }catch(e){} s.removeAllRanges(); div.remove();
+  toast(ok?"Copiado. No Word, use Colar (Ctrl+V).":"Não foi possível copiar automaticamente.");
+}
+/* editor do relatório: serve para o paciente internado (alta prevista) e para a internação encerrada */
+/* cx: {gera(), html(), word(), grav} — monta os dados do paciente certo (internado ou encerrado) na hora do clique */
+function evoRelEditor(int,cx,salvar){
+  const wrap=el("div"), a=int.id&&int.id.alta, grav=cx.grav;
+  if(grav&&evoMotivoTxt(a)!=="Óbito") wrap.append(el("div",{class:"ev-warn",style:"background:#fff1f0;border:1px solid #efc9c5;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:14px"},
+    el("b",{},"Atenção: "),`na última evolução (${grav.rot}) o paciente estava com ${grav.txt}. Confira antes de dar a alta.`));
+  let d=int.docs[evoRelKey(int.pid)];
+  if(!d){ wrap.append(el("div",{class:"card",style:"text-align:center;padding:26px"},
+      el("p",{style:"font-size:16px;margin:0 0 10px"},"O relatório ainda não foi iniciado."),
+      el("p",{class:"hint"},"Ele vem preenchido com o que já está no sistema (adendo, última evolução, passômetro). Depois é só revisar e escrever a evolução durante a internação."),
+      el("button",{class:"btn primary",type:"button",onclick:()=>{ int.docs[evoRelKey(int.pid)]={tipo:"rel",pid:int.pid,autor:EVO.email,criado:Date.now(),upd:Date.now(),campos:cx.gera()}; salvar(); }},"Iniciar relatório de alta"))); return wrap; }
+  const ch=()=>{ d.upd=Date.now(); salvar(true); };
+  if(a&&a.data&&evoAltaTxt(a)!==d.campos.alta&&(!String(d.campos.alta||"").trim()||d.altaAuto)){ d.campos.alta=evoAltaTxt(a); d.altaAuto=true; salvar(true); }   /* a saída registrada completa o campo "Alta" */
+  if(d.impresso) wrap.append(el("div",{class:"ev-sign",style:"margin-bottom:8px"},`Impresso em ${new Date(d.impresso).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})} por ${String(d.impressoPor||"").split("@")[0]}`+(d.upd>d.impresso+5000?" · editado depois da impressão":"")));
+  const card=el("div",{class:"card"},el("div",{style:"display:flex;gap:10px;align-items:center;margin-bottom:6px"},el("h3",{style:"margin:0;flex:1"},"Evolução de alta da UTI"),
+    el("button",{class:"btn small",type:"button",title:"Refaz os campos com os dados atuais (o texto que você escreveu nos campos será substituído)",onclick:()=>{
+      if(!confirm("Preencher de novo com os dados do sistema? Os campos preenchidos automaticamente serão substituídos. “Evolução durante a internação” e “Conduta” são mantidos.")) return;
+      const g2=cx.gera(); Object.keys(g2).forEach(k=>{ if(!["evolucao","conduta"].includes(k)) d.campos[k]=g2[k]; }); salvar(); }},"Preencher de novo com os dados")));
+  EVO_REL_CAMPOS.forEach(([k,l])=>{
+    const big=["evolucao","conduta","hda","exame"].includes(k);
+    const t=el("textarea",{class:"par-ta","data-campo":k,style:"min-height:"+(big?(k==="evolucao"?180:90):44)+"px",placeholder:k==="evolucao"?"Resumo da evolução na UTI: principais intercorrências, procedimentos, resposta ao tratamento…":k==="conduta"?"Orientações e conduta para a enfermaria / destino…":""});
+    t.value=d.campos[k]||""; t.addEventListener("input",()=>{ d.campos[k]=t.value; if(k==="alta") d.altaAuto=false; ch(); });
+    card.append(el("label",{class:"lbl"+(k==="evolucao"?" ev-req":""),style:"margin-top:10px;font-weight:700"},l),t);
+  });
+  wrap.append(card);
+  const falta=!String(d.campos.evolucao||"").trim();
+  wrap.append(el("div",{class:"card",style:"position:sticky;bottom:0;display:flex;gap:10px;align-items:center;box-shadow:0 -4px 16px rgba(0,0,0,.06)"},
+    el("div",{style:"flex:1;font-weight:600;color:"+(falta?"var(--danger)":"#2e7d32")},falta?"Para imprimir, escreva a evolução durante a internação":"✓ Pronto"),
+    el("button",{class:"btn",type:"button",onclick:()=>{ const w=cx.word(); evoCopiar(w.html,w.txt); }},"Copiar para o Word"),
+    el("button",{class:"btn primary",type:"button",onclick:()=>{
+      if(!String(d.campos.evolucao||"").trim()){ alert("Escreva a evolução durante a internação antes de imprimir."); return; }
+      evoPrevia("Relatório de alta","",cx.html());
+      d.impresso=Date.now(); d.impressoPor=EVO.email; salvar(); }},"Imprimir com o logo")));
+  return wrap;
+}
+/* ---- tela da internação encerrada ---- */
+function evoArqEditor(){
+  const pid=EVO.arq, wrap=el("div");
+  const int=evoIntLocal(pid)||EVO.arqCache[pid];
+  if(!int){
+    wrap.append(el("p",{class:"hint",style:"padding:20px"},"Carregando a internação…"));
+    evoIntCarrega(pid).then(x=>{ if(!x){ toast("Internação não encontrada no arquivo."); EVO.arq=null; } renderEvo(); }).catch(e=>{ toast("Não foi possível abrir o arquivo: "+(e&&e.message||e)); EVO.arq=null; renderEvo(); });
+    return wrap;
+  }
+  const p=int.id.pac||{}, c=p.evc||{}, a=int.id.alta||{}, tab=EVO.arqTab||"saida";
+  const salvar=re=>{ evoIntSalva(int); if(!re) renderEvo(); };
+  wrap.append(el("div",{class:"bed-title"},el("h2",{},p.nome||"Paciente"),el("span",{class:"ev-tag o"},"INTERNAÇÃO ENCERRADA")),
+    el("p",{class:"hint",style:"margin:-4px 0 10px"},[c.nasc?"Nascimento "+fmtDate(c.nasc,true):"",c.nint?"Nº internação "+c.nint:"",p.admissao?"UTI de "+fmtDate(p.admissao,true)+" a "+(a.data?fmtDate(a.data,true):"—"):"",int.id.leito?"último leito "+String(int.id.leito).replace(/^L/,"").replace(/^E/,"Extra "):"",int.arquivada?"no arquivo":"saída recente"].filter(Boolean).join(" · ")),
+    el("div",{class:"ev-tabs"},...[["saida","Dados da saída"],["tl","Linha do tempo"],["rel","Relatório de alta"]].map(([k,l])=>el("button",{class:tab===k?"on":"",type:"button",onclick:()=>{ EVO.arqTab=k; evoTopo(); renderEvo(); }},l))));
+  if(tab==="saida"){
+    const mot=el("select",{class:"txt"},el("option",{value:""},"Escolha o motivo…"),...EVO_MOTIVOS.map(m=>{ const o=el("option",{value:m},m); if(a.motivo===m) o.selected=true; return o; }));
+    mot.onchange=()=>{ a.motivo=mot.value; a.por=EVO.email; salvar(); };
+    const outro=el("input",{class:"txt",value:a.outro||"",placeholder:"Descreva"}); outro.addEventListener("input",()=>{ a.outro=outro.value; salvar(true); });
+    const grav=evoComInt(int,v=>evoGravidade(v));
+    wrap.append(el("div",{class:"card"},el("h3",{},"Saída da UTI"),
+      grav&&a.motivo!=="Óbito"?el("div",{class:"ev-warn",style:"margin-bottom:10px"},`Atenção: na última evolução (${grav.rot}) o paciente estava com ${grav.txt}.`):null,
+      el("div",{style:"display:grid;grid-template-columns:180px 110px minmax(0,1fr);gap:12px"},
+        el("div",{},el("label",{class:"lbl ev-req"},"Data"),evoDataInput(a.data,v=>{ a.data=v; salvar(true); },{max:todayISO()})),
+        el("div",{},el("label",{class:"lbl"},"Hora"),evoHoraInput(a.hora||"",v=>{ a.hora=v; salvar(true); })),
+        el("div",{},el("label",{class:"lbl ev-req"},"Motivo"),mot,a.motivo==="Outro"?el("div",{style:"margin-top:6px"},outro):null)),
+      el("p",{class:"hint",style:"margin:10px 0 0"},a.detectada?`Saída registrada automaticamente em ${new Date(a.detectada).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}, quando o leito foi encontrado limpo. Confira a data.`:"")));
+  } else if(tab==="tl"){
+    const ev=evoComInt(int,v=>evoTlEventos(v,int));
+    wrap.append(evoTlLista(ev));
+  } else {
+    const cx={gera:()=>evoComInt(int,v=>evoRelGera(v,int.id.alta)),html:()=>evoComInt(int,v=>evoRelHtml(v,int)),word:()=>evoComInt(int,v=>evoRelWord(v,int)),grav:evoComInt(int,v=>evoGravidade(v))};
+    wrap.append(evoRelEditor(int,cx,salvar));
+  }
+  return wrap;
+}
+/* readmissão: mesma pessoa (nome + nascimento) que já passou pela UTI */
+function evoReadmissoes(nome,nasc,pidAtual){
+  const nn=norm(String(nome||"")).trim(); if(nn.length<5) return [];
+  return evoAltasTodas().filter(x=>x.pid!==pidAtual&&x.nn===nn&&(!nasc||!x.nasc||x.nasc===nasc));
+}
+function evoAltaRot(x){ return `${x.nome}${x.nasc?" · nasc. "+fmtDate(x.nasc,true):""} · UTI ${x.admissao?fmtDate(x.admissao,true):"?"} a ${x.alta&&x.alta.data?fmtDate(x.alta.data,true):"?"}${evoMotivoTxt(x.alta)?" · "+evoMotivoTxt(x.alta):""}`; }
+
+function evoBuscaAlta(x,q){
+  const nq=norm(q).trim(), dig=q.replace(/\D/g,""); if(!nq) return false;
+  if(nq.split(/\s+/).every(w=>(x.nn||norm(x.nome||"")).includes(w))) return true;
+  if(dig&&String(x.nint||"").replace(/\D/g,"").includes(dig)) return true;
+  if(dig.length>=4&&x.nasc){ const [y,m,d]=x.nasc.split("-"); if((d+m+y).startsWith(dig)||(d+m+y.slice(2))===dig) return true; }
+  return false;
+}
+/* tela inicial: saídas dos últimos 7 dias e as que ainda estão sem motivo */
+function evoSaidasPainel(){
+  const lim=new Date(Date.now()-7*86400000).toISOString().slice(0,10);
+  const L=evoAltasTodas().filter(x=>!evoMotivoTxt(x.alta)||(x.alta&&x.alta.data>=lim)); if(!L.length) return null;
+  const pend=L.filter(x=>!evoMotivoTxt(x.alta)).length;
+  return el("div",{class:"card",style:"max-width:1000px;margin:0 auto 14px"},
+    el("div",{style:"display:flex;gap:10px;align-items:baseline;margin-bottom:8px"},el("h3",{style:"margin:0;flex:1"},"Saídas recentes da UTI"),pend?el("span",{class:"ev-st falta"},pend+" sem motivo"):null),
+    el("p",{class:"hint",style:"margin:0 0 8px"},"Registradas quando o leito é limpo no passômetro. Complete o motivo e faça o relatório de alta; tudo fica guardado por 1 ano e aparece na busca."),
+    ...L.slice(0,12).map(x=>el("div",{class:"ev-tl-it",style:"grid-template-columns:90px minmax(0,1fr) auto"},
+      el("div",{class:"h"},x.alta&&x.alta.data?fmtDate(x.alta.data,true):"—"),
+      el("div",{class:"c"},el("b",{},x.nome),el("div",{class:"s"},[evoMotivoTxt(x.alta)||"motivo pendente",x.rel?"relatório iniciado":"sem relatório",x.leito?"leito "+String(x.leito).replace(/^L/,"").replace(/^E/,"extra "):""].join(" · "))),
+      el("div",{class:"a"},el("button",{class:"btn small"+(evoMotivoTxt(x.alta)?"":" primary"),type:"button",onclick:()=>{ EVO.sel=null; EVO.arq=x.pid; EVO.arqTab=evoMotivoTxt(x.alta)?"rel":"saida"; evoTopo(); renderEvo(); }},evoMotivoTxt(x.alta)?"Abrir":"Completar")))));
+}
+/* aviso de readmissão no cadastro */
+function evoReadmAviso(id){
+  const p=pacOf(id), c=evoC(id); if(!p.nome) return null;
+  const L=evoReadmissoes(p.nome,c.nasc,p.pid); if(!L.length) return null;
+  const x=L[0];
+  return el("div",{class:"ev-sign",style:"background:#fff6d6;border-color:#e6c25a;margin-bottom:12px"},
+    el("b",{},"Readmissão? "),`${x.nasc&&c.nasc?"Mesmo nome e data de nascimento":"Mesmo nome"} de quem já esteve na UTI: ${evoAltaRot(x)}.`+(L.length>1?` (${L.length} internações anteriores)`:""),
+    el("div",{style:"margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"},
+      el("button",{class:"btn small",type:"button",onclick:()=>{ EVO.sel=null; EVO.arq=x.pid; EVO.arqTab="tl"; evoTopo(); renderEvo(); }},"Ver internação anterior"),
+      el("button",{class:"btn small",type:"button",onclick:async()=>{
+        try{ const int=await evoIntCarrega(x.pid); const o=(int&&int.id.pac&&int.id.pac.evc)||{}; const cpy={};
+          ["nasc","sexo","altura","alergias"].forEach(k=>{ if(o[k]&&!c[k]) cpy[k]=o[k]; });
+          if(!Object.keys(cpy).length){ toast("Nada a copiar: estes campos já estão preenchidos."); return; }
+          Object.keys(cpy).forEach(k=>evoSet(id,k,cpy[k])); renderEvo(); toast("Copiado do cadastro anterior: "+Object.keys(cpy).map(k=>({nasc:"nascimento",sexo:"sexo",altura:"altura",alergias:"alergias"})[k]).join(", ")+". A história da doença atual não é copiada.");
+        }catch(e){ toast("Não foi possível abrir a internação anterior."); } }},"Copiar nascimento, sexo, altura e alergias")),
+    el("div",{class:"hint",style:"margin:6px 0 0"},"Nada é trazido automaticamente; a história da doença atual nunca é reaproveitada."));
+}
 function evoTopo(){ const s=$("#evoApp section.editor"); if(s) s.scrollTop=0; }
 function renderEvo(){
   const root=$("#evoApp"), sc0=root.querySelector("section.editor"), scroll=sc0?sc0.scrollTop:0;
@@ -5886,11 +6229,15 @@ function evoNav(beds){
   if(beds.length) nav.append(bi);
   if(!beds.length) nav.append(el("p",{class:"hint",style:"padding:8px"},"Nenhum paciente no passômetro."));
   const achados=beds.filter(b=>evoBuscaBate(b,q));
-  if(q&&!achados.length) nav.append(el("p",{class:"hint",style:"padding:8px"},"Nenhum paciente internado encontrado. Pacientes com alta entram na busca junto com o arquivo de altas."));
+  const altas=q?evoAltasTodas().filter(x=>evoBuscaAlta(x,q)):[];
+  if(q&&!achados.length&&!altas.length) nav.append(el("p",{class:"hint",style:"padding:8px"},"Nenhum paciente encontrado."));
+  if(altas.length) setTimeout(()=>{ nav.append(el("div",{class:"group"},"Com alta ("+altas.length+")"),...altas.slice(0,30).map(x=>el("button",{class:"bed-btn"+(EVO.arq===x.pid&&!EVO.sel?" active":""),type:"button",onclick:()=>{ EVO.sel=null; EVO.arq=x.pid; EVO.arqTab="saida"; evoTopo(); renderEvo(); }},
+    el("div",{class:"l1"},el("span",{},"Saída "+(x.alta&&x.alta.data?fmtDate(x.alta.data,true):"—"))),el("div",{class:"l2"},x.nome),
+    el("span",{class:"ev-st "+(evoMotivoTxt(x.alta)?"ok":"falta")},evoMotivoTxt(x.alta)||"motivo pendente")))); },0);
   achados.forEach(b=>{
     const falt=evoFaltam(b.id), d=evoDiasUTI(b.admissao);
     const adm=EVO_DOCS[evoAdmPart(b.id)];
-    nav.append(el("button",{class:"bed-btn"+(b.id===EVO.sel?" active":""),type:"button",onclick:()=>{ EVO.sel=b.id; EVO.evoKey=""; evoTopo(); renderEvo(); }},
+    nav.append(el("button",{class:"bed-btn"+(b.id===EVO.sel?" active":""),type:"button",onclick:()=>{ EVO.sel=b.id; EVO.arq=null; EVO.evoKey=""; evoTopo(); renderEvo(); }},
       el("div",{class:"l1"},el("span",{},bedLabel(b)),d!=null?el("span",{class:"bed-d"},"D"+d):null),
       el("div",{class:"l2"},b.nome),
       el("span",{class:"ev-st "+(falt.length?"falta":"ok")},falt.length?"Cadastro: falta"+(falt.length>1?"m ":" ")+falt.length:"Cadastro completo"),
@@ -5900,6 +6247,7 @@ function evoNav(beds){
   return nav;
 }
 function evoEditor(){
+  if(EVO.arq&&!EVO.sel) return evoArqEditor();
   if(!EVO.sel){
     /* tela inicial: quadro "Admitir paciente" com os leitos vagos (ideia C aprovada) */
     const vagos=SV.med.beds.filter(b=>!b.nome&&(!b.extra||b.ativo!==false));
@@ -5911,9 +6259,10 @@ function evoEditor(){
         el("p",{class:"hint",style:"font-size:14.5px;margin:0"},vagos.length?"Clique no leito vago onde o paciente vai ficar. Depois preencha o cadastro e o adendo de internação.":"Nenhum leito vago no momento."),
         vagos.length?el("div",{class:"ev-adm-grid"},vagos.map(b=>el("button",{type:"button",onclick:()=>evoAdmitir(b.id)},bedLabel(b),el("small",{},"vago")))):null),
       SV.med.beds.some(b=>b.nome)?evoPainel():null,
+      evoSaidasPainel(),
       el("div",{class:"ev-empty",style:"padding-top:6px"},
         el("p",{},"Para o cadastro, o adendo ou a evolução de um paciente, escolha-o na lista ao lado ou no painel."),
-        el("p",{class:"hint"},"Relatório de alta e arquivo de pacientes com alta chegam na próxima etapa."),
+        el("p",{class:"hint"},"Pacientes que já tiveram alta: use a busca acima da lista (ficam guardados por 1 ano)."),
     el("div",{class:"ev-sign",style:"max-width:640px;margin:18px auto 0;text-align:left"},el("b",{},"Sua assinatura nas folhas: "),evoAssinatura())));
   }
   const id=EVO.sel, b=SV.med.beds.find(x=>x.id===id), p=pacOf(id), c=evoC(id), wrap=el("div");
@@ -5935,7 +6284,7 @@ function evoEditor(){
     head.append(el("div",{class:"bed-title"},el("h2",{},bedLabel(b)+" · "+b.nome),...tags));
   };
   evoHeadRefresh();
-  const tab=["adm","dia","iq","tl"].includes(EVO.tab)?EVO.tab:"cad";
+  const tab=["adm","dia","iq","tl","rel"].includes(EVO.tab)?EVO.tab:"cad";
   wrap.append(head,
     el("div",{class:"ev-tabs"},
       el("button",{class:tab==="cad"?"on":"",type:"button",onclick:()=>{ EVO.tab="cad"; evoTopo(); renderEvo(); }},"Cadastro"),
@@ -5943,11 +6292,19 @@ function evoEditor(){
       el("button",{class:tab==="dia"?"on":"",type:"button",onclick:()=>{ EVO.tab="dia"; evoTopo(); renderEvo(); }},"Evolução diária"),
       el("button",{class:tab==="iq"?"on":"",type:"button",onclick:()=>{ EVO.tab="iq"; evoTopo(); renderEvo(); }},"Evolução de intercorrência"),
       el("button",{class:tab==="tl"?"on":"",type:"button",onclick:()=>{ EVO.tab="tl"; evoTopo(); renderEvo(); }},"Linha do tempo"),
-      el("button",{type:"button",disabled:"disabled"},"Relatório de alta",el("small",{},"em breve"))));
+      el("button",{class:tab==="rel"?"on":"",type:"button",onclick:()=>{ EVO.tab="rel"; evoTopo(); renderEvo(); }},"Relatório de alta")));
   if(tab==="adm"){ wrap.append(evoAdmEditor(id)); return wrap; }
   if(tab==="iq"){ wrap.append(evoIqEditor(id)); return wrap; }
   if(tab==="tl"){ wrap.append(evoTlEditor(id)); return wrap; }
+  if(tab==="rel"){
+    const pid=ensurePid(id)||p.pid, int={pid:p.pid,id:{},docs:EVO_DOCS,arquivada:false};
+    const salvar=re=>{ const d=EVO_DOCS[evoRelKey(p.pid)]; if(d) evoDocSave(d); if(!re) renderEvo(); };
+    wrap.append(el("p",{class:"hint",style:"margin:0 0 10px"},"Pode ser preparado antes da saída. Depois que o leito for limpo, o relatório continua disponível pela busca."),
+      evoRelEditor(int,{gera:()=>evoRelGera(id,null),html:()=>evoRelHtml(id,int),word:()=>evoRelWord(id,int),grav:evoGravidade(id)},salvar));
+    return wrap;
+  }
   if(tab==="dia"){ wrap.append(evoDiaEditor(id)); return wrap; }
+  { const ra=evoReadmAviso(id); if(ra) wrap.append(ra); }
   /* identificação (nome, admissão e convênio vêm do passômetro) */
   const idadeOut=el("div",{class:"ev-calc"}), idadeAviso=el("div",{class:"ev-warn"});
   const atualizaIdade=()=>{
