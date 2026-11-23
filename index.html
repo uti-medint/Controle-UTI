@@ -456,6 +456,11 @@ textarea.par-ta:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2
 .hub-card.evo-new{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .ev-badge{font-size:11px;font-weight:700;background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:2px 8px;text-transform:uppercase;letter-spacing:.04em}
 .ev-user{font-size:13.5px;color:var(--muted);text-align:right;line-height:1.25}.ev-user b{color:var(--ink);display:block;font-size:14px}
+.ev-user-b{border:1px solid var(--line);background:#fff;border-radius:8px;padding:4px 10px;cursor:pointer}.ev-user-b:hover{border-color:var(--accent)}
+.bv-meds{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:0 0 6px}
+.bv-med{border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:8px 12px;font-weight:650;font-size:14.5px;cursor:pointer;color:var(--ink)}
+.bv-med small{display:block;font-weight:500;font-size:11.5px;color:var(--muted)}
+.bv-med.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
 .ev-plantao{font-size:13px;font-weight:600;border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 10px;color:var(--accent)}
 .ev-st{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:1px 6px;margin-top:3px}
 .ev-st.ok{background:#e3f2e4;color:#2e7d32}.ev-st.falta{background:var(--warn-soft);color:var(--warn)}
@@ -2472,7 +2477,7 @@ function renderHub(){
     el("div",{class:"hub-ic",html:ic}),
     el("div",{class:"hub-t"},t,soon?el("span",{class:"badge"},"Em breve"):null),
     el("div",{class:"hub-d"},d));
-  if(EVO.on){   /* Evolução médica: todos os logins autorizados */
+  if(EVO.on&&!EVO.oculto){   /* Evolução médica: logins médicos (enfermagem não vê) */
     const c=card(ICONS.evo,"Evolução médica","Cadastro do paciente, adendo de internação, evoluções, intercorrências e relatório de alta",()=>showView("evo"));
     c.classList.add("evo-new"); g.append(c);
   }
@@ -4108,18 +4113,31 @@ async function evoInit(u){
   try{
     const email=String((u&&u.email)||"").toLowerCase();
     if(!email) return;                                    /* liberada para todos os logins autorizados */
-    EVO.on=true; EVO.email=email; EVO.antigo=evoLoginAntigo(email);
+    EVO.on=true; EVO.email=email;
+    EVO.oculto=email==="enfermagem@uti.local";                 /* enfermagem: não vê a Evolução médica, mas registra a saída no Limpar leito */
+    EVO.compart=!EVO.oculto&&evoLoginAntigo(email);           /* login geral dos médicos: escolhe quem está de plantão */
+    EVO.eu=EVO.compart?evoQuemGet():email;
     /* configurações ainda não gravadas no Firebase: usa os valores padrão sem enviá-los (só vão quando alguém editar) */
     EVO_PARTS.forEach(n=>{ if(versions[n]===undefined) synced[n]=serialize(n); });
     evoPerfilRefresh();
-    if(!EVO.antigo){ const nm=evoTratamento(); $("#hubUser").textContent=nm; $("#userInfo").textContent=nm; evoInatividade(); }
     evoIdxCarrega(); setTimeout(evoIdSync,2500); setInterval(evoIdSync,60000);
-    if(!EVO.antigo&&!evoTurnoAtivo()) evoBoasVindas();
+    if(EVO.oculto) return;
+    evoInatividade();
+    if(EVO.compart?!evoQuemAtivo():!evoTurnoAtivo()) evoBoasVindas();
   }catch(e){ console.error("Evolução médica:",e); EVO.on=false; }
 }
 
 /* ---- plantão do dia (escolhido nas boas-vindas; guardado neste computador) ---- */
 function evoTurnoKey(){ return "evo_turno_"+EVO.email; }
+/* login geral: médico escolhido neste computador (vale até o fim do plantão escolhido) */
+function evoQuemKey(){ return "evo_quem_"+EVO.email; }
+function evoQuemGet(){ try{ const q=JSON.parse(localStorage.getItem(evoQuemKey())||"null"); return q&&q.k&&q.fim>Date.now()&&evoPerfil(q.k)?q.k:""; }catch(e){ return ""; } }
+function evoQuemAtivo(){ return !!(EVO.eu&&evoQuemGet()===EVO.eu&&evoTurnoAtivo()); }
+function evoQuemSet(k,fim){ try{ localStorage.setItem(evoQuemKey(),JSON.stringify({k,fim,ts:Date.now()})); }catch(e){} EVO.eu=k; evoPerfilRefresh(); }
+/* médicos que podem ser escolhidos (cadastro em Configurações → Usuários) */
+function evoMedicos(){ const d=evoData("usr:perfis").perfis, all=Object.assign({},EVO_PERFIS,d);
+  return Object.keys(all).filter(k=>all[k]&&!all[k].generico&&all[k].nome&&!all[k].inativo).map(k=>({k,p:evoPerfil(k)})).sort((a,b)=>(a.p.grupo==="coord"?0:a.p.grupo==="res"?1:2)-(b.p.grupo==="coord"?0:b.p.grupo==="res"?1:2)||a.p.nome.localeCompare(b.p.nome)); }
+function evoQuem(k){ const p=k?evoPerfil(k):null; if(p&&!p.generico&&p.nome) return (p.sexo==="F"?"Dra ":"Dr ")+(p.curto||p.nome.split(" ")[0]); if(p&&p.generico) return p.trat||"Residente"; return String(k||"").split("@")[0]; }
 function evoTurnoGet(){ try{ return JSON.parse(localStorage.getItem(evoTurnoKey())||"null"); }catch(e){ return null; } }
 function evoTurnoAtivo(){ const t=evoTurnoGet(); return !!(t&&t.fim&&Date.now()<t.fim); }
 function evoOpcoesTurno(now){
@@ -4166,9 +4184,35 @@ function evoBoasVindas(trocar){
       el("div",{class:"h"},o.h),el("div",{class:"x"},o.x));
   });
   const dataExt=now.toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"});
+  /* login geral: escolha de quem está de plantão neste computador */
+  let selK=EVO.compart?(EVO.eu||""):"", medBox=null, outroBox=null, nomeEl=null, errQ=null;
+  const oNome=el("input",{class:"txt",placeholder:"Nome completo do médico"}), oCrm=el("input",{class:"txt",placeholder:"CRM-GO",inputmode:"numeric",style:"max-width:120px"});
+  const oSexo=el("select",{class:"txt",style:"max-width:120px"},el("option",{value:"M"},"Dr"),el("option",{value:"F"},"Dra"));
+  const oGrupo=el("select",{class:"txt",style:"max-width:170px"},el("option",{value:"plant"},"Plantonista"),el("option",{value:"res"},"Residente"),el("option",{value:"coord"},"Diarista"));
+  const pintaMed=()=>{ if(!medBox) return; medBox.querySelectorAll(".bv-med").forEach(b=>b.classList.toggle("on",b.dataset.k===selK)); outroBox.style.display=selK==="__outro"?"":"none";
+    if(nomeEl) nomeEl.textContent=selK&&selK!=="__outro"?", "+evoTratamento(evoPerfil(selK)):""; };
+  if(EVO.compart){
+    medBox=el("div",{class:"bv-meds"},...evoMedicos().map(({k,p})=>el("button",{type:"button",class:"bv-med","data-k":k,onclick:()=>{ selK=k; pintaMed(); }},
+        (p.sexo==="F"?"Dra ":"Dr ")+(p.curto||p.nome.split(" ")[0]),el("small",{},(EVO_GRUPO[p.grupo]||EVO_GRUPO.plant)[p.sexo==="F"?1:0].replace(/^Médic[oa] /,"")))),
+      el("button",{type:"button",class:"bv-med","data-k":"__outro",onclick:()=>{ selK="__outro"; pintaMed(); oNome.focus(); }},"Outro médico",el("small",{},"digitar nome e CRM")));
+    outroBox=el("div",{style:"display:none;margin:6px auto 0;max-width:640px"},el("div",{style:"display:flex;gap:8px;flex-wrap:wrap;justify-content:center"},oSexo,oNome,oCrm,oGrupo));
+    errQ=el("p",{class:"ev-warn",style:"text-align:center;margin:6px 0 0"});
+  }
   const go=el("button",{class:"btn primary",type:"button",onclick:()=>{
     const o=op.ops.find(x=>x.id===esc0);
+    if(EVO.compart){
+      if(!selK){ errQ.textContent="Escolha quem está de plantão neste computador."; return; }
+      if(selK==="__outro"){
+        const nm=oNome.value.trim().replace(/\s+/g," "); if(nm.split(" ").length<2){ errQ.textContent="Digite o nome completo do médico."; return; }
+        if(!/^\d{3,7}$/.test(oCrm.value.trim())){ errQ.textContent="Digite o número do CRM (só números)."; return; }
+        const k="outro_"+uid(), D=evoData("usr:perfis");
+        D.perfis[k]={nome:nm.replace(/\b\w/g,m=>m.toUpperCase()),curto:nm.split(" ")[0].replace(/^./,m=>m.toUpperCase()),sexo:oSexo.value,grupo:oGrupo.value,crm:oCrm.value.trim(),rqe:"",outro:true,diarista:oGrupo.value==="coord"};
+        evoHist("usr:perfis",`Médico incluído pela tela de plantão: ${D.perfis[k].nome} (CRM ${D.perfis[k].crm})`); save(); selK=k;
+      }
+      evoQuemSet(selK,o.fim);
+    }
     try{ localStorage.setItem(evoTurnoKey(),JSON.stringify({tipo:o.id,t:o.t,fim:o.fim,ts:Date.now()})); }catch(e){}
+    if(EVO.compart){ const nm=evoTratamento(); $("#hubUser").textContent=nm; $("#userInfo").textContent=nm; evoUlt=Date.now(); }
     ov.remove(); if(view==="evo") renderEvo();
   }},trocar?"Confirmar":"Começar o plantão");
   const ov=el("div",{class:"bv-ov "+(noite?"noite":"dia"),id:"bvOv",role:"dialog","aria-modal":"true","aria-label":"Boas-vindas"},
@@ -4176,22 +4220,26 @@ function evoBoasVindas(trocar){
       el("div",{class:"bv-top"},SHARED.logo?el("img",{src:SHARED.logo,alt:""}):null,
         el("div",{class:"bv-when"},el("b",{},dataExt.charAt(0).toUpperCase()+dataExt.slice(1)),now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}))),
       el("div",{class:"bv-hero",html:noite?EVO_IC.lua:EVO_IC.sol}),
-      el("h2",{},saud+", ",el("span",{},evoTratamento()),"!"),
+      EVO.compart?el("h2",{},saud,(nomeEl=el("span",{})),"!"):el("h2",{},saud+", ",el("span",{},evoTratamento()),"!"),
       el("p",{class:"bv-lead"},lead),
       el("div",{class:"bv-pills"},pill(ocup.length,"pacientes internados"),pill(adm,"admissões desde ontem"),pill(alta,alta===1?"alta prevista para hoje":"altas previstas para hoje")),
-      el("p",{class:"bv-q"},trocar?"Trocar o plantão:":(noite?"Como vai ser o seu plantão?":"Como vai ser o seu plantão hoje?")),
+      EVO.compart?el("p",{class:"bv-q"},"Quem está de plantão neste computador?"):null,medBox,outroBox,
+      el("p",{class:"bv-q"},trocar&&!EVO.compart?"Trocar o plantão:":(noite?"Como vai ser o seu plantão?":"Como vai ser o seu plantão hoje?")),
       el("div",{class:"bv-opts"},cards),
       el("div",{class:"bv-go"},go,
-        trocar?el("button",{class:"btn",type:"button",onclick:()=>ov.remove()},"Cancelar")
-              :el("span",{class:"bv-alt"},"Não é você? ",el("button",{type:"button",onclick:()=>FB.signOut().then(()=>location.reload())},"Entrar com outro usuário"))),
-      el("div",{class:"bv-foot"},noite?"Lembrete: o site desconecta após 1 hora sem uso, para proteger a sua assinatura."
+        trocar&&(!EVO.compart||evoQuemAtivo())?el("button",{class:"btn",type:"button",onclick:()=>ov.remove()},"Cancelar")
+              :EVO.compart?null:el("span",{class:"bv-alt"},"Não é você? ",el("button",{type:"button",onclick:()=>FB.signOut().then(()=>location.reload())},"Entrar com outro usuário"))),
+      errQ,
+      el("div",{class:"bv-foot"},EVO.compart?"As folhas saem com a assinatura de quem for escolhido aqui. Depois de 1 hora sem uso, o site pergunta se ainda é a mesma pessoa."
+        :noite?"Lembrete: o site desconecta após 1 hora sem uso, para proteger a sua assinatura."
         :"Bom plantão! Você pode trocar essa escolha a qualquer momento em “Trocar plantão”, na Evolução médica.")));
-  document.body.append(ov); go.focus();
+  document.body.append(ov); pintaMed(); go.focus();
 }
 
 /* ---- saída automática após 1h sem uso (aviso aos 55 min). Vale para todas as abas abertas deste computador. ---- */
 let evoUlt=Date.now(), evoAvisoEl=null, evoSaindo=false;
 function evoUltimaAtividade(){ let s=0; try{ s=Number(localStorage.getItem("evo_ult_"+EVO.email))||0; }catch(e){} return Math.max(evoUlt,s); }
+let evoQuemEl=null;
 function evoInatividade(){
   let gravado=0;
   const mark=()=>{
@@ -4204,6 +4252,18 @@ function evoInatividade(){
   setInterval(()=>{
     if(evoSaindo) return;
     const idle=Date.now()-evoUltimaAtividade();
+    if(EVO.compart){                     /* login geral: não sai; pergunta se ainda é o mesmo médico */
+      if(idle>=EVO_IDLE_SAIR&&EVO.eu&&!evoQuemEl&&!document.getElementById("bvOv")){
+        const fecha=()=>{ evoQuemEl.remove(); evoQuemEl=null; evoUlt=Date.now(); try{ localStorage.setItem("evo_ult_"+EVO.email,String(evoUlt)); }catch(e){} };
+        evoQuemEl=el("div",{class:"overlay",style:"z-index:160"},el("div",{class:"modal",style:"width:min(460px,100%)"},el("div",{class:"body"},
+          el("h3",{style:"margin:0 0 8px"},`Ainda é ${EVO.perfil&&EVO.perfil.sexo==="F"?"a":"o"} ${evoTratamento()}?`),
+          el("p",{style:"margin:0 0 14px"},"O computador ficou mais de 1 hora sem uso. As folhas saem com a assinatura do médico escolhido."),
+          el("div",{style:"display:flex;gap:8px"},el("button",{class:"btn primary",type:"button",onclick:fecha},"Sim, continuar"),
+            el("button",{class:"btn",type:"button",onclick:()=>{ fecha(); evoBoasVindas(true); }},"Trocar médico")))));
+        document.body.append(evoQuemEl);
+      }
+      return;
+    }
     if(idle>=EVO_IDLE_SAIR){ evoSairInativo(); return; }
     if(idle>=EVO_IDLE_AVISO){
       const min=Math.max(1,Math.ceil((EVO_IDLE_SAIR-idle)/60000));
@@ -4230,7 +4290,7 @@ function evoC(id){ const p=pacOf(id); if(!p.evc||typeof p.evc!=="object") p.evc=
 function evoSet(id,k,v){
   const c=evoC(id);
   if(v===""||v==null) delete c[k]; else c[k]=v;
-  c.upd=Date.now(); c.by=EVO.email; save();
+  c.upd=Date.now(); c.by=EVO.eu; save();
 }
 function evoIdade(nasc,refISO){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(nasc||"")) return null;
@@ -4261,7 +4321,7 @@ function evoAgoraLocal(){ const d=new Date(); return new Date(d-d.getTimezoneOff
 function evoDiurno(dt){ const h=dt?Number(String(dt).slice(11,13)):new Date().getHours(); return h>=7&&h<19; }
 function evoAdmNovo(id){
   const b=SV.med.beds.find(x=>x.id===id);
-  return {tipo:"adm",pid:pacOf(id).pid,leito:id,autor:EVO.email,criado:Date.now(),upd:Date.now(),
+  return {tipo:"adm",pid:pacOf(id).pid,leito:id,autor:EVO.eu,criado:Date.now(),upd:Date.now(),
     dataHora:(b&&b.admissao&&b.admissao<todayISO()?b.admissao+"T12:00":evoAgoraLocal()),
     procedencia:"",procedOutro:"",queixa:"",hda:"",cir:{sim:"",nome:"",data:"",cirurgiao:""},hpp:{},hppOutros:"",meds:"",
     social:{tab:"",tabTxt:"",eti:"",drogas:""},familiares:"",sv:{},ex:evoExNovo(),escores:{saps3:"",sofa:""},cid:{cod:"",desc:""},
@@ -4589,7 +4649,7 @@ function evoAdmEditor(id){
   wrap.append(card("Assinaturas",
     diur?el("div",{},lab("Diarista (plantão diurno)",true),sd,d.diarista&&d.diarista.startsWith("Outro")?el("div",{style:"margin-top:8px"},lab("Nome e CRM do diarista"),(()=>{ const i=el("input",{class:"txt",value:d.diarista.replace(/^Outro:\s*/,""),placeholder:"Ex.: Dr Fulano CRM-GO 0000"}); i.addEventListener("input",()=>{ d.diarista="Outro: "+i.value; onCh(); }); return i; })()):null)
         :el("p",{class:"hint",style:"margin:0 0 6px"},"Adendo feito no período noturno: sem diarista."),
-    el("div",{class:"ev-sign",style:"margin-top:10px"},el("span",{class:"hint"},"Assina como: "),el("b",{},evoAssinatura(evoPerfil(d.autor)||EVO.perfil)),d.autor!==EVO.email?el("div",{style:"margin-top:8px"},el("button",{class:"btn small",type:"button",onclick:()=>{ if(!confirm("Assumir este adendo? A assinatura da folha passa a ser a sua.")) return; d.assumidoDe=d.autor; d.autor=EVO.email; d.assumidoEm=Date.now(); onRe(); }},"Assumir este adendo")):null)));
+    el("div",{class:"ev-sign",style:"margin-top:10px"},el("span",{class:"hint"},"Assina como: "),el("b",{},evoAssinatura(evoPerfil(d.autor)||EVO.perfil)),d.autor!==EVO.eu?el("div",{style:"margin-top:8px"},el("button",{class:"btn small",type:"button",onclick:()=>{ if(!confirm("Assumir este adendo? A assinatura da folha passa a ser a sua.")) return; d.assumidoDe=d.autor; d.autor=EVO.eu; d.assumidoEm=Date.now(); onRe(); }},"Assumir este adendo")):null)));
   const bar=el("div",{class:"card",id:"evoAdmBar",style:"position:sticky;bottom:0;display:flex;gap:12px;align-items:center;box-shadow:0 -4px 16px rgba(0,0,0,.06)"});
   wrap.append(bar); setTimeout(()=>evoAdmResumo(id,d),0);
   return wrap;
@@ -4818,7 +4878,7 @@ function evoDiaCriar(id,t){
   const rev={};
   if(src){ if(evoGlasgow(ex.neuro)||ex.neuro.rass) rev.gcs="pend"; if(ex.neuro.sed&&ex.neuro.sed.on) rev.sed="pend"; if(ex.cv.dva&&ex.cv.dva.on) rev.dva="pend"; if(["vm","vni","o2"].includes(ex.resp.sup)) rev.vent="pend"; }
   const agora=evoAgoraLocal(), dentro=evoTurno(agora).data===t.data&&evoTurno(agora).tipo===t.tipo;
-  EVO_DOCS[n]={tipo:"dia",turno:t.tipo,data:t.data,pid:pacOf(id).pid,leito:id,autor:EVO.email,criado:Date.now(),upd:Date.now(),
+  EVO_DOCS[n]={tipo:"dia",turno:t.tipo,data:t.data,pid:pacOf(id).pid,leito:id,autor:EVO.eu,criado:Date.now(),upd:Date.now(),
     dataHora:dentro?agora:t.data+(t.tipo==="D"?"T08:00":"T20:00"),copiadoDe:prev?evoDiaRotulo(L[L.length-1]):adm?"adendo de internação":"",
     sv:{},interc:"",ex,rev,imp:{st:"",txt:""},conduta:{fixos:{presc:false,exames:false,vig:false},protos:[],livre:""},diarista:""};
   save(); return n;
@@ -4880,9 +4940,9 @@ function evoDiaEditor(id){
   const seg=(o,k,opts)=>el("div",{class:"ev-togs"},opts.map(([v,l])=>el("button",{type:"button",class:"tog"+(o[k]===v?" on":""),"aria-pressed":String(o[k]===v),onclick:()=>{ o[k]=o[k]===v?"":v; onRe(); }},l)));
   const card=(tt,...k)=>el("div",{class:"card"},el("h3",{},tt),...k);
   const pend=Object.keys(d.rev).filter(k=>d.rev[k]==="pend");
-  if(d.retro) wrap.append(el("div",{class:"ev-sign",style:"margin-bottom:8px"},`Evolução registrada depois (em ${new Date(d.retro).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}, por ${String(d.retroPor||"").split("@")[0]}). A folha sai com a data e o turno do plantão.`));
+  if(d.retro) wrap.append(el("div",{class:"ev-sign",style:"margin-bottom:8px"},`Evolução registrada depois (em ${new Date(d.retro).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}, por ${evoQuem(d.retroPor)}). A folha sai com a data e o turno do plantão.`));
   if(d.impresso) wrap.append(el("div",{class:"ev-sign",style:"margin-bottom:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"},
-    el("span",{style:"flex:1"},`Impressa em ${new Date(d.impresso).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})} por ${String(d.impressoPor||"").split("@")[0]}`+(d.upd>d.impresso+5000?" · editada depois da impressão":"")),
+    el("span",{style:"flex:1"},`Impressa em ${new Date(d.impresso).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})} por ${evoQuem(d.impressoPor)}`+(d.upd>d.impresso+5000?" · editada depois da impressão":"")),
     (d.versoes||[]).length?el("button",{class:"btn small",type:"button",onclick:()=>evoVerVersao(d.versoes[d.versoes.length-1])},"Ver versão impressa"):null));
   if(d.copiadoDe) wrap.append(el("div",{class:"ev-sign",style:"margin-bottom:12px;background:#e6eefb;border-color:#b8cdf0;color:#1d4f9c"},
     `Copiada da ${d.copiadoDe}. `,pend.length?el("b",{},"Confirme os campos em amarelo antes de imprimir. "):null,"Conduta, intercorrências, sinais vitais e impressão clínica começam vazios."));
@@ -4951,7 +5011,7 @@ function evoDiaEditor(id){
     d.turno==="D"?el("div",{},lab("Diarista",true),sd,d.diarista&&d.diarista.startsWith("Outro")?el("div",{style:"margin-top:8px"},(()=>{ const i=el("input",{class:"txt",value:d.diarista.replace(/^Outro:\s*/,""),placeholder:"Nome e CRM do diarista"}); i.addEventListener("input",()=>{ d.diarista="Outro: "+i.value; onCh(); }); return i; })()):null)
       :el("p",{class:"hint",style:"margin:0 0 6px"},"Evolução noturna: sem diarista."),
     el("div",{class:"ev-sign",style:"margin-top:10px"},el("span",{class:"hint"},"Assina como: "),el("b",{},evoAssinatura(evoPerfil(d.autor)||EVO.perfil)),
-      d.autor!==EVO.email?el("div",{style:"margin-top:8px"},el("button",{class:"btn small",type:"button",onclick:()=>{ if(!confirm("Assumir esta evolução? A assinatura da folha passa a ser a sua.")) return; d.assumidoDe=d.autor; d.autor=EVO.email; d.assumidoEm=Date.now(); onRe(); }},"Assumir esta evolução")):null)));
+      d.autor!==EVO.eu?el("div",{style:"margin-top:8px"},el("button",{class:"btn small",type:"button",onclick:()=>{ if(!confirm("Assumir esta evolução? A assinatura da folha passa a ser a sua.")) return; d.assumidoDe=d.autor; d.autor=EVO.eu; d.assumidoEm=Date.now(); onRe(); }},"Assumir esta evolução")):null)));
   wrap.append(el("div",{class:"card",id:"evoDiaBar",style:"position:sticky;bottom:0;display:flex;gap:12px;align-items:center;box-shadow:0 -4px 16px rgba(0,0,0,.06)"}));
   setTimeout(()=>evoDiaResumo(id,d),0);
   return wrap;
@@ -5079,15 +5139,15 @@ function evoFolha(id,n){
 function evoDiaMontar(id,n){ const r=evoFolha(id,n); $("#printArea").innerHTML=`<style>${EVO_DIA_CSS}</style>`+r.html; return r.ok; }
 /* guarda a versão exata que foi para o papel (sem o logo, para não pesar) */
 function evoGuardaVersao(d,html){
-  d.impresso=Date.now(); d.impressoPor=EVO.email;
-  d.versoes=(d.versoes||[]).concat([{ts:d.impresso,by:EVO.email,html:String(html).replace(/<img src="data:[^"]*"/g,'<img data-logo=""')}]).slice(-3);
+  d.impresso=Date.now(); d.impressoPor=EVO.eu;
+  d.versoes=(d.versoes||[]).concat([{ts:d.impresso,by:EVO.eu,html:String(html).replace(/<img src="data:[^"]*"/g,'<img data-logo=""')}]).slice(-3);
   evoDocSave(d);
 }
 /* encolhe a folha A4 dentro da pré-visualização para caber na largura da janela */
 function evoFitIframe(fr){ try{ const w=fr.clientWidth-4, a4=210*96/25.4; if(w>0&&w<a4) fr.contentDocument.body.style.zoom=(w/a4).toFixed(3); }catch(e){} }
 function evoVerVersao(v){
   const fr=el("iframe",{style:"width:100%;height:75vh;border:1px solid var(--line);border-radius:8px;background:#fff"});
-  openModal("Versão impressa em "+new Date(v.ts).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})+" · "+String(v.by||"").split("@")[0],el("div",{},fr));
+  openModal("Versão impressa em "+new Date(v.ts).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})+" · "+evoQuem(v.by),el("div",{},fr));
   const h=String(v.html||"").replace(/<img data-logo=""/g,SHARED.logo?`<img src="${SHARED.logo}"`:'<img alt=""');
   setTimeout(()=>{ const dc=fr.contentDocument; dc.open(); dc.write(`<!doctype html><meta charset="utf-8"><body style="margin:0;padding:7mm 8mm;background:#fff"><style>${EVO_DIA_CSS}</style>${h}</body>`); dc.close(); evoFitIframe(fr); },30);
 }
@@ -5134,7 +5194,7 @@ function evoDiaOutra(id){
         if(!dIso){ err.textContent="Informe a data (hoje ou anterior; não pode ser futura)."; return; }
         if(p.admissao&&dIso<p.admissao){ err.textContent="A data é anterior à admissão na UTI ("+fmtDate(p.admissao,true)+")."; return; }
         const t={tipo,data:dIso}, n=evoDiaPart(id,t);
-        if(!EVO_DOCS[n]){ evoDiaCriar(id,t); const d=EVO_DOCS[n]; d.retro=Date.now(); d.retroPor=EVO.email; evoDocSave(d); toast("Evolução "+EVO_TURNO[tipo]+" de "+fmtDate(dIso)+" criada"); }
+        if(!EVO_DOCS[n]){ evoDiaCriar(id,t); const d=EVO_DOCS[n]; d.retro=Date.now(); d.retroPor=EVO.eu; evoDocSave(d); toast("Evolução "+EVO_TURNO[tipo]+" de "+fmtDate(dIso)+" criada"); }
         EVO.evoKey=n; fecha(); evoTopo(); renderEvo();
       }},"Abrir ou criar")));
   const fecha=openModal("Evolução de outra data ou turno",body);
@@ -5297,7 +5357,7 @@ function evoAdmImprimir(id,previa){
     return;
   }
   $("#printArea").innerHTML=h; window.print();
-  const d=evoAdmDoc(id,false); if(d){ d.impresso=Date.now(); d.versoes=(d.versoes||[]).concat([{ts:Date.now(),by:EVO.email,html:null}]).slice(-20); evoDocSave(d); }
+  const d=evoAdmDoc(id,false); if(d){ d.impresso=Date.now(); d.versoes=(d.versoes||[]).concat([{ts:Date.now(),by:EVO.eu,html:null}]).slice(-20); evoDocSave(d); }
 }
 
 /* ============ Configurações da Evolução médica (Fase 2) ============
@@ -5307,7 +5367,7 @@ function evoAdmImprimir(id,previa){
 const EVO_PARTS=["cfgevo:drogas","cfgevo:protocolos","usr:perfis"];
 const EVO_EDITORES=["ava.martins@uti.local","wandervan.azevedo@uti.local","leonardo.castro@uti.local"];
 const EVO_D={};
-function evoPodeEditar(){ return EVO.on&&EVO_EDITORES.includes(EVO.email); }
+function evoPodeEditar(){ return EVO.on&&EVO_EDITORES.includes(EVO.eu); }
 const _dil=(nome,namp,soro)=>({id:uid(),nome,namp,soro,puro:false});
 function evoDrogasPadrao(){
   const d=(nome,cat,qtd,un,vol,dose,dils)=>({id:uid(),nome,cat,amp:{qtd,un,vol},dose,ativa:true,dils});
@@ -5357,11 +5417,12 @@ function evoPerfil(email){ const d=evoData("usr:perfis").perfis; return d[email]
 function evoPerfilRefresh(){
   if(!EVO.on) return;
   const user=EVO.email.split("@")[0];
-  EVO.perfil=evoPerfil(EVO.email)||{nome:user,curto:user,sexo:"M",grupo:"plant",crm:"",semCadastro:true};
+  if(EVO.compart&&!EVO.eu) EVO.perfil={generico:true,assin:"Médico Plantonista",trat:"Plantonista"};
+  else EVO.perfil=evoPerfil(EVO.eu||EVO.email)||{nome:user,curto:user,sexo:"M",grupo:"plant",crm:"",semCadastro:true};
   const nm=evoTratamento(); $("#hubUser").textContent=nm; $("#userInfo").textContent=nm;
 }
 function evoHist(n,txt){
-  const d=evoData(n); d.hist.unshift({ts:Date.now(),by:EVO.email.split("@")[0],txt}); if(d.hist.length>300) d.hist.length=300; save();
+  const d=evoData(n); d.hist.unshift({ts:Date.now(),by:evoQuem(EVO.eu),txt}); if(d.hist.length>300) d.hist.length=300; save();
 }
 
 /* ---- contas das drogas ---- */
@@ -5478,16 +5539,18 @@ function evoCfgProt(body,pode){
 }
 function evoCfgUsr(body){
   const n="usr:perfis", D=evoData(n), re=()=>{ save(); evoPerfilRefresh(); renderEvo(); };
-  body.append(el("p",{class:"hint"},"Para um médico novo: (1) criar o login no Firebase (Authentication), (2) incluir o e-mail na lista “emails” de config/acesso, (3) cadastrar aqui nome, sexo, grupo, CRM e RQE."));
+  body.append(el("p",{class:"hint"},"Os médicos cadastrados aqui aparecem na lista “Quem está de plantão” do login geral (medico / clinicamedint24). Para incluir um médico novo, basta “+ Novo médico” e preencher nome, sexo, grupo, CRM e RQE — não é preciso criar login."));
   const lista=el("div");
   Object.keys(D.perfis).sort().forEach(email=>{
-    const p=D.perfis[email], user=email.split("@")[0];
+    const p=D.perfis[email], user=/@/.test(email)?email.split("@")[0]:(p.nome||"médico novo");
     const set=(campo,rot)=>v=>{ if(String(p[campo]||"")===String(v)) return; evoHist(n,`${user}: ${rot} de “${p[campo]||""}” para “${v}”`); p[campo]=v; re(); };
-    if(p.generico){ lista.append(el("div",{class:"card"},el("b",{},user),el("span",{class:"hint"}," · login genérico de residentes externos · assinatura: "),el("b",{},evoAssinatura(p)))); return; }
+    if(p.generico){ lista.append(el("div",{class:"card"},el("b",{},user),el("span",{class:"hint"}," · login compartilhado · assinatura: "),el("b",{},evoAssinatura(p)))); return; }
+    const ina=el("input",{type:"checkbox"}); ina.checked=!!p.inativo; ina.onchange=()=>{ p.inativo=ina.checked; evoHist(n,`${user}: ${ina.checked?"fora":"de volta"} da lista do plantão`); re(); };
     const dk=el("input",{type:"checkbox"}); dk.checked=!!p.diarista; dk.onchange=()=>{ p.diarista=dk.checked; evoHist(n,`${user}: diarista ${dk.checked?"sim":"não"}`); re(); };
     const g=(lbl,node,st)=>el("div",{style:st||""},el("label",{class:"lbl"},lbl),node);
     lista.append(el("div",{class:"card"},
-      el("div",{style:"font-weight:700;margin-bottom:8px"},"Usuário: ",el("span",{style:"color:var(--accent)"},user)),
+      el("div",{style:"font-weight:700;margin-bottom:8px;display:flex;gap:10px;align-items:center"},el("span",{style:"flex:1"},/@/.test(email)?"Login próprio: ":"Médico (sem login próprio): ",el("span",{style:"color:var(--accent)"},user)),
+        el("label",{style:"display:flex;gap:6px;align-items:center;font-weight:500;font-size:13px"},ina,"Fora da lista do plantão")),
       el("div",{style:"display:grid;grid-template-columns:minmax(0,3fr) 80px 150px 110px;gap:10px"},
         g("Nome completo",evoInp(p.nome,set("nome","nome"))),
         g("Sexo",evoSel(p.sexo||"M",["F","M"],set("sexo","sexo"))),
@@ -5500,11 +5563,10 @@ function evoCfgUsr(body){
   });
   body.append(lista,
     el("button",{class:"btn",type:"button",onclick:()=>{
-      let u=prompt("Usuário do novo médico (como no login, ex.: joao.silva):"); if(!u) return;
-      u=norm(u).replace(/[^a-z0-9.]/g,""); if(!u) return; const email=u+"@"+USER_DOMAIN;
-      if(D.perfis[email]){ alert("Esse usuário já está cadastrado."); return; }
-      D.perfis[email]={nome:"",curto:"",sexo:"M",grupo:"plant",crm:"",rqe:"",diarista:false};
-      evoHist(n,`Usuário novo: ${u}`); re(); }},"+ Novo usuário"),
+      const nm=prompt("Nome completo do novo médico:"); if(!nm||!nm.trim()) return;
+      const k="med_"+uid(), nome=nm.trim().replace(/\s+/g," ");
+      D.perfis[k]={nome,curto:nome.split(" ")[0],sexo:"M",grupo:"plant",crm:"",rqe:"",diarista:false};
+      evoHist(n,`Médico novo: ${nome}`); re(); }},"+ Novo médico"),
     evoCfgHist(n));
 }
 
@@ -5681,7 +5743,7 @@ function evoIqFaltam(d){ const f=[]; if(!d.data) f.push("data"); if(!String(d.te
 function evoIqDoc(){ const k=EVO.iqKey; return k?(EVO_DOCS[k]||(EVO.iqDraft&&EVO.iqDraftKey===k?EVO.iqDraft:null)):null; }
 function evoIqNova(id){
   ensurePid(id); const pre=evoIqPre(id), now=evoAgoraLocal();
-  EVO.iqDraft={tipo:"interc",pid:pacOf(id).pid,leito:id,autor:EVO.email,criado:Date.now(),upd:Date.now(),titulo:EVO_IQ_TIT,data:now.slice(0,10),hora:now.slice(11,16),texto:""};
+  EVO.iqDraft={tipo:"interc",pid:pacOf(id).pid,leito:id,autor:EVO.eu,criado:Date.now(),upd:Date.now(),titulo:EVO_IQ_TIT,data:now.slice(0,10),hora:now.slice(11,16),texto:""};
   EVO.iqDraftKey=EVO.iqKey=pre+uid();
 }
 /* grava só quando já existe texto (rascunho vazio não ocupa espaço) */
@@ -5702,7 +5764,7 @@ function evoIqEditor(id){
       el("button",{class:"btn primary",type:"button",onclick:novo},"+ Registrar intercorrência"))); return wrap; }
   const salvo=!!EVO_DOCS[EVO.iqKey], onCh=()=>{ evoIqSalva(d); evoIqBarra(id,d); const ch=document.getElementById("evoIqChip"); if(ch&&EVO_DOCS[EVO.iqKey]) ch.textContent=evoIqRotulo(d)+(d.impresso?" ✓":""); }, lab=(t,r)=>el("label",{class:"lbl"+(r?" ev-req":"")},t);
   if(d.impresso) wrap.append(el("div",{class:"ev-sign",style:"margin-bottom:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"},
-    el("span",{style:"flex:1"},`Impressa em ${new Date(d.impresso).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})} por ${String(d.impressoPor||"").split("@")[0]}`+(d.upd>d.impresso+5000?" · editada depois da impressão":"")),
+    el("span",{style:"flex:1"},`Impressa em ${new Date(d.impresso).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})} por ${evoQuem(d.impressoPor)}`+(d.upd>d.impresso+5000?" · editada depois da impressão":"")),
     (d.versoes||[]).length?el("button",{class:"btn small",type:"button",onclick:()=>evoVerVersao(d.versoes[d.versoes.length-1])},"Ver versão impressa"):null));
   const tit=el("input",{class:"txt",value:d.titulo||EVO_IQ_TIT}); tit.addEventListener("input",()=>{ d.titulo=tit.value.trim()||EVO_IQ_TIT; onCh(); });
   const tx=el("textarea",{class:"par-ta",id:"evoIqTexto",style:"min-height:300px",placeholder:"Descreva a intercorrência: o que aconteceu, achados, condutas tomadas e como o paciente ficou…"}); tx.value=d.texto||"";
@@ -5716,9 +5778,9 @@ function evoIqEditor(id){
     el("p",{class:"hint",style:"margin:6px 0 0"},"Texto livre. Sai em folha própria, com a identificação do paciente. Não tem campo de diarista.")));
   wrap.append(el("div",{class:"card"},el("h3",{},"Assinatura"),
     el("div",{class:"ev-sign"},el("span",{class:"hint"},"Assina como: "),el("b",{},evoAssinatura(evoPerfil(d.autor)||EVO.perfil)),
-      d.autor!==EVO.email?el("div",{style:"margin-top:8px"},el("button",{class:"btn small",type:"button",onclick:()=>{ if(!confirm("Assumir esta intercorrência? A assinatura da folha passa a ser a sua.")) return; d.assumidoDe=d.autor; d.autor=EVO.email; d.assumidoEm=Date.now(); evoIqSalva(d); renderEvo(); }},"Assumir esta intercorrência")):null),
+      d.autor!==EVO.eu?el("div",{style:"margin-top:8px"},el("button",{class:"btn small",type:"button",onclick:()=>{ if(!confirm("Assumir esta intercorrência? A assinatura da folha passa a ser a sua.")) return; d.assumidoDe=d.autor; d.autor=EVO.eu; d.assumidoEm=Date.now(); evoIqSalva(d); renderEvo(); }},"Assumir esta intercorrência")):null),
     salvo&&!d.impresso?el("div",{style:"margin-top:10px"},el("button",{class:"btn small",type:"button",style:"color:var(--danger)",onclick:()=>{
-      if(!confirm("Excluir esta intercorrência? Ela some da lista e da linha do tempo.")) return; d.excluida=Date.now(); d.excluidaPor=EVO.email; evoDocSave(d); EVO.iqKey=""; renderEvo(); }},"Excluir intercorrência")):null));
+      if(!confirm("Excluir esta intercorrência? Ela some da lista e da linha do tempo.")) return; d.excluida=Date.now(); d.excluidaPor=EVO.eu; evoDocSave(d); EVO.iqKey=""; renderEvo(); }},"Excluir intercorrência")):null));
   wrap.append(el("div",{class:"card",id:"evoIqBar",style:"position:sticky;bottom:0;display:flex;gap:12px;align-items:center;box-shadow:0 -4px 16px rgba(0,0,0,.06)"}));
   setTimeout(()=>evoIqBarra(id,d),0);
   return wrap;
@@ -5783,7 +5845,7 @@ function evoTlEventos(id,int){
   const fh=ts=>new Date(ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
   const add=(ts,tipo,tit,sub,acoes,semHora)=>{ if(ts&&!isNaN(ts)) ev.push({ts,tipo,tit,sub:sub||"",acoes:acoes||[],semHora:!!semHora}); };
   const bt=(t,fn,pri)=>el("button",{class:"btn small"+(pri?" primary":""),type:"button",onclick:fn},t);
-  const quem=e=>String(e||"").split("@")[0];
+  const quem=e=>evoQuem(e);
   const vers=d=>{ const v=(d.versoes||[]).slice().reverse().find(x=>x&&x.html); return v?bt("Versão impressa",()=>evoVerVersao(v)):null; };
   const ir=(tab,extra)=>()=>{ EVO.tab=tab; Object.assign(EVO,extra||{}); evoTopo(); renderEvo(); };
   const gav=k=>()=>{ EVO.gav=k; renderEvo(); };
@@ -5904,7 +5966,7 @@ function evoIdSync(){
       const adm=EVO_DOCS["evo:"+pid+":adm"];
       d=EVO_DOCS[k]={tipo:"id",pid,semId:true,leito:adm&&adm.leito||"",pac:{pid,nome:EVO_SEM_ID,problemas:[],disp:{},dd:{},evc:{}},bed:{atb:[],culturas:[],imagem:[],labesp:{on:false,exames:[]}},criado:Date.now(),upd:Date.now()};
     }
-    if(!d.alta){ d.alta={detectada:Date.now(),por:EVO.email,data:todayISO(),hora:"",motivo:"",outro:""}; evoDocSave(d); return; }
+    if(!d.alta){ d.alta={detectada:Date.now(),por:EVO.eu,data:todayISO(),hora:"",motivo:"",outro:""}; evoDocSave(d); return; }
     if(Date.now()-(d.alta.detectada||0)>EVO_ARQ_ESPERA) evoArquivar(pid);
   });
 }
@@ -5924,7 +5986,7 @@ function evoIntResumo(docs){
 function evoIdxDe(int){
   const p=int.id.pac||{}, c=p.evc||{}, a=int.id.alta||{};
   return {tipo:"idx",pid:int.pid,nome:p.nome||"",nn:norm(p.nome||""),nasc:c.nasc||"",nint:c.nint||"",sexo:c.sexo||"",leito:int.id.leito||"",admissao:p.admissao||"",
-    alta:{data:a.data||"",motivo:a.motivo||"",outro:a.outro||""},rel:!!int.docs[evoRelKey(int.pid)],resumo:evoIntResumo(int.docs),ts:Date.now(),by:EVO.email};
+    alta:{data:a.data||"",motivo:a.motivo||"",outro:a.outro||""},rel:!!int.docs[evoRelKey(int.pid)],resumo:evoIntResumo(int.docs),ts:Date.now(),by:EVO.eu};
 }
 async function evoArqGrava(int,nAntigo){
   const s=JSON.stringify({id:int.id,docs:int.docs}), n=Math.max(1,Math.ceil(s.length/EVO_ARQ_PEDACO));
@@ -6110,10 +6172,10 @@ function evoRelEditor(int,cx,salvar){
   if(!d){ wrap.append(el("div",{class:"card",style:"text-align:center;padding:26px"},
       el("p",{style:"font-size:16px;margin:0 0 10px"},"O relatório ainda não foi iniciado."),
       el("p",{class:"hint"},"Ele vem preenchido com o que já está no sistema (adendo, última evolução, passômetro). Depois é só revisar e escrever a evolução durante a internação."),
-      el("button",{class:"btn primary",type:"button",onclick:()=>{ int.docs[evoRelKey(int.pid)]={tipo:"rel",pid:int.pid,autor:EVO.email,criado:Date.now(),upd:Date.now(),campos:cx.gera()}; salvar(); }},"Iniciar relatório de alta"))); return wrap; }
+      el("button",{class:"btn primary",type:"button",onclick:()=>{ int.docs[evoRelKey(int.pid)]={tipo:"rel",pid:int.pid,autor:EVO.eu,criado:Date.now(),upd:Date.now(),campos:cx.gera()}; salvar(); }},"Iniciar relatório de alta"))); return wrap; }
   const ch=()=>{ d.upd=Date.now(); salvar(true); };
   if(a&&a.data&&evoAltaTxt(a)!==d.campos.alta&&(!String(d.campos.alta||"").trim()||d.altaAuto)){ d.campos.alta=evoAltaTxt(a); d.altaAuto=true; salvar(true); }   /* a saída registrada completa o campo "Alta" */
-  if(d.impresso) wrap.append(el("div",{class:"ev-sign",style:"margin-bottom:8px"},`Impresso em ${new Date(d.impresso).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})} por ${String(d.impressoPor||"").split("@")[0]}`+(d.upd>d.impresso+5000?" · editado depois da impressão":"")));
+  if(d.impresso) wrap.append(el("div",{class:"ev-sign",style:"margin-bottom:8px"},`Impresso em ${new Date(d.impresso).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})} por ${evoQuem(d.impressoPor)}`+(d.upd>d.impresso+5000?" · editado depois da impressão":"")));
   const card=el("div",{class:"card"},el("div",{style:"display:flex;gap:10px;align-items:center;margin-bottom:6px"},el("h3",{style:"margin:0;flex:1"},"Evolução de alta da UTI"),
     el("button",{class:"btn small",type:"button",title:"Refaz os campos com os dados atuais (o texto que você escreveu nos campos será substituído)",onclick:()=>{
       if(!confirm("Preencher de novo com os dados do sistema? Os campos preenchidos automaticamente serão substituídos. “Evolução durante a internação” e “Conduta” são mantidos.")) return;
@@ -6132,7 +6194,7 @@ function evoRelEditor(int,cx,salvar){
     el("button",{class:"btn primary",type:"button",onclick:()=>{
       if(!String(d.campos.evolucao||"").trim()){ alert("Escreva a evolução durante a internação antes de imprimir."); return; }
       evoPrevia("Relatório de alta","",cx.html());
-      d.impresso=Date.now(); d.impressoPor=EVO.email; salvar(); }},"Imprimir com o logo")));
+      d.impresso=Date.now(); d.impressoPor=EVO.eu; salvar(); }},"Imprimir com o logo")));
   return wrap;
 }
 /* ---- tela da internação encerrada ---- */
@@ -6152,7 +6214,7 @@ function evoArqEditor(){
     el("div",{class:"ev-tabs"},...[["saida","Dados da saída"],["tl","Linha do tempo"],["rel","Relatório de alta"]].map(([k,l])=>el("button",{class:tab===k?"on":"",type:"button",onclick:()=>{ EVO.arqTab=k; evoTopo(); renderEvo(); }},l))));
   if(tab==="saida"){
     const mot=el("select",{class:"txt"},el("option",{value:""},"Escolha o motivo…"),...EVO_MOTIVOS.map(m=>{ const o=el("option",{value:m},m); if(a.motivo===m) o.selected=true; return o; }));
-    mot.onchange=()=>{ a.motivo=mot.value; a.por=EVO.email; salvar(); };
+    mot.onchange=()=>{ a.motivo=mot.value; a.por=EVO.eu; salvar(); };
     const outro=el("input",{class:"txt",value:a.outro||"",placeholder:"Descreva"}); outro.addEventListener("input",()=>{ a.outro=outro.value; salvar(true); });
     const grav=evoComInt(int,v=>evoGravidade(v));
     wrap.append(el("div",{class:"card"},el("h3",{},"Saída da UTI"),
@@ -6161,7 +6223,7 @@ function evoArqEditor(){
         el("div",{},el("label",{class:"lbl ev-req"},"Data"),evoDataInput(a.data,v=>{ a.data=v; salvar(true); },{max:todayISO()})),
         el("div",{},el("label",{class:"lbl"},"Hora"),evoHoraInput(a.hora||"",v=>{ a.hora=v; salvar(true); })),
         el("div",{},el("label",{class:"lbl ev-req"},"Motivo"),mot,a.motivo==="Outro"?el("div",{style:"margin-top:6px"},outro):null)),
-      el("p",{class:"hint",style:"margin:10px 0 0"},!a.detectada?"":a.viaLimpar?`Informada no “Limpar leito” por ${String(a.por||"").split("@")[0]} em ${new Date(a.detectada).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}`+(a.confirmadoCom?` · saída confirmada pela enfermagem com ${a.confirmadoCom}`:"")+".":`Saída registrada automaticamente em ${new Date(a.detectada).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}, quando o leito foi encontrado limpo. Confira a data.`)));
+      el("p",{class:"hint",style:"margin:10px 0 0"},!a.detectada?"":a.viaLimpar?`Informada no “Limpar leito” por ${evoQuem(a.por)} em ${new Date(a.detectada).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}`+(a.confirmadoCom?` · saída confirmada pela enfermagem com ${a.confirmadoCom}`:"")+".":`Saída registrada automaticamente em ${new Date(a.detectada).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}, quando o leito foi encontrado limpo. Confira a data.`)));
   } else if(tab==="tl"){
     const ev=evoComInt(int,v=>evoTlEventos(v,int));
     wrap.append(evoTlLista(ev));
@@ -6244,7 +6306,7 @@ function evoLimparLeito(b){
       if(mot==="Outro"&&!outro.value.trim()){ err.textContent="Descreva o motivo."; return; }
       if(enf&&!ck.checked){ err.textContent="Confirme a saída com o médico plantonista antes de limpar o leito."; return; }
       if(p.pid){ evoIdSync(); const d=EVO_DOCS[evoIdKey(p.pid)];
-        if(d){ const ag=evoAgoraLocal(); d.alta={detectada:Date.now(),por:EVO.email,data:ag.slice(0,10),hora:ag.slice(11,16),
+        if(d){ const ag=evoAgoraLocal(); d.alta={detectada:Date.now(),por:EVO.eu,data:ag.slice(0,10),hora:ag.slice(11,16),
           motivo:mot===EVO_ENGANO?"Outro":mot,outro:mot===EVO_ENGANO?EVO_ENGANO:mot==="Outro"?outro.value.trim():"",viaLimpar:true,
           ...(enf?{confirmadoCom:medico.value.trim()||"médico plantonista"}:{})}; evoDocSave(d); } }
       if(nCul) culArquivarAlta(id); clearBedAll(id); afterChange(); renderEditor(); fecha();
@@ -6267,7 +6329,9 @@ function renderEvo(){
       el("div",{class:"spacer"}),
       cfg?null:el("button",{class:"btn",type:"button",onclick:()=>{ EVO.mode="cfg"; renderEvo(); }},"Configurações"),
       el("button",{class:"ev-plantao",type:"button",title:"Trocar plantão",onclick:()=>evoBoasVindas(true)},evoTurnoTxt()+" · trocar"),
-      el("div",{class:"ev-user"},el("b",{},evoTratamento()),EVO.perfil&&!EVO.perfil.generico?(EVO_GRUPO[EVO.perfil.grupo]||EVO_GRUPO.plant)[evoFem()?1:0]:EVO.antigo?"Login compartilhado":"Login de residentes")));
+      EVO.compart?el("button",{class:"ev-user ev-user-b",type:"button",title:"Trocar o médico deste computador",onclick:()=>evoBoasVindas(true)},el("b",{},evoTratamento()+" · trocar"),EVO.perfil&&!EVO.perfil.generico?(EVO_GRUPO[EVO.perfil.grupo]||EVO_GRUPO.plant)[evoFem()?1:0]:"Escolha o médico")
+      :el("div",{class:"ev-user"},el("b",{},evoTratamento()),EVO.perfil&&!EVO.perfil.generico?(EVO_GRUPO[EVO.perfil.grupo]||EVO_GRUPO.plant)[evoFem()?1:0]:"Login de residentes")));
+  if(EVO.compart&&!evoQuemAtivo()&&!document.getElementById("bvOv")) setTimeout(()=>{ if(view==="evo"&&!evoQuemAtivo()&&!document.getElementById("bvOv")) evoBoasVindas(); },0);
   if(cfg){ renderEvoCfg(root); return; }
   const gb=evoGavBed(); if(EVO.gav&&!gb) EVO.gav="";
   root.classList.toggle("gv-on",!!gb); root.classList.toggle("gv-open",!!(gb&&EVO.gav));
