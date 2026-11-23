@@ -451,7 +451,7 @@ textarea.par-ta:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2
 .par-mini-it{display:inline-flex;gap:4px;align-items:center}
 @media(max-width:900px){.par-id{grid-template-columns:1fr 1fr}}
 @media(max-width:700px){.par-id,.par-id2{grid-template-columns:minmax(0,1fr)}}
-/* ===== Evolução médica (módulo em teste: só logins da lista "teste") ===== */
+/* ===== Evolução médica ===== */
 #evoApp{display:flex;flex-direction:column;height:100vh}#evoApp[hidden]{display:none}
 .hub-card.evo-new{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .ev-badge{font-size:11px;font-weight:700;background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:2px 8px;text-transform:uppercase;letter-spacing:.04em}
@@ -643,7 +643,7 @@ try{
     }),
     remove:part=>deleteDoc(doc(db,"parts",part)),
     getAcesso:()=>getDoc(doc(db,"config","acesso")).then(s=>s.exists()?s.data():{}),   /* lista de acesso e lista "teste" (abas novas) */
-    /* arquivo das internações encerradas (só logins em teste, pelas regras) */
+    /* arquivo das internações encerradas (guardadas por 1 ano) */
     arqSet:(id,data)=>setDoc(doc(db,"arquivo",id),data),
     arqGet:id=>getDoc(doc(db,"arquivo",id)).then(s=>s.exists()?s.data():null),
     arqDel:id=>deleteDoc(doc(db,"arquivo",id)),
@@ -1333,6 +1333,7 @@ function renderEditor(){
   const acoes=el("details",{class:"acoes"},el("summary",{class:"btn small",title:"Mais ações do leito"},"⋯"),el("div",{class:"acoes-pop"},
     pac?el("button",{class:"mais-it",type:"button",onclick:()=>transferModal(b)},"Transferir de leito"):null,
     el("button",{class:"mais-it danger",type:"button",onclick:()=>{
+      if(EVO.on&&bedHasPatient(b)&&typeof evoLimparLeito==="function"){ evoLimparLeito(b); return; }
       const nCul=culHasData(b.id);
       if(confirm(`Limpar todos os dados do ${bedLabel(b)} nos DOIS passômetros (médico e enfermagem)? Use na alta ou saída do paciente. Os exames de POCUS já salvos continuam no histórico.`+(nCul?`\n\nAs culturas deste paciente continuam salvas no Controle de culturas.`:""))){
         if(nCul) culArquivarAlta(b.id); clearBedAll(b.id); afterChange(); renderEditor(); if(nCul) toast("Culturas guardadas no Controle de culturas"); }
@@ -2471,9 +2472,9 @@ function renderHub(){
     el("div",{class:"hub-ic",html:ic}),
     el("div",{class:"hub-t"},t,soon?el("span",{class:"badge"},"Em breve"):null),
     el("div",{class:"hub-d"},d));
-  if(EVO.on){   /* módulo em teste: só para os logins da lista "teste" */
-    const c=card(ICONS.evo,"Evolução médica","Cadastro do paciente, adendo de internação e evoluções diurna e noturna (em teste)",()=>showView("evo"));
-    c.classList.add("evo-new"); c.querySelector(".hub-t").append(el("span",{class:"ev-badge"},"Em teste")); g.append(c);
+  if(EVO.on){   /* Evolução médica: todos os logins autorizados */
+    const c=card(ICONS.evo,"Evolução médica","Cadastro do paciente, adendo de internação, evoluções, intercorrências e relatório de alta",()=>showView("evo"));
+    c.classList.add("evo-new"); g.append(c);
   }
   g.append(
     card(ICONS.med,"Passômetro médico","Passagem de plantão médica dos leitos da UTI",()=>showView("med")),
@@ -4086,39 +4087,35 @@ const EVO_PERFIS={
   "wandervan.azevedo@uti.local":{nome:"Wandervan Antonio Azevedo",curto:"Wandervan",sexo:"M",grupo:"coord",crm:"7454",rqe:"Medicina Intensiva: RQE 4070"},
   "leonardo.castro@uti.local":{nome:"Leonardo de Campos Castro",curto:"Leonardo",sexo:"M",grupo:"res",crm:"33065",rqe:""},
   "rosana.mendanha@uti.local":{nome:"Rosana de Cássia Moreira Mendanha",curto:"Rosana",sexo:"F",grupo:"res",crm:"21955",rqe:""},
-  "residente@uti.local":{generico:true,grupo:"res"}       /* login genérico de residentes externos: assinatura só "Médico Residente" */
+  "residente@uti.local":{generico:true,grupo:"res"},      /* login genérico de residentes externos: assinatura só "Médico Residente" */
+  "medico@uti.local":{generico:true,grupo:"plant",assin:"Médico Plantonista",trat:"Plantonista"},   /* logins compartilhados antigos */
+  "enfermagem@uti.local":{generico:true,grupo:"enf",assin:"Enfermagem",trat:"Enfermagem"}
 };
+/* logins que já existiam antes da Evolução médica (compartilhados): sem boas-vindas e sem saída automática após 1h */
+function evoLoginAntigo(email){ email=String(email||"").toLowerCase(); return !email.endsWith("@uti.local")||["medico@uti.local","enfermagem@uti.local"].includes(email); }
 const EVO_GRUPO={coord:["Médico Diarista","Médica Diarista"],res:["Médico Residente","Médica Residente"],plant:["Médico Plantonista","Médica Plantonista"]};
 const EVO_IDLE_AVISO=55*60000, EVO_IDLE_SAIR=60*60000;
 function evoAssinatura(p){
   p=p||EVO.perfil; if(!p) return "";
-  if(p.generico) return "Médico Residente";
+  if(p.generico) return p.assin||"Médico Residente";
   const f=p.sexo==="F";
   return `${EVO_GRUPO[p.grupo]?EVO_GRUPO[p.grupo][f?1:0]:EVO_GRUPO.plant[f?1:0]} ${f?"Dra":"Dr"} ${p.nome}${p.crm?" CRM-GO "+p.crm:""}${p.rqe?"/ "+p.rqe:""}`;
 }
-function evoTratamento(p){ p=p||EVO.perfil; if(!p) return ""; if(p.generico) return "Residente"; return (p.sexo==="F"?"Dra. ":"Dr. ")+(p.curto||String(p.nome||"").split(" ")[0]); }
+function evoTratamento(p){ p=p||EVO.perfil; if(!p) return ""; if(p.generico) return p.trat||"Residente"; return (p.sexo==="F"?"Dra. ":"Dr. ")+(p.curto||String(p.nome||"").split(" ")[0]); }
 function evoFem(){ return !!(EVO.perfil&&EVO.perfil.sexo==="F"); }
 
 async function evoInit(u){
   try{
     const email=String((u&&u.email)||"").toLowerCase();
-    const a=await FB.getAcesso();
-    /* aceita a lista "teste" como array (o certo), texto separado por vírgulas ou map */
-    const t=a&&a.teste, bruta=Array.isArray(t)?t:typeof t==="string"?t.split(/[,;\n]/):(t&&typeof t==="object")?Object.values(t):[];
-    const lista=bruta.map(x=>String(x).trim().toLowerCase()).filter(Boolean);
-    if(!email||!lista.includes(email)){                    /* login fora do teste: nada muda */
-      console.info("Evolução médica: login fora da lista \"teste\" ("+(t==null?"campo teste não encontrado":lista.length+" e-mails na lista")+").");
-      return;
-    }
-    EVO.on=true; EVO.email=email;
+    if(!email) return;                                    /* liberada para todos os logins autorizados */
+    EVO.on=true; EVO.email=email; EVO.antigo=evoLoginAntigo(email);
     /* configurações ainda não gravadas no Firebase: usa os valores padrão sem enviá-los (só vão quando alguém editar) */
     EVO_PARTS.forEach(n=>{ if(versions[n]===undefined) synced[n]=serialize(n); });
     evoPerfilRefresh();
-    const nm=evoTratamento(); $("#hubUser").textContent=nm; $("#userInfo").textContent=nm;
-    evoInatividade();
+    if(!EVO.antigo){ const nm=evoTratamento(); $("#hubUser").textContent=nm; $("#userInfo").textContent=nm; evoInatividade(); }
     evoIdxCarrega(); setTimeout(evoIdSync,2500); setInterval(evoIdSync,60000);
-    if(!evoTurnoAtivo()) evoBoasVindas();
-  }catch(e){ console.error("Evolução médica (teste):",e); EVO.on=false; }
+    if(!EVO.antigo&&!evoTurnoAtivo()) evoBoasVindas();
+  }catch(e){ console.error("Evolução médica:",e); EVO.on=false; }
 }
 
 /* ---- plantão do dia (escolhido nas boas-vindas; guardado neste computador) ---- */
@@ -5481,7 +5478,7 @@ function evoCfgProt(body,pode){
 }
 function evoCfgUsr(body){
   const n="usr:perfis", D=evoData(n), re=()=>{ save(); evoPerfilRefresh(); renderEvo(); };
-  body.append(el("p",{class:"hint"},"Para um médico novo usar as abas em teste: (1) criar o login no Firebase (Authentication), (2) incluir o e-mail nas listas “emails” e “teste” de config/acesso, (3) cadastrar aqui nome, sexo, grupo, CRM e RQE."));
+  body.append(el("p",{class:"hint"},"Para um médico novo: (1) criar o login no Firebase (Authentication), (2) incluir o e-mail na lista “emails” de config/acesso, (3) cadastrar aqui nome, sexo, grupo, CRM e RQE."));
   const lista=el("div");
   Object.keys(D.perfis).sort().forEach(email=>{
     const p=D.perfis[email], user=email.split("@")[0];
@@ -6164,7 +6161,7 @@ function evoArqEditor(){
         el("div",{},el("label",{class:"lbl ev-req"},"Data"),evoDataInput(a.data,v=>{ a.data=v; salvar(true); },{max:todayISO()})),
         el("div",{},el("label",{class:"lbl"},"Hora"),evoHoraInput(a.hora||"",v=>{ a.hora=v; salvar(true); })),
         el("div",{},el("label",{class:"lbl ev-req"},"Motivo"),mot,a.motivo==="Outro"?el("div",{style:"margin-top:6px"},outro):null)),
-      el("p",{class:"hint",style:"margin:10px 0 0"},a.detectada?`Saída registrada automaticamente em ${new Date(a.detectada).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}, quando o leito foi encontrado limpo. Confira a data.`:"")));
+      el("p",{class:"hint",style:"margin:10px 0 0"},!a.detectada?"":a.viaLimpar?`Informada no “Limpar leito” por ${String(a.por||"").split("@")[0]} em ${new Date(a.detectada).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}`+(a.confirmadoCom?` · saída confirmada pela enfermagem com ${a.confirmadoCom}`:"")+".":`Saída registrada automaticamente em ${new Date(a.detectada).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}, quando o leito foi encontrado limpo. Confira a data.`)));
   } else if(tab==="tl"){
     const ev=evoComInt(int,v=>evoTlEventos(v,int));
     wrap.append(evoTlLista(ev));
@@ -6218,6 +6215,42 @@ function evoReadmAviso(id){
         }catch(e){ toast("Não foi possível abrir a internação anterior."); } }},"Copiar nascimento, sexo, altura e alergias")),
     el("div",{class:"hint",style:"margin:6px 0 0"},"Nada é trazido automaticamente; a história da doença atual nunca é reaproveitada."));
 }
+/* "Limpar leito" do passômetro: motivo da saída, aviso de gravidade, relatório de alta e confirmação da enfermagem com o médico */
+const EVO_ENGANO="Registro feito por engano (não houve saída)";
+function evoLimparLeito(b){
+  const id=b.id, p=pacOf(id), nCul=culHasData(id), enf=view==="enf"||/^enfermagem@/.test(EVO.email||"");
+  const grav=evoGravidade(id), rel=p.pid?EVO_DOCS[evoRelKey(p.pid)]:null;
+  const err=el("p",{class:"ev-warn"}), avG=el("div");
+  const sel=el("select",{class:"txt"},el("option",{value:""},"Escolha o motivo da saída…"),...EVO_MOTIVOS.concat([EVO_ENGANO]).map(m=>el("option",{value:m},m)));
+  const outro=el("input",{class:"txt",placeholder:"Descreva o motivo",style:"margin-top:6px;display:none"});
+  const pinta=()=>{ outro.style.display=sel.value==="Outro"?"":"none"; avG.innerHTML="";
+    if(grav&&sel.value!=="Óbito"&&sel.value!==EVO_ENGANO) avG.append(el("div",{class:"ev-warn",style:"background:#fff1f0;border:1px solid #efc9c5;border-radius:8px;padding:9px 11px;margin-top:10px;font-size:14px"},
+      el("b",{},"Atenção: "),`na última evolução (${grav.rot}) o paciente estava com ${grav.txt}. Confirme que a saída está correta.`)); };
+  sel.onchange=pinta;
+  const ck=el("input",{type:"checkbox"}), medico=el("input",{class:"txt",placeholder:"Nome do médico (opcional)",style:"margin-top:6px"});
+  const body=el("div",{},
+    el("p",{style:"margin:0 0 10px"},`Os dados do ${bedLabel(b)} serão limpos nos DOIS passômetros (médico e enfermagem). `+(nCul?"As culturas continuam salvas no Controle de culturas. ":"")+"Os exames de POCUS continuam no histórico. As evoluções ficam guardadas por 1 ano e aparecem na busca da Evolução médica."),
+    el("label",{class:"lbl ev-req"},"Motivo da saída"),sel,outro,avG,
+    enf?el("div",{class:"ev-sign",style:"margin-top:12px;background:#fff6d6;border-color:#e6c25a"},
+      el("label",{style:"display:flex;gap:8px;align-items:center;font-weight:700"},ck,"Confirmei a saída do paciente com o médico plantonista"),medico):null,
+    !enf?el("div",{class:"ev-sign",style:"margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"},
+      el("span",{style:"flex:1"},el("b",{},"Relatório de alta: "),rel?(rel.impresso?"impresso.":"iniciado, ainda não impresso."):"não iniciado. Pode ser feito agora ou depois, pela busca."),
+      el("button",{class:"btn small",type:"button",onclick:()=>{ fecha(); EVO.sel=id; EVO.arq=null; EVO.tab="rel"; showView("evo"); }},rel?"Abrir relatório":"Fazer relatório agora")):null,
+    err);
+  const fecha=openModal(`Limpar leito — ${bedLabel(b)} · ${b.nome||""}`,body,[
+    el("button",{class:"btn primary",type:"button",style:"background:var(--danger);border-color:var(--danger)",onclick:()=>{
+      const mot=sel.value; err.textContent="";
+      if(!mot){ err.textContent="Escolha o motivo da saída."; return; }
+      if(mot==="Outro"&&!outro.value.trim()){ err.textContent="Descreva o motivo."; return; }
+      if(enf&&!ck.checked){ err.textContent="Confirme a saída com o médico plantonista antes de limpar o leito."; return; }
+      if(p.pid){ evoIdSync(); const d=EVO_DOCS[evoIdKey(p.pid)];
+        if(d){ const ag=evoAgoraLocal(); d.alta={detectada:Date.now(),por:EVO.email,data:ag.slice(0,10),hora:ag.slice(11,16),
+          motivo:mot===EVO_ENGANO?"Outro":mot,outro:mot===EVO_ENGANO?EVO_ENGANO:mot==="Outro"?outro.value.trim():"",viaLimpar:true,
+          ...(enf?{confirmadoCom:medico.value.trim()||"médico plantonista"}:{})}; evoDocSave(d); } }
+      if(nCul) culArquivarAlta(id); clearBedAll(id); afterChange(); renderEditor(); fecha();
+      toast("Leito limpo · saída registrada"+(nCul?" · culturas guardadas":""));
+    }},"Limpar leito")]);
+}
 function evoTopo(){ const s=$("#evoApp section.editor"); if(s) s.scrollTop=0; }
 function renderEvo(){
   const root=$("#evoApp"), sc0=root.querySelector("section.editor"), scroll=sc0?sc0.scrollTop:0;
@@ -6230,11 +6263,11 @@ function renderEvo(){
   root.append(
     el("header",{class:"top"},
       el("button",{class:"btn",type:"button",onclick:()=>{ if(cfg){ EVO.mode=""; renderEvo(); } else showView("hub"); }},cfg?"← Evolução":"← Menu"),
-      el("h1",{},cfg?"Configurações":"Evolução médica"),el("span",{class:"ev-badge"},"Em teste"),
+      el("h1",{},cfg?"Configurações":"Evolução médica"),
       el("div",{class:"spacer"}),
       cfg?null:el("button",{class:"btn",type:"button",onclick:()=>{ EVO.mode="cfg"; renderEvo(); }},"Configurações"),
       el("button",{class:"ev-plantao",type:"button",title:"Trocar plantão",onclick:()=>evoBoasVindas(true)},evoTurnoTxt()+" · trocar"),
-      el("div",{class:"ev-user"},el("b",{},evoTratamento()),EVO.perfil&&!EVO.perfil.generico?(EVO_GRUPO[EVO.perfil.grupo]||EVO_GRUPO.plant)[evoFem()?1:0]:"Login de residentes")));
+      el("div",{class:"ev-user"},el("b",{},evoTratamento()),EVO.perfil&&!EVO.perfil.generico?(EVO_GRUPO[EVO.perfil.grupo]||EVO_GRUPO.plant)[evoFem()?1:0]:EVO.antigo?"Login compartilhado":"Login de residentes")));
   if(cfg){ renderEvoCfg(root); return; }
   const gb=evoGavBed(); if(EVO.gav&&!gb) EVO.gav="";
   root.classList.toggle("gv-on",!!gb); root.classList.toggle("gv-open",!!(gb&&EVO.gav));
