@@ -4353,7 +4353,10 @@ function evoIMC(c){
   if(!p||!a||a<0.5||a>2.5||p<1||p>400) return null;
   return (p/(a*a)).toFixed(1).replace(".",",");
 }
-function evoDiasUTI(adm){ if(!adm||!/^\d{4}-\d{2}-\d{2}$/.test(adm)) return null; const d=daysSince(adm,todayISO())-1; return d>=0?d:null; }
+/* data de referência das contagens: hoje, ou a data da saída quando a folha é de uma internação encerrada */
+let EVO_FIM_REF="";
+function evoHojeRef(){ const h=todayISO(); return EVO_FIM_REF&&EVO_FIM_REF<h?EVO_FIM_REF:h; }
+function evoDiasUTI(adm){ if(!adm||!/^\d{4}-\d{2}-\d{2}$/.test(adm)) return null; const d=daysSince(adm,evoHojeRef())-1; return d>=0?d:null; }
 const EVO_REQ=[["nasc","data de nascimento"],["sexo","sexo"],["peso","peso"],["altura","altura"],["alergias","alergias"],["reanim","status de reanimação"]];
 function evoFaltam(id){ const c=evoC(id); return EVO_REQ.filter(([k])=>!c[k]||(k==="reanim"&&c.reanim==="lim"&&!String(c.reanimTxt||"").trim())).map(([,l])=>l); }
 
@@ -4798,7 +4801,7 @@ function evoLabEditor(b,onRe){
   return box;
 }
 
-function evoPOTxt(cir){ if(!cir||cir.sim!=="sim"||!cir.nome||!cir.data) return ""; const d=daysSince(cir.data,todayISO())-1; return `PO D${d<0?0:d} de ${cir.nome.charAt(0).toLowerCase()+cir.nome.slice(1)} (${fmtDate(cir.data)})`; }
+function evoPOTxt(cir){ if(!cir||cir.sim!=="sim"||!cir.nome||!cir.data) return ""; const d=daysSince(cir.data,evoHojeRef())-1; return `PO D${d<0?0:d} de ${cir.nome.charAt(0).toLowerCase()+cir.nome.slice(1)} (${fmtDate(cir.data)})`; }
 function evoAdmExames(id,b,onRe){
   const lab=(t)=>el("label",{class:"lbl"},t);
   b.imagem=b.imagem||[];
@@ -6142,8 +6145,9 @@ function evoComInt(int,fn){
   bindPac(bed);
   Object.keys(int.docs).forEach(k=>{ salvos[k]=EVO_DOCS[k]; EVO_DOCS[k]=int.docs[k]; });
   SHARED.pac[vid]=JSON.parse(JSON.stringify(int.id.pac||{})); SV.med.beds.unshift(bed);
+  const ref0=EVO_FIM_REF; EVO_FIM_REF=(int.id.alta&&int.id.alta.data)||"";
   try{ return fn(vid); }
-  finally{ SV.med.beds.shift(); if(p0) SHARED.pac[vid]=p0; else delete SHARED.pac[vid];
+  finally{ EVO_FIM_REF=ref0; SV.med.beds.shift(); if(p0) SHARED.pac[vid]=p0; else delete SHARED.pac[vid];
     Object.keys(salvos).forEach(k=>{ if(salvos[k]===undefined) delete EVO_DOCS[k]; else EVO_DOCS[k]=salvos[k]; }); }
 }
 /* edição de folhas de uma internação encerrada: põe o paciente num leito "de mentira" durante a montagem do editor
@@ -6161,7 +6165,7 @@ function evoArqCtx(pid,fn){
   const p0=SHARED.pac[vid], salvos={}, aEL=EventTarget.prototype.addEventListener, sT=window.setTimeout;
   Object.keys(int.docs).forEach(k=>{ salvos[k]=EVO_DOCS[k]; EVO_DOCS[k]=int.docs[k]; });
   SHARED.pac[vid]=int.id.pac; SV.med.beds.unshift(bed);
-  EVO_CTX={pid,vid,reRender:false};
+  EVO_CTX={pid,vid,reRender:false}; const ref0=EVO_FIM_REF; EVO_FIM_REF=(int.id.alta&&int.id.alta.data)||"";
   const antes=sn();
   /* ouvintes e temporizadores curtos criados agora voltam a rodar dentro deste contexto */
   EventTarget.prototype.addEventListener=function(t,f,o){ return aEL.call(this,t,(typeof f==="function"&&this instanceof Element)?function(ev){ return evoArqCtx(pid,()=>f.call(this,ev)); }:f,o); };
@@ -6169,7 +6173,7 @@ function evoArqCtx(pid,fn){
   let re=false, mudou=false;
   try{ return fn(vid); }
   finally{
-    EventTarget.prototype.addEventListener=aEL; window.setTimeout=sT;
+    EventTarget.prototype.addEventListener=aEL; window.setTimeout=sT; EVO_FIM_REF=ref0;
     int.id.bed=JSON.parse(JSON.stringify({atb:bed.atb||[],culturas:bed.culturas||[],imagem:bed.imagem||[],labesp:bed.labesp||{on:false,exames:[]}}));
     Object.keys(EVO_DOCS).forEach(k=>{ if(k.startsWith(pre)&&k!==ik&&EVO_DOCS[k]) int.docs[k]=EVO_DOCS[k]; });
     mudou=sn()!==antes; re=EVO_CTX.reRender;
