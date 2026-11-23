@@ -2269,11 +2269,13 @@ function setNet0(up,stamp){
   m.classList.remove("bad");
   if(stamp||!m.textContent||m.textContent.startsWith("⚠")) m.textContent="Sincronizado às "+new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
 }
+let netEmail="";
 function blockAccess(){
   document.body.innerHTML="";
   const b=el("div",{style:"padding:40px;font:16px/1.5 sans-serif;max-width:560px;margin:auto"},
     el("h2",{},"Acesso não autorizado"),
     el("p",{},`O usuário ${netUser?"“"+netUser+"” ":""}não está na lista de acesso do passômetro. Peça ao responsável pelo sistema para incluí-lo.`),
+    netEmail?el("p",{style:"background:#f3f7f6;border-radius:8px;padding:10px 12px;font-size:14px"},"E-mail deste login: ",el("b",{},netEmail),el("br"),"Ele precisa estar escrito exatamente assim no campo “emails” de config/acesso, no Firebase."):null,
     el("button",{class:"btn",onclick:()=>FB.signOut().then(()=>location.reload())},"Sair"));
   document.body.append(b);
 }
@@ -6743,7 +6745,7 @@ async function init(){
     NET=true;
     try{
       const u=await requireLogin();
-      netUser=(u.email||"usuário").split("@")[0];
+      netUser=(u.email||"usuário").split("@")[0]; netEmail=u.email||"";
       const shown=(u.email||"").endsWith("@"+USER_DOMAIN)?(u.email||"").split("@")[0]:(u.email||"");
       $("#userInfo").textContent=shown; $("#hubUser").textContent=shown;
       const sair=()=>FB.signOut().then(()=>location.reload());
