@@ -456,6 +456,17 @@ textarea.par-ta:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2
 .hub-card.evo-new{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .ev-badge{font-size:11px;font-weight:700;background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:2px 8px;text-transform:uppercase;letter-spacing:.04em}
 .ev-user{font-size:13.5px;color:var(--muted);text-align:right;line-height:1.25}.ev-user b{color:var(--ink);display:block;font-size:14px}
+.bol-t{border-collapse:collapse;width:100%;font-size:13px}
+.bol-t th,.bol-t td{border:1px solid var(--line);padding:5px 4px;text-align:center}
+.bol-t th{background:#f3f7f6;font-size:11px;font-weight:700;color:var(--muted)}.bol-t th.g{color:var(--accent);font-size:12px}.bol-t th.o{font-size:10px;line-height:1.15}
+.bol-t th.nm,.bol-t td.nm{text-align:left}.bol-t td.nm{font-weight:650;white-space:nowrap}.bol-t td.nm small{font-weight:500;color:var(--muted)}.bol-t td.lt{font-weight:700;width:44px}
+.bol-t td.x{cursor:pointer;font-weight:800;color:var(--accent);font-size:15px;min-width:52px}.bol-t td.x:hover{background:#eef6f4}
+.bol-t td.x.on{background:#e6f2ef}.bol-t td.x.risc{color:#c9a227;text-decoration:line-through;background:#fffaf0}
+.bol-t td.x.sg{background:#ffe9a8;box-shadow:inset 0 0 0 2px #e0b23a}.bol-dot{color:#8a6100}
+.bol-t tr.pend td{background-color:#fffaf0}.bol-t tr.pend td.x.on{background:#e6f2ef}.bol-t tr.vazio td{background:#fdecea}
+.bol-t tr.saiu td{color:#999;background:#f6f6f6}.bol-t td.cf{width:96px}
+.bol-ok{border:0;background:#e3f2e4;color:#2e7d32;border-radius:6px;padding:3px 10px;font-weight:800;cursor:pointer}
+.bol-sg-ex{background:#ffe9a8;color:#8a6100;border-radius:6px;padding:1px 6px;font-weight:700}
 .ev-user-b{border:1px solid var(--line);background:#fff;border-radius:8px;padding:4px 10px;cursor:pointer}.ev-user-b:hover{border-color:var(--accent)}
 .bv-meds{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:0 0 6px}
 .bv-med{border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:8px 12px;font-weight:650;font-size:14.5px;cursor:pointer;color:var(--ink)}
@@ -652,7 +663,8 @@ try{
     arqSet:(id,data)=>setDoc(doc(db,"arquivo",id),data),
     arqGet:id=>getDoc(doc(db,"arquivo",id)).then(s=>s.exists()?s.data():null),
     arqDel:id=>deleteDoc(doc(db,"arquivo",id)),
-    arqIdx:()=>getDocs(query(collection(db,"arquivo"),where("tipo","==","idx"))).then(q=>q.docs.map(d=>d.data()))
+    arqIdx:()=>getDocs(query(collection(db,"arquivo"),where("tipo","==","idx"))).then(q=>q.docs.map(d=>d.data())),
+    arqTipo:t=>getDocs(query(collection(db,"arquivo"),where("tipo","==",t))).then(q=>q.docs.map(d=>d.data()))
   };
   window.__fbResolve(window.FB);
 }catch(e){ console.error(e); window.__fbResolve(null); }
@@ -2467,6 +2479,7 @@ const ICONS={
   livre:'<svg viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/></svg>',
   par:'<svg viewBox="0 0 24 24"><path d="M5 5h14v10H10l-4 4v-4H5z"/><path d="M9 9h6M9 12h4"/></svg>',
   evo:'<svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 13h6M9 16h4"/></svg>',
+  bol:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M9 10v9M15 10v9"/></svg>',
   visita:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.5 3-6 6-6s6 2.5 6 6"/><path d="M15.5 14.5c3 0 5.5 2 5.5 5.5"/></svg>'
 };
 function renderHub(){
@@ -2480,6 +2493,8 @@ function renderHub(){
   if(EVO.on&&!EVO.oculto){   /* Evolução médica: logins médicos (enfermagem não vê) */
     const c=card(ICONS.evo,"Evolução médica","Cadastro do paciente, adendo de internação, evoluções, intercorrências e relatório de alta",()=>showView("evo"));
     c.classList.add("evo-new"); g.append(c);
+    const cb=card(ICONS.bol,"Boletim médico","Boletim do dia para as famílias: vem da evolução noturna, o médico do plantão confere e imprime",()=>{ EVO.mode="bol"; EVO.bolData=""; showView("evo"); });
+    cb.classList.add("bol-card"); g.append(cb);
   }
   g.append(
     card(ICONS.med,"Passômetro médico","Passagem de plantão médica dos leitos da UTI",()=>showView("med")),
@@ -5962,7 +5977,7 @@ const EVO_MOTIVOS=["Alta para enfermaria","Alta hospitalar","Transferência para
 const EVO_ARQ_ESPERA=6*3600000, EVO_ARQ_DIAS=365, EVO_ARQ_PEDACO=700000;
 function evoIdKey(pid){ return "evo:"+pid+":id"; }
 function evoRelKey(pid){ return "evo:"+pid+":rel"; }
-function evoPidsLocais(){ const s=new Set(); Object.keys(EVO_DOCS).forEach(k=>{ const m=k.match(/^evo:([^:]+):/); if(m) s.add(m[1]); }); return [...s]; }
+function evoPidsLocais(){ const s=new Set(); Object.keys(EVO_DOCS).forEach(k=>{ const m=k.match(/^evo:([^:_][^:]*):/); if(m) s.add(m[1]); }); return [...s]; }   /* "evo:_bol:..." (boletim) não é paciente */
 function evoSnap(b){
   const p=pacOf(b.id);
   return {pac:JSON.parse(JSON.stringify(p)),bed:JSON.parse(JSON.stringify({atb:b.atb||[],culturas:b.culturas||[],imagem:b.imagem||[],labesp:b.labesp||{on:false,exames:[]}}))};
@@ -5970,6 +5985,7 @@ function evoSnap(b){
 /* mantém o retrato de cada paciente internado e registra a saída de quem não está mais no leito */
 function evoIdSync(){
   if(!EVO.on) return;
+  bolArquivar();
   const presentes=new Set();
   SV.med.beds.filter(b=>b.nome).forEach(b=>{
     const p=pacOf(b.id); if(!p.pid) return; presentes.add(p.pid);
@@ -6335,6 +6351,158 @@ function evoLimparLeito(b){
       toast("Leito limpo · saída registrada"+(nCul?" · culturas guardadas":""));
     }},"Limpar leito")]);
 }
+/* ============ Fase 8: Boletim médico (lido para as famílias pela manhã) ============
+   Parte "evo:_bol:<AAAA-MM-DD>" (junta-se às folhas da evolução: sincroniza e resolve conflitos do mesmo jeito).
+   Começa como cópia do boletim do dia anterior; onde a evolução noturna indica algo diferente aparece uma sugestão.
+   O que muda aqui fica só no boletim (não altera a evolução). Após 7 dias vai para o arquivo; guardado por 1 ano. */
+const BOL_COLS=[["eg","ESTADO GERAL",[["est","ESTÁVEL"],["gra","GRAVE"],["gvs","GRAVÍSSIMO"]]],
+  ["nc","NÍVEL DE CONSCIÊNCIA",[["con","CONSCIENTE"],["son","SONOLENTO/ CONFUSO"],["sed","SOB SEDAÇÃO"],["com","COMA"]]],
+  ["re","RESPIRAÇÃO",[["nor","NORMAL"],["dif","COM DIFICULDADE"],["apa","POR APARELHO"]]],
+  ["pa","PRESSÃO ARTERIAL",[["bai","BAIXA"],["nor","NORMAL"],["alt","ALTA"]]],
+  ["ur","URINA",[["nor","NORMAL"],["dim","DIMINUÍDA"],["aus","AUSENTE"]]]];
+const BOL_DIAS_LOCAL=7;
+function bolKey(d){ return "evo:_bol:"+d; }
+function bolDiaAnt(d){ const x=new Date(d+"T12:00"); x.setDate(x.getDate()-1); return x.toISOString().slice(0,10); }
+function bolLeito(b){ return String(bedNum(b,SV.med.beds)).replace(/^0(?=\d)/,""); }
+/* sugestão a partir da evolução noturna da véspera (ou do adendo, para quem foi admitido à noite) */
+function bolSugestao(id,data){
+  const ant=bolDiaAnt(data), nN=evoDiaPart(id,{tipo:"N",data:ant}), noite=EVO_DOCS[nN];
+  let d=noite, fonte=noite?"evolução noturna de "+fmtDate(ant):"";
+  if(!d){ const L=evoDiaLista(id).filter(n=>EVO_DOCS[n].data<=ant); if(L.length){ d=EVO_DOCS[L[L.length-1]]; fonte=`evolução ${d.turno==="D"?"diurna":"noturna"} de ${fmtDate(d.data)}`; } }
+  if(!d){ const a=evoAdmDoc(id,false); if(a){ d=a; fonte="adendo de internação"; } }
+  if(!d||!d.ex) return {fonte:"",v:{}};
+  const ex=d.ex, v={}, sv=d.sv||{};
+  const eg={Regular:"est",Grave:"gra","Gravíssimo":"gvs"}[ex.geral&&ex.geral.estado]; if(eg) v.eg=eg;
+  if(ex.neuro&&ex.neuro.sed&&ex.neuro.sed.on) v.nc="sed";
+  else { const g=evoGlasgow(ex.neuro); if(g) v.nc=g.total>=15?"con":g.total>=9?"son":"com"; }
+  const sup=ex.resp&&ex.resp.sup; if(sup) v.re=sup==="vm"||sup==="vni"?"apa":sup==="o2"?"dif":"nor";
+  const dva=ex.cv&&ex.cv.dva&&ex.cv.dva.on, pamMin=evoPAM(sv.pamin||sv.pa), pas=Number((String(sv.pamax||sv.pa||"").match(/(\d{2,3})\s*[x×X\/]/)||[])[1]);
+  if(dva||(pamMin!=null&&pamMin<65)) v.pa="bai"; else if(pas>160) v.pa="alt"; else if(pamMin!=null||pas) v.pa="nor";
+  const diu=parseFloat(String(sv.diu||"").replace(",",".")), peso=parseFloat(String(evoC(id).peso||"").replace(",",".")), horas=d.turno==="D"?24:12;
+  if(!isNaN(diu)){ if(diu<(horas===24?100:50)) v.ur="aus"; else if(peso>0) v.ur=diu/peso/horas>=0.5?"nor":"dim"; }
+  return {fonte,v};
+}
+/* boletim do dia: cria a partir do anterior; acrescenta quem foi admitido depois; quem saiu fica marcado */
+function bolDoc(data,criar){
+  const k=bolKey(data); let d=EVO_DOCS[k], mud=false;
+  if(!d&&!criar) return null;
+  if(d&&data!==todayISO()) return d;                         /* boletim de outro dia: só consulta */
+  if(!d){ const prev=EVO_DOCS[bolKey(bolDiaAnt(data))]; d=EVO_DOCS[k]={tipo:"bol",data,medico:"",linhas:{},criado:Date.now(),upd:Date.now(),base:prev?bolDiaAnt(data):""};
+    d._prev=prev?JSON.parse(JSON.stringify(prev.linhas||{})):{}; mud=true; }
+  const ocup=ordemLeitos(SV.med.beds).filter(b=>b.nome&&pacOf(b.id).pid), pids=new Set();
+  ocup.forEach((b,i)=>{ const pid=pacOf(b.id).pid; pids.add(pid);
+    let L=d.linhas[pid];
+    if(!L){ const p0=(d._prev||{})[pid]; L=d.linhas[pid]={leito:b.id,nome:b.nome,v:p0?Object.assign({},p0.v):{},rej:{},conf:false,ontem:!!p0}; mud=true; }
+    if(L.leito!==b.id||L.nome!==b.nome){ L.leito=b.id; L.nome=b.nome; mud=true; }
+    if(L.saiu){ delete L.saiu; mud=true; }
+    if(L.ord!==i){ L.ord=i; mud=true; }
+    if(!L.conf){ const sg=bolSugestao(b.id,data); BOL_COLS.forEach(([c])=>{ if(!L.v[c]&&sg.v[c]&&L.rej[c]!==sg.v[c]){ L.v[c]=sg.v[c]; mud=true; } }); }   /* coluna vazia: vem da evolução */ });
+  Object.values(d.linhas).forEach(L=>{ const pid=Object.keys(d.linhas).find(p=>d.linhas[p]===L); if(!pids.has(pid)&&!L.saiu){ L.saiu=true; mud=true; } });
+  delete d._prev;
+  if(mud) evoDocSave(d);
+  return d;
+}
+/* sugestões pendentes de uma linha (diferem do marcado e não foram recusadas) */
+function bolPend(L,sug){ const out={}; BOL_COLS.forEach(([c])=>{ const s=sug.v[c]; if(s&&s!==L.v[c]&&L.rej[c]!==s) out[c]=s; }); return out; }
+function bolFaltam(d){
+  const f=[]; if(!String(d.medico||"").trim()) f.push("informe o médico do plantão");
+  const nc=Object.values(d.linhas).filter(L=>!L.saiu&&!L.conf).sort((a,b)=>a.ord-b.ord);
+  if(nc.length) f.push(`confira ${nc.length} leito${nc.length>1?"s":""} (${nc.map(L=>bolLeito(SV.med.beds.find(b=>b.id===L.leito)||{id:L.leito})).join(", ")})`);
+  return f;
+}
+function renderBol(root){
+  const hoje=todayISO(), data=EVO.bolData||hoje, ehHoje=data===hoje;
+  const d=bolDoc(data,ehHoje||!!EVO_DOCS[bolKey(data)]);
+  const wrap=el("div",{class:"editor-inner",style:"max-width:1500px"}), sec=el("section",{class:"editor"},wrap);
+  root.append(el("main",{},sec));
+  const dt=el("input",{class:"txt",type:"date",value:data,max:hoje,style:"max-width:170px"}); dt.onchange=()=>{ EVO.bolData=dt.value||hoje; renderEvo(); };
+  wrap.append(el("div",{style:"display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px"},el("h2",{style:"margin:0;flex:1"},"Boletim médico · "+fmtDate(data,true)),
+    el("label",{class:"lbl",style:"margin:0"},"Data"),dt,ehHoje?null:el("button",{class:"btn small",type:"button",onclick:()=>{ EVO.bolData=hoje; renderEvo(); }},"Voltar para hoje")));
+  if(!d){ wrap.append(el("div",{class:"card"},el("p",{style:"margin:0 0 10px"},`Não há boletim de ${fmtDate(data,true)} neste computador.`),
+      evoArqOk()?el("button",{class:"btn",type:"button",onclick:async()=>{ try{ const a=await FB.arqGet("bol_"+data); if(!a){ toast("Boletim não encontrado no arquivo."); return; } EVO.bolArq=JSON.parse(a.s); EVO.bolArq.data=data; bolArqVer(EVO.bolArq); }catch(e){ toast("Não foi possível abrir o arquivo."); } }},"Procurar no arquivo (até 1 ano)"):null)); return; }
+  const ant=bolDiaAnt(data);
+  wrap.append(el("div",{class:"ev-sign",style:"background:#eef3ff;border-color:#c9d6f5;margin-bottom:12px"},
+    d.base?["Começa como cópia do ",el("b",{},"boletim de "+fmtDate(d.base)),"."]:"Primeiro boletim: as marcações vêm das evoluções.",
+    " Onde a ",el("b",{},"evolução noturna de "+fmtDate(ant))," indica algo diferente, aparece ",el("span",{class:"bol-sg-ex"},"● sugestão"),
+    " — clique para aceitar ou mantenha o × atual. Alterações feitas aqui ficam só no boletim (não mudam a evolução) e passam para o boletim de amanhã."));
+  const salvar=()=>{ evoDocSave(d); };
+  /* médico do plantão */
+  const meds=evoMedicos().map(x=>(x.p.sexo==="F"?"Dra. ":"Dr. ")+x.p.nome);
+  const ms=el("input",{class:"txt",list:"bolMeds",value:d.medico||"",placeholder:"Escolha ou digite o nome…",style:"max-width:420px"+(d.medico?"":";border-color:var(--danger);background:#fff6f5")});
+  ms.addEventListener("input",()=>{ d.medico=ms.value.trim(); salvar(); ms.style.borderColor=d.medico?"":"var(--danger)"; ms.style.background=d.medico?"":"#fff6f5"; bolBarra(d); });
+  const eu=EVO.perfil&&!EVO.perfil.generico&&EVO.perfil.nome?(EVO.perfil.sexo==="F"?"Dra. ":"Dr. ")+EVO.perfil.nome:"";
+  wrap.append(el("div",{class:"card",style:"display:flex;gap:12px;align-items:end;flex-wrap:wrap"},
+    el("div",{style:"flex:1;min-width:300px"},el("label",{class:"lbl ev-req"},"Médico do plantão (obrigatório para liberar o boletim)"),
+      el("div",{style:"display:flex;gap:8px;align-items:center"},ms,el("datalist",{id:"bolMeds"},...meds.map(m=>el("option",{value:m}))),
+        eu&&d.medico!==eu?el("button",{class:"btn small",type:"button",onclick:()=>{ d.medico=eu; salvar(); renderEvo(); }},"Sou eu ("+evoTratamento()+")"):null)),
+    el("button",{class:"btn",type:"button",onclick:()=>{ const sg={}; Object.keys(d.linhas).forEach(pid=>{ const L=d.linhas[pid]; if(L.saiu) return; const s=bolSugestao(L.leito,data); Object.assign(L.rej,bolPend(L,s)); if(BOL_COLS.every(([c])=>L.v[c])) L.conf=true; }); salvar(); renderEvo();
+      const falt=Object.values(d.linhas).filter(L=>!L.saiu&&!L.conf); if(falt.length) toast(falt.length+" leito(s) com coluna sem marcação: complete antes de confirmar."); }},"Confirmar todos os leitos"),
+    el("span",{class:"hint",style:"margin:0 0 8px auto"},"Pacientes admitidos à noite usam o adendo; sem nenhum registro, a linha fica em branco e em vermelho.")));
+  /* tabela */
+  const tb=el("table",{class:"bol-t"});
+  tb.append(el("tr",{},el("th",{rowspan:"2",class:"lt"},"LEITO"),el("th",{rowspan:"2",class:"nm"},"NOME DO PACIENTE"),...BOL_COLS.map(([c,t,o])=>el("th",{colspan:String(o.length),class:"g"},t)),el("th",{rowspan:"2"},"CONFERIDO")),
+    el("tr",{},...BOL_COLS.flatMap(([c,t,o])=>o.map(([k,l])=>el("th",{class:"o"},l)))));
+  const linhas=Object.keys(d.linhas).map(pid=>[pid,d.linhas[pid]]).sort((a,b)=>(a[1].saiu?1:0)-(b[1].saiu?1:0)||a[1].ord-b[1].ord);
+  linhas.forEach(([pid,L])=>{
+    const b=SV.med.beds.find(x=>x.id===L.leito), s=L.saiu?{v:{}}:bolSugestao(L.leito,data), pend=L.saiu?{}:bolPend(L,s);
+    const vazio=!BOL_COLS.some(([c])=>L.v[c])&&!Object.keys(pend).length;
+    const tr=el("tr",{class:(L.saiu?"saiu":L.conf?"ok":"pend")+(vazio&&!L.saiu?" vazio":""),title:s.fonte?"Sugestões a partir da "+s.fonte:""},
+      el("td",{class:"lt"},b?bolLeito(b):"—"),el("td",{class:"nm"},L.nome,L.saiu?el("small",{}," · saiu da UTI (não sai na folha)"):(!L.ontem&&!L.conf?el("small",{}," · novo"):null)));
+    BOL_COLS.forEach(([c,t,o])=>o.forEach(([k])=>{
+      const marc=L.v[c]===k, sug=pend[c]===k, risc=marc&&pend[c];
+      tr.append(el("td",{class:"x"+(marc?" on":"")+(sug?" sg":"")+(risc?" risc":""),onclick:L.saiu?null:()=>{ if(sug){ L.v[c]=k; } else { L.v[c]=marc?"":k; if(pend[c]) L.rej[c]=pend[c]; } salvar(); renderEvo(); }},
+        sug?el("span",{class:"bol-dot"},"●"):marc?"✕":""));
+    }));
+    const completo=BOL_COLS.every(([c])=>L.v[c]||pend[c]);
+    tr.append(el("td",{class:"cf"},L.saiu?"":L.conf?el("button",{class:"bol-ok",type:"button",title:"Conferido (clique para desfazer)",onclick:()=>{ L.conf=false; salvar(); renderEvo(); }},"✓")
+      :el("button",{class:"btn small",type:"button",...(completo?{}:{disabled:"disabled",title:"Marque todas as colunas"}),onclick:()=>{ Object.assign(L.rej,bolPend(L,s)); L.conf=true; salvar(); renderEvo(); }},"Confirmar")));
+    tb.append(tr);
+  });
+  wrap.append(el("div",{class:"card",style:"overflow-x:auto"},tb,
+    el("p",{class:"hint",style:"margin:8px 0 0"},"✕ = marcado · ",el("span",{class:"bol-sg-ex"},"● sugestão da evolução"),"  · ✕ riscado = marcação atual que a evolução sugere mudar · linhas em amarelo ainda não conferidas · em vermelho, sem nenhum registro")));
+  if(d.impresso) wrap.append(el("div",{class:"ev-sign",style:"margin-bottom:8px;display:flex;gap:10px;align-items:center"},el("span",{style:"flex:1"},`Impresso em ${new Date(d.impresso).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})} por ${evoQuem(d.impressoPor)}`+(d.upd>d.impresso+5000?" · alterado depois da impressão":""))));
+  wrap.append(el("div",{class:"card",id:"bolBar",style:"position:sticky;bottom:0;display:flex;gap:12px;align-items:center;box-shadow:0 -4px 16px rgba(0,0,0,.06)"}));
+  bolBarra(d);
+}
+function bolBarra(d){
+  const bar=document.getElementById("bolBar"); if(!bar) return; bar.innerHTML="";
+  const f=bolFaltam(d);
+  bar.append(el("div",{style:"flex:1;font-weight:600;color:"+(f.length?"var(--danger)":"#2e7d32")},f.length?"Para imprimir: "+f.join(" · "):"✓ Boletim conferido e pronto para imprimir"),
+    el("button",{class:"btn",type:"button",onclick:()=>evoPrevia("Boletim médico — pré-visualização","",bolHtml(d))},"Pré-visualizar"),
+    el("button",{class:"btn primary",type:"button",...(f.length?{disabled:"disabled"}:{}),onclick:()=>{
+      const h=bolHtml(d); $("#printArea").innerHTML=h; window.print();
+      d.impresso=Date.now(); d.impressoPor=EVO.eu; d.versoes=(d.versoes||[]).concat([{ts:d.impresso,by:EVO.eu,html:h.replace(/<img src="data:[^"]*"/g,'<img data-logo=""')}]).slice(-3); evoDocSave(d); renderEvo(); }},"Imprimir boletim"));
+}
+/* folha: A4 paisagem, uma folha, letra grande; acima de 15 pacientes a letra diminui um pouco */
+const BOL_CSS=`@page bolp{size:A4 landscape;margin:7mm 8mm}
+.bolp{page:bolp;font-family:Arial,Helvetica,sans-serif;color:#000;width:281mm;height:194mm;display:flex;flex-direction:column;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.bolp *{box-sizing:border-box}.bolp .hd{display:grid;grid-template-columns:42mm 1fr 42mm;align-items:center;margin-bottom:3mm;flex:none}.bolp .hd img{max-height:14mm;max-width:42mm}
+.bolp h1{text-align:center;font-size:19pt;margin:0}.bolp h2{text-align:center;font-size:15pt;margin:1mm 0 0}
+.bolp .tw{flex:1;min-height:0}.bolp table{width:100%;height:100%;border-collapse:collapse;font-size:11.5pt}.bolp th,.bolp td{border:1pt solid #000;padding:.8mm 1mm;text-align:center}
+.bolp th{font-size:10pt;font-weight:700;padding:.8mm .4mm}.bolp th.o{font-size:7pt;line-height:1.15}.bolp td.nm{text-align:left;font-weight:700;font-size:10.5pt;white-space:nowrap;padding-left:1.6mm}
+.bolp td.lt{font-weight:700;font-size:12pt;width:12mm}.bolp td.x{font-weight:900;font-size:15pt;padding:.8mm .4mm}
+.bolp.many td{padding:.2mm .4mm}.bolp.many td.nm{font-size:9.5pt}.bolp.many td.x{font-size:12.5pt}.bolp.many td.lt{font-size:10.5pt}.bolp.many .hd{margin-bottom:2mm}.bolp.many h1{font-size:17pt}.bolp.many h2{font-size:13pt}`;
+function bolHtml(d){
+  const e=x=>esc(String(x==null?"":x)), L=Object.values(d.linhas).filter(x=>!x.saiu).sort((a,b)=>a.ord-b.ord);
+  const logo=SHARED.logo?`<img src="${SHARED.logo}" alt="">`:"";
+  const head=`<tr><th rowspan="2" style="width:13mm">LEITO</th><th rowspan="2">NOME DO PACIENTE</th>${BOL_COLS.map(([c,t,o])=>`<th colspan="${o.length}">${t}</th>`).join("")}</tr><tr>${BOL_COLS.flatMap(([c,t,o])=>o.map(([k,l])=>`<th class="o">${l}</th>`)).join("")}</tr>`;
+  const rows=L.map(x=>{ const b=SV.med.beds.find(y=>y.id===x.leito); return `<tr><td class="lt">${e(b?bolLeito(b):"")}</td><td class="nm">${e(String(x.nome||"").toUpperCase())}</td>${BOL_COLS.flatMap(([c,t,o])=>o.map(([k])=>`<td class="x">${x.v[c]===k?"X":""}</td>`)).join("")}</tr>`; }).join("");
+  return `<style>${BOL_CSS}</style><div class="bolp${L.length>15?" many":""}"><div class="hd"><div>${logo}</div><div><h1>UTI IOG OX – ${fmtDate(d.data,true)}</h1><h2>MÉDICO: ${e(String(d.medico||"").toUpperCase())}</h2></div><div></div></div><div class="tw"><table>${head}${rows}</table></div></div>`;
+}
+function bolArqVer(o){ evoPrevia("Boletim de "+fmtDate(o.data,true)+" (arquivo)","",bolHtml(o)); }
+/* boletins com mais de 7 dias vão para o arquivo; com mais de 1 ano são apagados */
+async function bolArquivar(){
+  if(!EVO.on||!evoArqOk()) return;
+  const lim=new Date(Date.now()-BOL_DIAS_LOCAL*86400000).toISOString().slice(0,10);
+  for(const k of Object.keys(EVO_DOCS).filter(k=>k.startsWith("evo:_bol:"))){
+    const d=EVO_DOCS[k]; if(!d||d.data>=lim) continue;
+    try{ await FB.arqSet("bol_"+d.data,{tipo:"bol",data:d.data,s:JSON.stringify(d),ts:Date.now()}); await FB.remove(k); delete EVO_DOCS[k]; delete synced[k]; delete versions[k]; }catch(e){ return; }
+  }
+  try{ const dia=todayISO(); if(localStorage.getItem("bol_limpeza")!==dia&&FB.arqTipo){ localStorage.setItem("bol_limpeza",dia);
+      const um=new Date(Date.now()-EVO_ARQ_DIAS*86400000).toISOString().slice(0,10);
+      for(const x of await FB.arqTipo("bol")) if(x.data<um) await FB.arqDel("bol_"+x.data); } }catch(e){}
+}
+
 function evoTopo(){ const s=$("#evoApp section.editor"); if(s) s.scrollTop=0; }
 function renderEvo(){
   const root=$("#evoApp"), sc0=root.querySelector("section.editor"), scroll=sc0?sc0.scrollTop:0;
@@ -6343,18 +6511,19 @@ function renderEvo(){
   if(!EVO.on){ root.append(el("p",{style:"padding:30px"},"Acesso restrito aos logins em teste.")); return; }
   const beds=SV.med.beds.filter(b=>b.nome);
   if(EVO.sel&&!beds.some(b=>b.id===EVO.sel)) EVO.sel=null;
-  const cfg=EVO.mode==="cfg";
+  const cfg=EVO.mode==="cfg", bol=EVO.mode==="bol";
   root.append(
     el("header",{class:"top"},
-      el("button",{class:"btn",type:"button",onclick:()=>{ if(cfg){ EVO.mode=""; renderEvo(); } else showView("hub"); }},cfg?"← Evolução":"← Menu"),
-      el("h1",{},cfg?"Configurações":"Evolução médica"),
+      el("button",{class:"btn",type:"button",onclick:()=>{ if(cfg){ EVO.mode=""; renderEvo(); } else { if(bol) EVO.mode=""; showView("hub"); } }},cfg?"← Evolução":"← Menu"),
+      el("h1",{},cfg?"Configurações":bol?"Boletim médico":"Evolução médica"),
       el("div",{class:"spacer"}),
-      cfg?null:el("button",{class:"btn",type:"button",onclick:()=>{ EVO.mode="cfg"; renderEvo(); }},"Configurações"),
+      cfg||bol?null:el("button",{class:"btn",type:"button",onclick:()=>{ EVO.mode="cfg"; renderEvo(); }},"Configurações"),
       el("button",{class:"ev-plantao",type:"button",title:"Trocar plantão",onclick:()=>evoBoasVindas(true)},evoTurnoTxt()+" · trocar"),
       EVO.compart?el("button",{class:"ev-user ev-user-b",type:"button",title:"Trocar o médico deste computador",onclick:()=>evoBoasVindas(true)},el("b",{},evoTratamento()+" · trocar"),EVO.perfil&&!EVO.perfil.generico?(EVO_GRUPO[EVO.perfil.grupo]||EVO_GRUPO.plant)[evoFem()?1:0]:"Escolha o médico")
       :el("div",{class:"ev-user"},el("b",{},evoTratamento()),EVO.perfil&&!EVO.perfil.generico?(EVO_GRUPO[EVO.perfil.grupo]||EVO_GRUPO.plant)[evoFem()?1:0]:"Login de residentes")));
   if(EVO.compart&&!evoQuemAtivo()&&!document.getElementById("bvOv")) setTimeout(()=>{ if(view==="evo"&&!evoQuemAtivo()&&!document.getElementById("bvOv")) evoBoasVindas(); },0);
   if(cfg){ renderEvoCfg(root); return; }
+  if(bol){ root.classList.remove("gv-on","gv-open"); renderBol(root); return; }
   const gb=evoGavBed(); if(EVO.gav&&!gb) EVO.gav="";
   root.classList.toggle("gv-on",!!gb); root.classList.toggle("gv-open",!!(gb&&EVO.gav));
   root.append(el("main",{},evoNav(beds),el("section",{class:"editor"},el("div",{class:"editor-inner",id:"evoEditor"},evoEditor())),
