@@ -4987,6 +4987,8 @@ const EVO_DIA_CSS=`@page evdia{size:A4 portrait;margin:7mm 8mm}
 .evd .imp{border:1.2pt solid #000;padding:.6mm 1.4mm;margin-bottom:1.3mm}.evd .imp .s2{font-weight:900;border:1pt solid #000;padding:0 1.2mm;margin-right:1mm}
 .evd .sig{display:grid;grid-template-columns:1fr 1fr;gap:6mm;margin-top:3mm}.evd .sig.um{grid-template-columns:1fr}.evd .sig.um .ln{width:95mm;margin-left:auto}
 .evd .ln{border-top:.7pt solid #000;padding-top:.6mm;text-align:center;font-size:7.6pt}.evd .foot{margin-top:1mm;font-size:6.4pt;color:#555;display:flex;justify-content:space-between}`;
+/* nome do diarista sem o cargo e o CRM (a assinatura completa fica na linha de assinatura) */
+function evoDiarCurto(s){ return String(s||"").replace(/^M[ée]dic[oa]\s+Diarista\s+/i,"").split(/\s+CRM/i)[0].trim(); }
 function evoDiaHtml(id,n,nDatas){
   const d=EVO_DOCS[n]; if(!d) return "";
   const b=SV.med.beds.find(x=>x.id===id), p=pacOf(id), c=evoC(id), adm=evoAdmDoc(id,false), prev=evoDiaAnterior(id,n);
@@ -5049,7 +5051,7 @@ function evoDiaHtml(id,n,nDatas){
   return `<div class="evd">
 <div class="hd"><div>${logo}</div><div class="tt"><div class="u">UNIDADE DE TERAPIA INTENSIVA – IOG</div><div class="d">EVOLUÇÃO MÉDICA · ${diur?"DIURNA":"NOTURNA"}</div></div><div class="dt">${sem}, <b>${fmtDate(dh.slice(0,10),true)}</b><br>Plantão ${diur?"diurno 07h–19h":"noturno 19h–07h"} · Hora <b>${dh.slice(11,16)}</b></div></div>
 <div class="id">${cel(5,"Nome",p.nome,"nm")}${cel(3,"Nascimento · idade",(c.nasc?fmtDate(c.nasc,true):"")+(idade!=null?" · "+idade+" anos":""))}${cel(1,"Sexo",c.sexo)}${cel(1,"Leito",bedLabel(b).replace(/^Leito /,""))}${cel(2,"Nº internação",c.nint)}
-${cel(diur?2:3,"Convênio",p.plano)}${cel(2,"Admissão UTI",p.admissao?fmtDate(p.admissao,true):"")}${cel(diur?2:3,"Dias internados na UTI",dias!=null?dias+(dias===1?" dia":" dias"):"")}${cel(diur?2:3,"Peso · altura",(c.peso?c.peso+" kg":"")+(c.altura?" · "+c.altura+" m":""))}${cel(1,"IMC",imc)}${diur?cel(3,"Diarista",diar||""):""}</div>
+${cel(diur?2:3,"Convênio",p.plano)}${cel(2,"Admissão UTI",p.admissao?fmtDate(p.admissao,true):"")}${cel(diur?2:3,"Dias internados na UTI",dias!=null?dias+(dias===1?" dia":" dias"):"")}${cel(diur?2:3,"Peso · altura",(c.peso?c.peso+" kg":"")+(c.altura?" · "+c.altura+" m":""))}${cel(1,"IMC",imc)}${diur?cel(3,"Diarista",evoDiarCurto(diar)):""}</div>
 <div class="alerts">${tags.join("")}</div>
 <div class="r3"><div class="box"><div class="bt">Lista de problemas</div><ul>${probs.map(x=>`<li>${e(x)}</li>`).join("")||"<li>—</li>"}</ul>${hpp?`<div class="sm"><b>Comorbidades:</b> ${e(hpp)}</div>`:""}</div>
 <div class="box"><div class="bt">Dispositivos invasivos</div><ul>${devs||"<li>—</li>"}</ul></div>
@@ -5208,8 +5210,8 @@ const EVO_PRINT_CSS=`@page evport{size:A4 portrait;margin:7mm 8mm}
 .evp .alerts{display:flex;gap:1.5mm;margin-bottom:1.4mm;flex-wrap:wrap}.evp .tag{display:inline-block;background:#000;color:#fff;font-weight:900;padding:.4mm 2mm;font-size:8.2pt}.evp .tag.o{background:#fff;color:#000;border:1pt solid #000}
 .evp h3{font-size:9pt;margin:2.4mm 0 .6mm;text-transform:uppercase;letter-spacing:.03em;border-bottom:.6pt solid #000;padding-bottom:.3mm;break-after:avoid}
 .evp p{margin:0 0 1.2mm}.evp .two{display:grid;grid-template-columns:1fr 1fr;gap:6mm;break-inside:avoid}
-.evp .lr{display:grid;grid-template-columns:27mm 1fr;border:.4pt solid #999;border-top:0;break-inside:avoid}.evp .lr:first-child{border-top:.8pt solid #000}
-.evp .lr .k{font-weight:900;font-size:7pt;text-transform:uppercase;padding:.6mm 1mm;background:#eee;border-right:.4pt solid #999}.evp .lr .v{padding:.6mm 1.4mm}
+.evp .lr{display:grid;grid-template-columns:34mm 1fr;border:.4pt solid #999;border-top:0;break-inside:avoid}.evp .lr:first-child{border-top:.8pt solid #000}
+.evp .lr .k{overflow-wrap:normal;word-break:normal;font-weight:900;font-size:7pt;text-transform:uppercase;padding:.6mm 1mm;background:#eee;border-right:.4pt solid #999}.evp .lr .v{padding:.6mm 1.4mm}
 .evp .sup{display:inline-block;border-left:1.6pt solid #000;padding-left:1.2mm;margin-left:.6mm}
 .evp .hpp{display:grid;grid-template-columns:repeat(5,1fr);gap:.6mm 2mm}.evp .ck{display:inline-block;width:2.5mm;height:2.5mm;border:.6pt solid #000;vertical-align:-.3mm;margin-right:.6mm}.evp .ck.x{background:#000}
 .evp .sig{display:grid;grid-template-columns:1fr 1fr;gap:6mm;margin-top:8mm;break-inside:avoid}.evp .sig.um{grid-template-columns:1fr}.evp .sig.um .ln{width:95mm;margin-left:auto}
