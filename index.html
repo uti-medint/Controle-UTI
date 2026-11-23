@@ -5903,7 +5903,7 @@ function evoIdSync(){
     const k=evoIdKey(pid); let d=EVO_DOCS[k];
     if(!d){                                                       /* folhas antigas, de antes do retrato existir */
       const adm=EVO_DOCS["evo:"+pid+":adm"];
-      d=EVO_DOCS[k]={tipo:"id",pid,leito:adm&&adm.leito||"",pac:{pid,nome:"Paciente sem identificação",problemas:[],disp:{},dd:{},evc:{}},bed:{atb:[],culturas:[],imagem:[],labesp:{on:false,exames:[]}},criado:Date.now(),upd:Date.now()};
+      d=EVO_DOCS[k]={tipo:"id",pid,semId:true,leito:adm&&adm.leito||"",pac:{pid,nome:EVO_SEM_ID,problemas:[],disp:{},dd:{},evc:{}},bed:{atb:[],culturas:[],imagem:[],labesp:{on:false,exames:[]}},criado:Date.now(),upd:Date.now()};
     }
     if(!d.alta){ d.alta={detectada:Date.now(),por:EVO.email,data:todayISO(),hora:"",motivo:"",outro:""}; evoDocSave(d); return; }
     if(Date.now()-(d.alta.detectada||0)>EVO_ARQ_ESPERA) evoArquivar(pid);
@@ -5916,10 +5916,16 @@ function evoIntLocal(pid){
   const docs={}; Object.keys(EVO_DOCS).forEach(k=>{ if(k.startsWith("evo:"+pid+":")&&k!==evoIdKey(pid)) docs[k]=EVO_DOCS[k]; });
   return {pid,id,docs,arquivada:false};
 }
+const EVO_SEM_ID="Paciente sem identificação";
+/* o que há guardado na internação (para decidir sobre as folhas antigas sem identificação) */
+function evoIntResumo(docs){
+  const v=Object.values(docs||{}).filter(Boolean), n=t=>v.filter(d=>d.tipo===t&&!d.excluida).length, pl=(k,s,p)=>k?k+" "+(k>1?p:s):"";
+  return [n("adm")?"adendo":"",pl(n("dia"),"evolução","evoluções"),pl(n("interc"),"intercorrência","intercorrências"),n("rel")?"relatório":""].filter(Boolean).join(", ")||"sem folhas";
+}
 function evoIdxDe(int){
   const p=int.id.pac||{}, c=p.evc||{}, a=int.id.alta||{};
   return {tipo:"idx",pid:int.pid,nome:p.nome||"",nn:norm(p.nome||""),nasc:c.nasc||"",nint:c.nint||"",sexo:c.sexo||"",leito:int.id.leito||"",admissao:p.admissao||"",
-    alta:{data:a.data||"",motivo:a.motivo||"",outro:a.outro||""},rel:!!int.docs[evoRelKey(int.pid)],ts:Date.now(),by:EVO.email};
+    alta:{data:a.data||"",motivo:a.motivo||"",outro:a.outro||""},rel:!!int.docs[evoRelKey(int.pid)],resumo:evoIntResumo(int.docs),ts:Date.now(),by:EVO.email};
 }
 async function evoArqGrava(int,nAntigo){
   const s=JSON.stringify({id:int.id,docs:int.docs}), n=Math.max(1,Math.ceil(s.length/EVO_ARQ_PEDACO));
@@ -5974,11 +5980,24 @@ function evoIntSalva(int){                    /* mudança numa internação ence
 function evoAltasTodas(){
   const out=[], vis=new Set();
   Object.keys(EVO_DOCS).forEach(k=>{ const m=k.match(/^evo:([^:]+):id$/); if(!m) return; const d=EVO_DOCS[k]; if(!d.alta) return;
-    vis.add(d.pid); out.push(Object.assign(evoIdxDe({pid:d.pid,id:d,docs:{[evoRelKey(d.pid)]:EVO_DOCS[evoRelKey(d.pid)]}}),{local:true,detectada:d.alta.detectada})); });
+    vis.add(d.pid); const loc=evoIntLocal(d.pid); out.push(Object.assign(evoIdxDe(loc||{pid:d.pid,id:d,docs:{}}),{local:true,detectada:d.alta.detectada})); });
   (EVO.idx||[]).forEach(x=>{ if(!vis.has(x.pid)) out.push(x); });
   return out.sort((a,b)=>String(b.alta.data).localeCompare(String(a.alta.data)));
 }
 function evoAltaTxt(a){ return a&&a.data?fmtDate(a.data,true)+(a.hora?" às "+a.hora:"")+(evoMotivoTxt(a)?" · "+evoMotivoTxt(a):""):""; }
+/* apaga de vez uma internação sem identificação (folhas de teste de antes do arquivo) */
+async function evoDescartar(x){
+  if(!confirm(`Descartar “${x.nome}” (${x.resumo||"sem folhas"}, leito ${String(x.leito||"?").replace(/^L/,"")})?\n\nAs folhas serão apagadas de vez. Use só para registros de teste.`)) return;
+  try{
+    const ks=Object.keys(EVO_DOCS).filter(k=>k.startsWith("evo:"+x.pid+":"));
+    for(const k of ks){ try{ await FB.remove(k); }catch(e){} delete EVO_DOCS[k]; delete synced[k]; delete versions[k]; }
+    const ix=(EVO.idx||[]).find(y=>y.pid===x.pid);
+    if(ix&&evoArqOk()){ for(let i=0;i<(ix.n||1);i++){ try{ await FB.arqDel("int_"+x.pid+"_"+i); }catch(e){} } await FB.arqDel("idx_"+x.pid); }
+    EVO.idx=(EVO.idx||[]).filter(y=>y.pid!==x.pid); delete EVO.arqCache[x.pid];
+    if(EVO.arq===x.pid) EVO.arq=null;
+    toast("Registro descartado"); renderEvo();
+  }catch(e){ toast("Não foi possível descartar agora."); }
+}
 function evoMotivoTxt(a){ return a&&a.motivo?(a.motivo==="Outro"&&a.outro?a.outro:a.motivo):""; }
 /* desenha folhas de uma internação encerrada: põe o paciente num leito "de mentira" só durante a montagem (sem gravar nada) */
 function evoComInt(int,fn){
@@ -6128,7 +6147,8 @@ function evoArqEditor(){
   }
   const p=int.id.pac||{}, c=p.evc||{}, a=int.id.alta||{}, tab=EVO.arqTab||"saida";
   const salvar=re=>{ evoIntSalva(int); if(!re) renderEvo(); };
-  wrap.append(el("div",{class:"bed-title"},el("h2",{},p.nome||"Paciente"),el("span",{class:"ev-tag o"},"INTERNAÇÃO ENCERRADA")),
+  wrap.append(el("div",{class:"bed-title"},el("h2",{},p.nome||"Paciente"),el("span",{class:"ev-tag o"},"INTERNAÇÃO ENCERRADA"),
+      p.nome===EVO_SEM_ID?el("button",{class:"btn small",type:"button",style:"margin-left:auto;color:var(--danger)",onclick:()=>evoDescartar(Object.assign(evoIdxDe(int),{nome:EVO_SEM_ID}))},"Descartar registro de teste"):null),
     el("p",{class:"hint",style:"margin:-4px 0 10px"},[c.nasc?"Nascimento "+fmtDate(c.nasc,true):"",c.nint?"Nº internação "+c.nint:"",p.admissao?"UTI de "+fmtDate(p.admissao,true)+" a "+(a.data?fmtDate(a.data,true):"—"):"",int.id.leito?"último leito "+String(int.id.leito).replace(/^L/,"").replace(/^E/,"Extra "):"",int.arquivada?"no arquivo":"saída recente"].filter(Boolean).join(" · ")),
     el("div",{class:"ev-tabs"},...[["saida","Dados da saída"],["tl","Linha do tempo"],["rel","Relatório de alta"]].map(([k,l])=>el("button",{class:tab===k?"on":"",type:"button",onclick:()=>{ EVO.arqTab=k; evoTopo(); renderEvo(); }},l))));
   if(tab==="saida"){
@@ -6170,14 +6190,14 @@ function evoBuscaAlta(x,q){
 function evoSaidasPainel(){
   const lim=new Date(Date.now()-7*86400000).toISOString().slice(0,10);
   const L=evoAltasTodas().filter(x=>!evoMotivoTxt(x.alta)||(x.alta&&x.alta.data>=lim)); if(!L.length) return null;
-  const pend=L.filter(x=>!evoMotivoTxt(x.alta)).length;
+  const pend=L.filter(x=>!evoMotivoTxt(x.alta)&&x.nome!==EVO_SEM_ID).length;
   return el("div",{class:"card",style:"max-width:1000px;margin:0 auto 14px"},
     el("div",{style:"display:flex;gap:10px;align-items:baseline;margin-bottom:8px"},el("h3",{style:"margin:0;flex:1"},"Saídas recentes da UTI"),pend?el("span",{class:"ev-st falta"},pend+" sem motivo"):null),
     el("p",{class:"hint",style:"margin:0 0 8px"},"Registradas quando o leito é limpo no passômetro. Complete o motivo e faça o relatório de alta; tudo fica guardado por 1 ano e aparece na busca."),
     ...L.slice(0,12).map(x=>el("div",{class:"ev-tl-it",style:"grid-template-columns:90px minmax(0,1fr) auto"},
       el("div",{class:"h"},x.alta&&x.alta.data?fmtDate(x.alta.data,true):"—"),
-      el("div",{class:"c"},el("b",{},x.nome),el("div",{class:"s"},[evoMotivoTxt(x.alta)||"motivo pendente",x.rel?"relatório iniciado":"sem relatório",x.leito?"leito "+String(x.leito).replace(/^L/,"").replace(/^E/,"extra "):""].join(" · "))),
-      el("div",{class:"a"},el("button",{class:"btn small"+(evoMotivoTxt(x.alta)?"":" primary"),type:"button",onclick:()=>{ EVO.sel=null; EVO.arq=x.pid; EVO.arqTab=evoMotivoTxt(x.alta)?"rel":"saida"; evoTopo(); renderEvo(); }},evoMotivoTxt(x.alta)?"Abrir":"Completar")))));
+      el("div",{class:"c"},el("b",{},x.nome),el("div",{class:"s"},x.nome===EVO_SEM_ID?["folhas antigas, de antes do arquivo",x.resumo,x.leito?"leito "+String(x.leito).replace(/^L/,"").replace(/^E/,"extra "):""].filter(Boolean).join(" · "):[evoMotivoTxt(x.alta)||"motivo pendente",x.rel?"relatório iniciado":"sem relatório",x.leito?"leito "+String(x.leito).replace(/^L/,"").replace(/^E/,"extra "):""].join(" · "))),
+      el("div",{class:"a"},x.nome===EVO_SEM_ID?el("button",{class:"btn small",type:"button",style:"color:var(--danger)",onclick:()=>evoDescartar(x)},"Descartar"):null,el("button",{class:"btn small"+(evoMotivoTxt(x.alta)?"":" primary"),type:"button",onclick:()=>{ EVO.sel=null; EVO.arq=x.pid; EVO.arqTab=x.nome===EVO_SEM_ID?"tl":evoMotivoTxt(x.alta)?"rel":"saida"; evoTopo(); renderEvo(); }},x.nome===EVO_SEM_ID?"Ver":evoMotivoTxt(x.alta)?"Abrir":"Completar")))));
 }
 /* aviso de readmissão no cadastro */
 function evoReadmAviso(id){
