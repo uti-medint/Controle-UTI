@@ -2270,16 +2270,17 @@ function setNet0(up,stamp){
   if(stamp||!m.textContent||m.textContent.startsWith("⚠")) m.textContent="Sincronizado às "+new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
 }
 let netEmail="";
-function blockAccess(){
+function blockAccess(ctx){
   document.body.innerHTML="";
   const b=el("div",{style:"padding:40px;font:16px/1.5 sans-serif;max-width:560px;margin:auto"},
     el("h2",{},"Acesso não autorizado"),
     el("p",{},`O usuário ${netUser?"“"+netUser+"” ":""}não está na lista de acesso do passômetro. Peça ao responsável pelo sistema para incluí-lo.`),
     netEmail?el("p",{style:"background:#f3f7f6;border-radius:8px;padding:10px 12px;font-size:14px"},"E-mail deste login: ",el("b",{},netEmail),el("br"),"Ele precisa estar escrito exatamente assim no campo “emails” de config/acesso, no Firebase."):null,
+    ctx?el("p",{style:"font-size:12.5px;color:#666"},"Detalhe técnico (envie para o responsável): "+ctx):null,
     el("button",{class:"btn",onclick:()=>FB.signOut().then(()=>location.reload())},"Sair"));
   document.body.append(b);
 }
-function netError(e){ if(e&&e.code==="permission-denied") blockAccess(); else setNet(false); }
+function netError(e,onde){ if(e&&e.code==="permission-denied") blockAccess((onde||"operação")+" · "+(e.code||"")+(e.message?" · "+String(e.message).slice(0,160):"")); else setNet(false); }
 
 async function pushDirty(){
   if(!NET) return;
@@ -2296,7 +2297,7 @@ async function pushDirty(){
       let r;
       try{ r=await FB.put(n,versions[n]||0,getPart(n),netUser,CID); }
       catch(e){ if(/^cul/.test(n)&&e&&e.code==="permission-denied"){ culNegado(); synced[n]=js; continue; }
-        if(n.startsWith("par:")&&e&&e.code==="permission-denied"){ parNegado(); synced[n]=js; continue; } netError(e); return; }
+        if(n.startsWith("par:")&&e&&e.code==="permission-denied"){ parNegado(); synced[n]=js; continue; } netError(e,"gravação de "+n); return; }
       if(r.conflict){
         const cur=r.current;
         if(cur&&JSON.stringify(cur.value)===JSON.stringify(getPart(n))){ versions[n]=cur.v; synced[n]=js; continue; }
@@ -2314,7 +2315,7 @@ async function pushDirty(){
     }
     for(const n of Object.keys(synced)){           /* histórico apagado localmente */
       if((isImmutable(n)||n.startsWith("cul:")||n.startsWith("par:"))&&!names.includes(n)){
-        try{ await FB.remove(n); delete synced[n]; delete versions[n]; sent=true; }catch(e){ if(/^(cul|par):/.test(n)&&e&&e.code==="permission-denied"){ if(n.startsWith("cul:")) culNegado(); else parNegado(); delete synced[n]; continue; } netError(e); return; }
+        try{ await FB.remove(n); delete synced[n]; delete versions[n]; sent=true; }catch(e){ if(/^(cul|par):/.test(n)&&e&&e.code==="permission-denied"){ if(n.startsWith("cul:")) culNegado(); else parNegado(); delete synced[n]; continue; } netError(e,"exclusão de "+n); return; }
       }
     }
     setNet(true,sent);
@@ -2463,7 +2464,7 @@ async function netStart(){
         resolve(); return;
       }
       changes.forEach(onChange);
-    },err=>{ if(first){ first=false; reject(err); } else netError(err); });
+    },err=>{ if(first){ first=false; reject(err); } else netError(err,"leitura dos dados (em uso)"); });
   });
   ensurePlanos(); regPromoteAll(); limparHistoricos(); setInterval(limparHistoricos,60000); autoPlantao(); setInterval(autoPlantao,30000);
   setInterval(()=>{ tickN++; if(netDown||tickN%2===0) pushDirty(); flushPending(); if(needRender&&!editingNow()){ needRender=false; rerenderActive(); } },3000);
@@ -6753,7 +6754,7 @@ async function init(){
       await netStart();
       await evoInit(u);   /* só faz algo para os logins da lista "teste"; os demais seguem exatamente como antes */
     }catch(e){
-      if(e&&e.code==="permission-denied"){ blockAccess(); return; }
+      if(e&&e.code==="permission-denied"){ blockAccess("início (leitura dos dados) · "+(e.code||"")+(e.message?" · "+String(e.message).slice(0,160):"")); return; }
       console.error(e);
       document.body.innerHTML="<p style='padding:30px;font:16px sans-serif'>Não foi possível carregar os dados. Verifique a internet e recarregue a página (F5).</p>"; return;
     }
