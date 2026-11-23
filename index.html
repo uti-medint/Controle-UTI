@@ -500,6 +500,8 @@ textarea.par-ta:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2
 .ev-warn{color:var(--danger);font-size:12.5px;font-weight:600;margin-top:4px;line-height:1.3}
 .ev-tag{display:inline-block;font-weight:800;font-size:12.5px;padding:3px 9px;border-radius:5px;background:var(--danger);color:#fff}
 .ev-tag.o{background:#fff;color:var(--ink);border:1.5px solid var(--ink)}
+.ev-antiga{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#fff4d6;border:2px solid #e0a800;color:#5c4400;border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:14px;line-height:1.35}
+.ev-lock{border:0;margin:0;padding:0;min-width:0;opacity:.72;pointer-events:none}
 .ev-sign{background:#f6f9f8;border:1px solid #e1e8e6;border-radius:8px;padding:10px 12px;font-size:14px}
 .ev-empty{color:var(--muted);padding:30px 0;text-align:center}
 #evoApp main{position:relative}
@@ -4263,6 +4265,7 @@ function evoBoasVindas(trocar){
       evoQuemSet(selK,o.fim);
     }
     try{ localStorage.setItem(evoTurnoKey(),JSON.stringify({tipo:o.id,t:o.t,fim:o.fim,ts:Date.now()})); }catch(e){}
+    if(!EVO.arq){ EVO.evoKey=""; EVO.destrava=""; }    /* plantão novo: não deixa aberta a evolução do plantão anterior */
     if(EVO.compart){ const nm=evoTratamento(); $("#hubUser").textContent=nm; $("#userInfo").textContent=nm; evoUlt=Date.now(); }
     ov.remove(); if(view==="evo") renderEvo();
   }},trocar?"Confirmar":"Começar o plantão");
@@ -4300,6 +4303,7 @@ function evoInatividade(){
   };
   ["pointerdown","keydown","wheel","touchstart","mousemove","scroll"].forEach(ev=>document.addEventListener(ev,mark,{passive:true,capture:true}));
   mark();
+  setInterval(evoViraTurno,60000);
   setInterval(()=>{
     if(evoSaindo) return;
     const idle=Date.now()-evoUltimaAtividade();
@@ -4328,6 +4332,23 @@ function evoInatividade(){
       evoAvisoEl.querySelector(".evo-min").textContent=`Por segurança, o site vai desconectar em ${min} minuto${min>1?"s":""} sem uso. Tudo o que foi digitado fica salvo.`;
     }
   },10000);
+}
+/* às 07h e 19h: se a evolução aberta ficou do plantão anterior, volta para o plantão atual.
+   Quem ainda está digitando não é interrompido: espera 15 min sem uso (o aviso amarelo já aparece na tela). */
+let evoTurnoRef="";
+function evoViraTurno(){
+  const t=evoTurno(), ref=t.data+":"+t.tipo;
+  if(!evoTurnoRef){ evoTurnoRef=ref; return; }
+  if(ref!==evoTurnoRef) EVO.viraPend=true;
+  evoTurnoRef=ref;
+  if(!EVO.viraPend) return;
+  if(EVO_CTX||EVO.arq||!EVO.sel||!EVO.evoKey){ EVO.viraPend=false; return; }
+  const atual=evoDiaPart(EVO.sel,t);
+  if(!atual||EVO.evoKey>=atual||!EVO.evoKey.startsWith(atual.slice(0,atual.length-12))){ EVO.viraPend=false; return; }
+  const aberta=view==="evo"&&EVO.tab==="dia";
+  if(aberta&&Date.now()-evoUltimaAtividade()<15*60000) return;
+  EVO.viraPend=false; EVO.evoKey=EVO_DOCS[atual]?atual:""; EVO.destrava="";
+  if(aberta&&!document.querySelector(".overlay")){ evoTopo(); renderEvo(); }
 }
 async function evoSairInativo(){
   evoSaindo=true;
@@ -4918,6 +4939,14 @@ function evoDiaLista(id){            /* evoluções desta internação, da mais 
   const pre="evo:"+p.pid+":"; return Object.keys(EVO_DOCS).filter(n=>n.startsWith(pre)&&/:\d{4}-\d{2}-\d{2}:[DN]$/.test(n)).sort();
 }
 function evoDiaRotulo(n){ const m=n.match(/:(\d{4}-\d{2}-\d{2}):([DN])$/); return m?`${EVO_TURNO[m[2]]==="diurna"?"Diurna":"Noturna"} ${fmtDate(m[1])}`:""; }
+/* evolução de plantão anterior aberta sem o médico ter pedido para editá-la: fica só para leitura
+   (evita evoluir por engano na folha de outro turno). A do plantão atual e as abertas por "Outra data ou turno" ficam liberadas. */
+function evoDiaTravada(id,n){
+  if(EVO_CTX||!n) return false;
+  const atual=evoDiaPart(id,evoTurno()); if(!atual) return false;
+  const pre=atual.slice(0,atual.lastIndexOf(":",atual.lastIndexOf(":")-1)+1);
+  return n.startsWith(pre)&&n<atual&&EVO.destrava!==n;
+}
 function evoDiaAnterior(id,n){ const L=evoDiaLista(id), i=L.indexOf(n); return i>0?EVO_DOCS[L[i-1]]:(i<0&&L.length?EVO_DOCS[L[L.length-1]]:null); }
 function evoDiaCriar(id,t){
   const n=evoDiaPart(id,t); if(!n) return null;
@@ -4973,7 +5002,9 @@ function evoDiaEditor(id){
   const b=SV.med.beds.find(x=>x.id===id), p=pacOf(id), c=evoC(id), fem=c.sexo==="F", kg=evoNum(c.peso), wrap=el("div");
   if(!p.pid) ensurePid(id);
   const t=evoTurno(), atual=evoDiaPart(id,t), L=evoDiaLista(id);
-  if(!EVO.evoKey||!EVO.evoKey.startsWith("evo:"+p.pid+":")) EVO.evoKey=EVO_DOCS[atual]?atual:(L[L.length-1]||"");
+  /* sem a evolução do plantão atual, mostra o botão "Iniciar" em vez de abrir a anterior */
+  if(!EVO.evoKey||!EVO.evoKey.startsWith("evo:"+p.pid+":")) EVO.evoKey=EVO_DOCS[atual]?atual:(EVO_CTX?(L[L.length-1]||""):"");
+  if(EVO.evoKey&&EVO.evoKey===atual) EVO.destrava=atual;   /* continua liberada se o turno virar com ela aberta */
   /* barra com as evoluções desta internação */
   const chips=el("div",{class:"ev-togs",style:"margin-bottom:12px;align-items:center"},el("span",{class:"hint",style:"margin:0 6px 0 0"},"Evoluções desta internação:"),
     L.map(n=>el("button",{type:"button",class:"tog sm"+(n===EVO.evoKey?" on":""),onclick:()=>{ EVO.evoKey=n; evoTopo(); renderEvo(); }},evoDiaRotulo(n)+(EVO_DOCS[n].impresso?" ✓":""))),
@@ -4997,6 +5028,17 @@ function evoDiaEditor(id){
   const seg=(o,k,opts)=>el("div",{class:"ev-togs"},opts.map(([v,l])=>el("button",{type:"button",class:"tog"+(o[k]===v?" on":""),"aria-pressed":String(o[k]===v),onclick:()=>{ o[k]=o[k]===v?"":v; onRe(); }},l)));
   const card=(tt,...k)=>el("div",{class:"card"},el("h3",{},tt),...k);
   const pend=Object.keys(d.rev).filter(k=>d.rev[k]==="pend");
+  const trava=evoDiaTravada(id,n), corpo=trava?el("fieldset",{class:"ev-lock",disabled:"","aria-disabled":"true"}):wrap;
+  if(!EVO_CTX&&atual&&n<atual&&n.startsWith("evo:"+p.pid+":")){
+    const tem=!!EVO_DOCS[atual], rot=`${EVO_TURNO[t.tipo]} de ${fmtDate(t.data)}`;
+    wrap.append(el("div",{class:"ev-antiga",role:"alert"},
+      el("div",{style:"flex:1;min-width:240px"},el("b",{},`Atenção: esta é a evolução ${EVO_TURNO[d.turno]} de ${fmtDate(d.data)}, não a do plantão atual (${rot}).`),
+        el("div",{style:"margin-top:3px"},trava?"Aberta só para leitura. Para corrigir esta folha, clique em “Editar esta evolução antiga”.":"Você está editando a evolução de um plantão anterior.")),
+      el("button",{class:"btn primary",type:"button",onclick:()=>{ EVO.evoKey=EVO_DOCS[atual]?atual:evoDiaCriar(id,t); evoTopo(); renderEvo(); }},(tem?"Ir para a evolução ":"Iniciar a evolução ")+rot),
+      trava?el("button",{class:"btn",type:"button",onclick:()=>{
+        if(!confirm(`Editar a evolução ${EVO_TURNO[d.turno]} de ${fmtDate(d.data)}?\n\nEla NÃO é a evolução do plantão atual (${rot}).`+(d.impresso?"\n\nEsta evolução já foi impressa: depois da alteração, a folha impressa ficará diferente do sistema e será preciso reimprimi-la.":""))) return;
+        EVO.destrava=n; renderEvo(); }},"Editar esta evolução antiga"):null));
+  }
   if(d.retro) wrap.append(el("div",{class:"ev-sign",style:"margin-bottom:8px"},`Evolução registrada depois (em ${new Date(d.retro).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}, por ${evoQuem(d.retroPor)}). A folha sai com a data e o turno do plantão.`));
   if(d.impresso) wrap.append(el("div",{class:"ev-sign",style:"margin-bottom:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"},
     el("span",{style:"flex:1"},`Impressa em ${new Date(d.impresso).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})} por ${evoQuem(d.impressoPor)}`+(d.upd>d.impresso+5000?" · editada depois da impressão":"")),
@@ -5005,7 +5047,7 @@ function evoDiaEditor(id){
     `Copiada da ${d.copiadoDe}. `,pend.length?el("b",{},"Confirme os campos em amarelo antes de imprimir. "):null,"Conduta, intercorrências, sinais vitais e impressão clínica começam vazios."));
   /* data, hora e plantão */
   const hh=(d.dataHora||"").slice(11,16);
-  wrap.append(card(`Evolução ${EVO_TURNO[d.turno]} · plantão de ${fmtDate(d.data,true)} (${d.turno==="D"?"07h–19h":"19h–07h"})`,
+  corpo.append(card(`Evolução ${EVO_TURNO[d.turno]} · plantão de ${fmtDate(d.data,true)} (${d.turno==="D"?"07h–19h":"19h–07h"})`,
     el("div",{style:"display:grid;grid-template-columns:200px 120px;gap:10px"},
       el("div",{},lab("Data",true),evoDataInput((d.dataHora||"").slice(0,10),(v,fin)=>{ if(!v) return; d.dataHora=v+"T"+(hh||"08:00"); if(fin) onRe(); else evoDocSave(d); })),
       el("div",{},lab("Hora",true),evoHoraInput(hh,(h,fin)=>{ d.dataHora=(d.dataHora||d.data).slice(0,10)+"T"+h; if(fin) onRe(); else evoDocSave(d); })))));
@@ -5016,7 +5058,7 @@ function evoDiaEditor(id){
     const di=evoNum(sv.diu); dOut.textContent=di&&kg?evoFmt(di/kg/horas)+" mL/kg/h":"—"; };
   calc();
   const tx2=(k,ph)=>{ const i=txt(sv,k,ph); i.addEventListener("input",calc); return i; };
-  wrap.append(card(d.turno==="D"?"Últimas 24h — fechamento 07h a 07h":"Últimas 12h — parcial 07h a 19h",
+  corpo.append(card(d.turno==="D"?"Últimas 24h — fechamento 07h a 07h":"Últimas 12h — parcial 07h a 19h",
     el("div",{style:"display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px"},
       el("div",{},lab("PA mínima",true),tx2("pamin","90 × 50")),el("div",{},lab("PA máxima",true),tx2("pamax","150 × 80")),el("div",{},lab("PAM (mín–máx)"),pamOut),
       el("div",{},lab("FC mín–máx",true),txt(sv,"fc","82 – 112")),el("div",{},lab("FR mín–máx",true),txt(sv,"fr","14 – 22")),el("div",{},lab("SatO2 mín–máx (%)",true),txt(sv,"sat","91 – 100"))),
@@ -5027,32 +5069,32 @@ function evoDiaEditor(id){
   /* intercorrências */
   const it=el("textarea",{class:"par-ta",style:"min-height:60px",placeholder:"Texto livre (ex.: febre de 38,9 °C às 23h; agitação psicomotora)…"}); it.value=d.interc||""; it.addEventListener("input",()=>{ d.interc=it.value; onCh(); });
   const iqs=evoIqDoPeriodo(id,d);
-  wrap.append(card("Intercorrências do plantão anterior",it,iqs.length?el("div",{style:"margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"},
+  corpo.append(card("Intercorrências do plantão anterior",it,iqs.length?el("div",{style:"margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"},
     el("button",{class:"btn small",type:"button",onclick:()=>evoIqTraz(id,d,iqs)},`Trazer ${iqs.length===1?"a intercorrência registrada":"as "+iqs.length+" intercorrências registradas"}`),
     el("span",{class:"hint",style:"margin:0"},iqs.map(n=>evoIqRotulo(EVO_DOCS[n])).join(" · "))):null));
   /* exame físico e suporte */
-  wrap.append(evoExForm(d.ex,{onCh,onRe,fem,kg,rev:d.rev,evo:true,titulo:"Exame físico e suporte por sistema"}));
+  corpo.append(evoExForm(d.ex,{onCh,onRe,fem,kg,rev:d.rev,evo:true,titulo:"Exame físico e suporte por sistema"}));
   /* problemas, antibióticos, culturas */
   const probs=p.problemas||(p.problemas=[]);
   const chipsP=el("div",{class:"picker"},probs.map((x,i)=>el("span",{class:"chip"},x,el("button",{type:"button","aria-label":"Remover",onclick:()=>{ probs.splice(i,1); onRe(); }},"×"))));
   const addP=el("input",{list:"evoProbList",placeholder:"Digite e tecle Enter"}); addP.addEventListener("keydown",e=>{ if(e.key==="Enter"&&addP.value.trim()){ e.preventDefault(); probs.push(addP.value.trim()); onRe(); } }); chipsP.append(addP);
   const cp=evoCulturasPos(b);
-  wrap.append(card("Lista de problemas, antibióticos e culturas",el("span",{class:"hint"},"(mesmo registro do passômetro médico)"),
+  corpo.append(card("Lista de problemas, antibióticos e culturas",el("span",{class:"hint"},"(mesmo registro do passômetro médico)"),
     el("div",{style:"margin-top:6px"},lab("Lista de problemas"),chipsP,el("datalist",{id:"evoProbList"},(SHARED.lists.problemas||[]).map(x=>el("option",{value:x})))),
     el("div",{style:"margin-top:12px"},lab("Antimicrobianos"),evoAtbEditor(b,onRe)),
     el("div",{style:"margin-top:12px"},lab("Culturas positivas (Controle de culturas)"),el("div",{class:"ev-ro"},cp.length?cp.map(x=>`${x.sitio||"Cultura"} ${x.data?fmtDate(x.data):""}: ${culGermeTxt(x)}${culPerfilRel(x).length?" · "+culPerfilRel(x).join(", "):""}`).join(" · "):el("small",{},"nenhuma")))));
   /* dispositivos, imagem e laboratório (mesmos editores do adendo) */
-  wrap.append(evoAdmExames(id,b,onRe));
+  corpo.append(evoAdmExames(id,b,onRe));
   /* impressão / avaliação */
   const imp=d.imp, ta=el("textarea",{class:"par-ta",style:"min-height:56px",maxlength:"300",placeholder:"Opcional — síntese clínica (até 300 caracteres)"}); ta.value=imp.txt||"";
   const cnt=el("div",{class:"hint",style:"text-align:right;margin:2px 0 0"},(imp.txt||"").length+" / 300");
   ta.addEventListener("input",()=>{ imp.txt=ta.value.slice(0,300); cnt.textContent=imp.txt.length+" / 300"; onCh(); });
-  wrap.append(card("Impressão / avaliação",el("span",{class:"hint"},"(opcional — só sai na folha se preenchida)"),seg(imp,"st",[["MELHORA","Melhora"],["ESTÁVEL","Estável"],["PIORA","Piora"]]),el("div",{style:"margin-top:8px"},ta,cnt)));
+  corpo.append(card("Impressão / avaliação",el("span",{class:"hint"},"(opcional — só sai na folha se preenchida)"),seg(imp,"st",[["MELHORA","Melhora"],["ESTÁVEL","Estável"],["PIORA","Piora"]]),el("div",{style:"margin-top:8px"},ta,cnt)));
   /* conduta */
   const k=d.conduta, pf=pfOf(b), alta=pf.alta==="24";
   const P=evoData("cfgevo:protocolos").lista.filter(x=>x.ativo!==false);
   const livre=el("textarea",{class:"par-ta",style:"min-height:70px",placeholder:"Texto livre (opcional)"}); livre.value=k.livre||""; livre.addEventListener("input",()=>{ k.livre=livre.value; onCh(); });
-  wrap.append(el("div",{class:"card",style:"border-color:#e9b48c"},el("h3",{},"Conduta"),
+  corpo.append(el("div",{class:"card",style:"border-color:#e9b48c"},el("h3",{},"Conduta"),
     el("div",{class:"ev-togs",style:"margin-bottom:8px"},
       [["presc","Faço prescrição"],["exames","Solicito exames"],["vig","Vigilância e cuidados intensivos"]].map(([kk,l])=>el("button",{type:"button",class:"tog"+(k.fixos[kk]?" on":""),onclick:()=>{ k.fixos[kk]=!k.fixos[kk]; onRe(); }},l)),
       el("button",{type:"button",class:"tog"+(alta?" on":""),title:"Marca também a previsão de alta 24h no passômetro",onclick:()=>{ const q=pacOf(id); q.pf=fixPf(q.pf); q.pf.alta=alta?"":"24"; save(); onRe(); }},"Programo alta para amanhã")),
@@ -5064,12 +5106,13 @@ function evoDiaEditor(id){
   const per=evoData("usr:perfis").perfis, diars=Object.keys(per).filter(e=>per[e].diarista).map(e=>evoAssinatura(per[e]));
   const sd=el("select",{class:"txt"},el("option",{value:""},"Escolha o diarista…"),diars.concat(["Outro"]).map(x=>{ const o=el("option",{value:x},x); if(d.diarista===x||(x==="Outro"&&d.diarista&&!diars.includes(d.diarista))) o.selected=true; return o; }));
   sd.onchange=()=>{ d.diarista=sd.value==="Outro"?"Outro: ":sd.value; onRe(); };
-  wrap.append(card("Assinaturas",
+  corpo.append(card("Assinaturas",
     d.turno==="D"?el("div",{},lab("Diarista",true),sd,d.diarista&&d.diarista.startsWith("Outro")?el("div",{style:"margin-top:8px"},(()=>{ const i=el("input",{class:"txt",value:d.diarista.replace(/^Outro:\s*/,""),placeholder:"Nome e CRM do diarista"}); i.addEventListener("input",()=>{ d.diarista="Outro: "+i.value; onCh(); }); return i; })()):null)
       :el("p",{class:"hint",style:"margin:0 0 6px"},"Evolução noturna: sem diarista."),
     evoResCampo(d,onRe,onCh),
     el("div",{class:"ev-sign",style:"margin-top:10px"},el("span",{class:"hint"},"Assina como: "),el("b",{},evoAssinatura(evoPerfil(d.autor)||EVO.perfil)),
       d.autor!==EVO.eu?el("div",{style:"margin-top:8px"},el("button",{class:"btn small",type:"button",onclick:()=>{ if(!confirm("Assumir esta evolução? A assinatura da folha passa a ser a sua.")) return; d.assumidoDe=d.autor; d.autor=EVO.eu; d.assumidoEm=Date.now(); onRe(); }},"Assumir esta evolução")):null)));
+  if(trava) wrap.append(corpo);
   wrap.append(el("div",{class:"card",id:"evoDiaBar",style:"position:sticky;bottom:0;display:flex;gap:12px;align-items:center;box-shadow:0 -4px 16px rgba(0,0,0,.06)"}));
   setTimeout(()=>evoDiaResumo(id,d),0);
   return wrap;
@@ -5271,7 +5314,7 @@ function evoDiaOutra(id,onOk){
         if(p.admissao&&dIso<p.admissao){ err.textContent="A data é anterior à admissão na UTI ("+fmtDate(p.admissao,true)+")."; return; }
         const t={tipo,data:dIso}, n=evoDiaPart(id,t);
         if(!EVO_DOCS[n]){ evoDiaCriar(id,t); const d=EVO_DOCS[n]; d.retro=Date.now(); d.retroPor=EVO.eu; evoDocSave(d); toast("Evolução "+EVO_TURNO[tipo]+" de "+fmtDate(dIso)+" criada"); }
-        EVO.evoKey=n; fecha(); if(onOk) onOk(n); evoTopo(); renderEvo();
+        EVO.evoKey=n; EVO.destrava=n; fecha(); if(onOk) onOk(n); evoTopo(); renderEvo();
       }},"Abrir ou criar")));
   const fecha=openModal("Evolução de outra data ou turno",body);
 }
@@ -5678,13 +5721,13 @@ function evoIrPara(k,b,extra){
 /* a evolução (ou o adendo) aberta agora, para receber texto na conduta */
 function evoDocAlvo(){
   if(!EVO.sel) return null;
-  if(EVO.tab==="dia"&&EVO.evoKey&&EVO_DOCS[EVO.evoKey]) return EVO_DOCS[EVO.evoKey];
+  if(EVO.tab==="dia"&&EVO.evoKey&&EVO_DOCS[EVO.evoKey]) return evoDiaTravada(EVO.sel,EVO.evoKey)?null:EVO_DOCS[EVO.evoKey];
   if(EVO.tab==="adm") return evoAdmDoc(EVO.sel)||null;
   return null;
 }
 function evoParaConduta(txt,silencioso){
   const d=evoDocAlvo();
-  if(!d){ if(!silencioso) alert("Abra a evolução diária (ou o adendo) do paciente para levar o texto para a conduta."); return false; }
+  if(!d){ if(!silencioso) alert(EVO.tab==="dia"&&EVO.sel&&evoDiaTravada(EVO.sel,EVO.evoKey)?"A evolução aberta é de um plantão anterior e está só para leitura. Abra a evolução do plantão atual (ou clique em “Editar esta evolução antiga”).":"Abra a evolução diária (ou o adendo) do paciente para levar o texto para a conduta."); return false; }
   const c=d.conduta, at=String(c.livre||"").replace(/\s+$/,"");
   if(at.split("\n").some(l=>l.trim()===txt.trim())){ if(!silencioso) toast("Já está na conduta"); return false; }
   c.livre=(at?at+"\n":"")+txt; evoDocSave(d); renderEvo(); toast("Levado para a conduta da "+(d.turno?"evolução":"admissão")); return true;
