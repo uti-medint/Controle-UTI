@@ -4612,11 +4612,23 @@ function evoAdmitir(id0){
   const nome=el("input",{class:"txt",placeholder:"Nome completo",autocomplete:"off"});
   const agora=evoAgoraLocal(); let dIso=agora.slice(0,10), dHora=agora.slice(11,16);
   const dt=el("div",{style:"display:grid;grid-template-columns:minmax(0,1fr) 80px;gap:6px"},evoDataInput(dIso,v=>{ dIso=v; },{max:todayISO()}),evoHoraInput(dHora,h=>{ dHora=h; }));
-  let plano="";
-  const pl=picker({key:"plano",single:true,placeholder:"Escolher ou digitar o convênio",get:()=>plano,set:v=>{ plano=v||""; }});
+  let plano="", esc=null;   /* esc: internação anterior escolhida (paciente reinternado) */
+  const novoPl=()=>picker({key:"plano",single:true,placeholder:"Escolher ou digitar o convênio",get:()=>plano,set:v=>{ plano=v||""; }});
+  let pl=novoPl();
   const err=el("p",{class:"ev-warn"}), ra=el("div");
-  nome.addEventListener("input",()=>{ ra.innerHTML=""; const L=evoReadmissoes(nome.value,"",null).slice(0,3);
-    if(L.length) ra.append(el("div",{class:"ev-sign",style:"background:#fff6d6;border-color:#e6c25a;margin-top:8px;font-size:13.5px"},el("b",{},"Já esteve na UTI: "),L.map(evoAltaRot).join(" | "),el("div",{class:"hint",style:"margin:4px 0 0"},"Depois de admitir, o adendo de internação mostra a internação anterior e permite puxar os dados anteriores (cadastro, convênio, história pregressa, medicações, hábitos e antecedentes)."))); });
+  const pinta=()=>{ ra.innerHTML=""; const L=evoReadmissoes(nome.value,"",null).slice(0,5);
+    if(esc&&!L.some(x=>x.pid===esc.pid)) esc=null;
+    if(!L.length) return;
+    ra.append(el("div",{class:"ev-sign",style:"background:#fff6d6;border-color:#e6c25a;margin-top:8px;font-size:13.5px"},
+      el("b",{},"Já esteve na UTI"),el("span",{class:"hint",style:"margin:0 0 0 6px"},"— clique na internação se for o mesmo paciente:"),
+      el("div",{style:"display:flex;flex-direction:column;gap:6px;margin-top:8px"},L.map(x=>{ const on=esc&&esc.pid===x.pid;
+        return el("button",{type:"button",class:"btn",style:"text-align:left;justify-content:flex-start;font-size:13.5px;"+(on?"background:var(--accent);color:#fff;border-color:var(--accent)":"background:#fff"),onclick:async()=>{
+          if(on){ esc=null; pinta(); return; }
+          esc=x; nome.value=x.nome; pinta();
+          try{ const int=await evoIntCarrega(x.pid), pp=int&&int.id&&int.id.pac&&int.id.pac.plano; if(pp&&!plano.trim()&&esc===x){ plano=pp; const n=novoPl(); pl.replaceWith(n); pl=n; } }catch(e){}
+        }},(on?"✓ ":"")+evoAltaRot(x)); })),
+      el("div",{class:"hint",style:"margin:8px 0 0"},esc?"Mesmo paciente: entra com o nome e o convênio da internação anterior e, ao abrir o adendo, já aparece a lista para puxar os dados anteriores (cadastro, história pregressa, medicações, hábitos e antecedentes).":"Se for outra pessoa com o mesmo nome, é só continuar sem clicar."))); };
+  nome.addEventListener("input",pinta);
   const b0=id0?SV.med.beds.find(x=>x.id===id0):null;
   const body=el("div",{},el("p",{class:"hint"},b0?`O paciente entra no ${bedLabel(b0)} e aparece também nos passômetros médico e de enfermagem.`:"O paciente aparece também nos passômetros médico e de enfermagem."),
     sLeito?el("div",{style:"margin-bottom:10px"},el("label",{class:"lbl ev-req"},"Leito"),sLeito):null,
@@ -4631,8 +4643,9 @@ function evoAdmitir(id0){
         const dtv=(dIso||"")+"T"+(dHora||""); if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dtv)){ err.textContent="Informe a data e a hora da admissão."; return; }
         if(b.nome){ err.textContent="Este leito foi ocupado por outro computador agora há pouco."; return; }
         const p=pacOf(id); p.nome=nm; p.admissao=dtv.slice(0,10); if(plano.trim()) p.plano=plano.trim(); if(String(id).startsWith("E")) p.ativo=true;
-        ensurePid(id); const d=evoAdmDoc(id,true); d.dataHora=dtv; evoDocSave(d);
+        ensurePid(id); const d=evoAdmDoc(id,true); d.dataHora=dtv; if(esc) d.readmDe=esc.pid; evoDocSave(d);
         fecha(); EVO.sel=id; EVO.tab="adm"; renderEvo(); toast("Paciente admitido no "+bedLabel(b));
+        if(esc){ const x=esc; setTimeout(()=>evoReadmJanela(id,x),300); }
       }},"Admitir e abrir o adendo")));
   const fecha=openModal(b0?"Admitir paciente — "+bedLabel(b0):"Admitir paciente",body); setTimeout(()=>(sLeito||nome).focus(),50);
 }
@@ -6567,7 +6580,7 @@ function evoReadmVerAdendo(int){
 function evoReadmQuadro(id){
   const p=pacOf(id), c=evoC(id); if(!p.nome) return null;
   const L=evoReadmissoes(p.nome,c.nasc,p.pid); if(!L.length) return null;
-  const x=L[0], d=evoAdmDoc(id,false), feito=d&&d.readmCopiado===x.pid;
+  const d=evoAdmDoc(id,false), x=(d&&d.readmDe&&L.find(y=>y.pid===d.readmDe))||L[0], feito=d&&d.readmCopiado===x.pid;
   return el("div",{class:"ev-sign",style:"background:#fff6d6;border-color:#e6c25a;margin-bottom:12px"},
     el("b",{},"Reinternação: "),`${x.nasc&&c.nasc?"mesmo nome e data de nascimento":"mesmo nome"} de quem já esteve na UTI — ${evoAltaRot(x)}.`+(L.length>1?` (${L.length} internações anteriores)`:""),
     el("div",{style:"margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"},
