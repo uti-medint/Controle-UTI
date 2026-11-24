@@ -5267,7 +5267,7 @@ ${evoSigs(d,evoAssinatura(autor),diur,`${/^M[ée]dic[oa] Diarista/i.test(diar||"
 /* ajusta UMA folha para caber numa página (5→3 datas no laboratório; fonte até 7,5 pt). Devolve o HTML já ajustado. */
 function evoFolha(id,n){
   const box=el("div",{style:"position:absolute;left:-10000px;top:0;width:194mm;visibility:hidden"}); document.body.append(box);
-  const lim=283*96/25.4, base=8.6, min=7.5; let ok=false, z=1, f=null;
+  const lim=280*96/25.4, base=8.6, min=7.5;   /* página útil: 283 mm; 3 mm de folga para a impressão */ let ok=false, z=1, f=null;
   for(const nd of [5,3]){
     box.innerHTML=`<style>${EVO_DIA_CSS}</style>`+evoDiaHtml(id,n,nd);
     f=box.querySelector(".evd"); z=1; const alt=()=>f.getBoundingClientRect().height;
@@ -5284,7 +5284,8 @@ function evoFolha(id,n){
    Nenhuma caixa cresce sozinha. Devolve o zoom final. */
 function evoFolhaEspaca(f,lim,z){
   const mm=96/25.4, alt=()=>f.getBoundingClientRect().height;
-  lim-=3*mm;   /* folga: a impressora pode quebrar uma linha de outro jeito */
+  lim-=7*mm;   /* folga: na impressão o navegador mede o texto de outro jeito (quebra linhas a mais, margens da impressora);
+                  com folga pequena a folha cheia passava para a 2ª página */
   if(alt()>lim) return z;
   /* mede já no arranjo final (coluna flexível: as margens não se sobrepõem) */
   f.style.display="flex"; f.style.flexDirection="column";
