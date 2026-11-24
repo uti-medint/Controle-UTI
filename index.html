@@ -6498,17 +6498,32 @@ function evoSaidasPainel(){
 }
 /* readmissão: traz da internação anterior só o que estiver em branco (idade, convênio, nascimento, sexo, altura e alergias).
    Dispositivos, antibióticos, lista de problemas e a história da doença atual não são copiados. */
-async function evoReadmTraz(id,x){
+async function evoReadmTraz(id,x,confirma){
   let pa={};
   try{ const int=await evoIntCarrega(x.pid); pa=(int&&int.id&&int.id.pac)||{}; }catch(e){ pa={}; }
   const o=Object.assign({nasc:x.nasc||"",sexo:x.sexo||""},Object.fromEntries(Object.entries(pa.evc||{}).filter(([,v])=>v)));
-  const p=pacOf(id), c=evoC(id), feito=[];
-  [["nasc","nascimento"],["sexo","sexo"],["altura","altura"],["alergias","alergias"]].forEach(([k,l])=>{ if(o[k]&&!c[k]){ c[k]=o[k]; feito.push(l); } });
-  if(feito.length){ c.upd=Date.now(); c.by=EVO.eu; }
-  if(!String(p.idade||"").trim()){ const i=evoIdade(c.nasc||""), v=i!=null?String(i):String(pa.idade||""); if(v){ p.idade=v; feito.push("idade"); } }
-  if(!String(p.plano||"").trim()&&pa.plano){ p.plano=pa.plano; feito.push("convênio"); }
-  p.readmOk=x.pid; save();
-  return feito;
+  const p=pacOf(id), c=evoC(id), plano=[];   /* [rótulo, valor mostrado, aplicar] */
+  [["nasc","Nascimento"],["sexo","Sexo"],["altura","Altura"],["alergias","Alergias"]].forEach(([k,l])=>{ if(o[k]&&!c[k]) plano.push([l,k==="nasc"?fmtDate(o[k],true):k==="sexo"?(o[k]==="F"?"Feminino":"Masculino"):k==="altura"?o[k]+" m":o[k],()=>{ c[k]=o[k]; c.upd=Date.now(); c.by=EVO.eu; }]); });
+  if(!String(p.idade||"").trim()){ const i=evoIdade(c.nasc||o.nasc||""), v=i!=null?String(i):String(pa.idade||""); if(v) plano.push(["Idade",v+" anos",()=>{ p.idade=v; }]); }
+  if(!String(p.plano||"").trim()&&pa.plano) plano.push(["Convênio",pa.plano,()=>{ p.plano=pa.plano; }]);
+  if(plano.length&&confirma&&!(await confirma(plano))) return null;
+  plano.forEach(x=>x[2]()); p.readmOk=x.pid; save();
+  return plano.map(x=>x[0].toLowerCase());
+}
+/* enfermagem: antes de copiar, confirmar com o médico o que vem da internação anterior */
+function pasReadmConfirma(x,plano){
+  return new Promise(res=>{
+    let ok=false; const ck=el("input",{type:"checkbox"}), err=el("p",{class:"ev-warn"});
+    const fecha=openModal("Copiar da internação anterior",el("div",{},
+      el("div",{class:"ev-sign",style:"background:#fff1f0;border-color:#efc9c5;margin-bottom:12px;font-size:14.5px"},el("b",{},"Atenção: "),"antes de prosseguir, confirme com o médico plantonista se é o mesmo paciente e se os dados abaixo, da internação anterior, estão corretos."),
+      el("p",{style:"margin:0 0 6px"},"Internação anterior: ",el("b",{},evoAltaRot(x))),
+      el("p",{class:"hint",style:"margin:0 0 6px"},"Será copiado (só o que está em branco):"),
+      el("ul",{style:"margin:0 0 12px;padding-left:20px"},plano.map(([l,v])=>el("li",{},el("b",{},l+": "),v))),
+      el("label",{style:"display:flex;gap:8px;align-items:center;font-weight:700"},ck,"Confirmei com o médico plantonista"),err),
+      [el("button",{class:"btn",type:"button",onclick:()=>fecha()},"Cancelar"),
+       el("button",{class:"btn primary",type:"button",onclick:()=>{ if(!ck.checked){ err.textContent="Confirme com o médico antes de copiar."; return; } ok=true; fecha(); }},"Copiar")]);
+    const t=setInterval(()=>{ if(!document.body.contains(ck)){ clearInterval(t); res(ok); } },200);
+  });
 }
 /* passômetro (médico e enfermagem): nome igual ao de quem já esteve na UTI */
 function pasReadm(b){
@@ -6521,8 +6536,11 @@ function pasReadm(b){
     box.append(el("div",{class:"ev-sign",style:"background:#fff6d6;border-color:#e6c25a;margin-top:10px;font-size:14px"},
       el("b",{},"Já esteve na UTI: "),evoAltaRot(x)+(L.length>1?` (${L.length} internações anteriores)`:""),
       el("div",{style:"margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"},
-        el("button",{class:"btn small primary",type:"button",onclick:async e=>{ e.target.disabled=true;
-          const feito=await evoReadmTraz(b.id,x); afterChange(); renderEditor();
+        el("button",{class:"btn small primary",type:"button",onclick:async e=>{ const bt=e.target; bt.disabled=true;
+          const enf=view==="enf"||EVO.oculto;
+          const feito=await evoReadmTraz(b.id,x,enf?pl=>pasReadmConfirma(x,pl):null);
+          if(!feito){ bt.disabled=false; return; }
+          afterChange(); renderEditor();
           toast(feito.length?"Trazido do prontuário anterior: "+feito.join(", "):"Nada a trazer: estes campos já estavam preenchidos."); }},"Trazer dados do prontuário anterior"),
         EVO.oculto?null:el("button",{class:"btn small",type:"button",onclick:()=>{ EVO.sel=null; EVO.arq=x.pid; EVO.arqTab="tl"; EVO.arqEd=null; showView("evo"); }},"Ver internação anterior"),
         el("button",{class:"btn small",type:"button",onclick:()=>{ pacOf(b.id).readmOk=x.pid; afterChange(); box.pinta(); }},"Não é o mesmo paciente")),
