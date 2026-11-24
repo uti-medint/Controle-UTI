@@ -4431,13 +4431,23 @@ function evoAssinCtl(d,diur,salvar){
   return el("div",{class:"ev-sign",style:"margin-top:10px"},el("span",{class:"hint"},"Assina como: "),
     el("b",{},diur==null?evoAssinatura(au):evoAssinTurno(au,diur)),
     el("div",{style:"margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"},el("span",{class:"hint"},"Trocar médico:"),s,
-      EVO.eu&&d.autor!==EVO.eu&&per[EVO.eu]?el("button",{class:"btn small",type:"button",onclick:()=>{ s.value=EVO.eu; s.onchange(); }},"Sou eu"):null));
+      EVO.eu&&d.autor!==EVO.eu&&per[EVO.eu]?el("button",{class:"btn small",type:"button",onclick:()=>{ s.value=EVO.eu; s.onchange(); }},"Sou eu"):null),
+    evoAssinHist(d));
+}
+/* histórico das trocas de quem assina a folha (mais recente primeiro) */
+function evoAssinHist(d){
+  const nm=k=>{ const q=evoPerfil(k); return q?evoTratamento(q):(k||"—"); };
+  const T=(d.trocas||[]).slice().reverse();
+  if(!T.length&&d.assumidoDe) T.push({de:d.assumidoDe,para:d.autor,por:d.autor,ts:d.assumidoEm});   /* trocas feitas pelo antigo "Assumir" */
+  if(!T.length) return null;
+  return el("details",{style:"margin-top:8px"},el("summary",{class:"hint",style:"cursor:pointer"},`Trocas de assinatura (${T.length})`),
+    el("ul",{class:"hint",style:"margin:4px 0 0;padding-left:18px"},T.map(t=>el("li",{},`${t.ts?new Date(t.ts).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):""} · ${nm(t.de)} → ${nm(t.para)}${t.por&&t.por!==t.para?" (por "+nm(t.por)+")":""}`))));
 }
 /* ao imprimir uma folha iniciada por outro médico, pergunta quem assina (evita sair o nome de quem só abriu a folha) */
 function evoConfAssin(d,oque){
   if(!d||!d.autor||!EVO.eu||d.autor===EVO.eu||!EVO.perfil||EVO.perfil.generico||EVO.perfil.grupo==="coord") return;
   const a=evoPerfil(d.autor), nA=a?evoTratamento(a):d.autor;
-  if(confirm(`${oque} por ${nA}.\n\nOK: a folha sai assinada por você (${evoTratamento()}).\nCancelar: mantém ${nA} na assinatura.`)){ d.assumidoDe=d.autor; d.autor=EVO.eu; d.assumidoEm=Date.now(); evoDocSave(d); }
+  if(confirm(`${oque} por ${nA}.\n\nOK: a folha sai assinada por você (${evoTratamento()}).\nCancelar: mantém ${nA} na assinatura.`)){ d.trocas=(d.trocas||[]).concat([{de:d.autor,para:EVO.eu,por:EVO.eu,ts:Date.now()}]).slice(-20); d.assumidoDe=d.autor; d.autor=EVO.eu; d.assumidoEm=Date.now(); evoDocSave(d); }
 }
 /* texto colado de outros sistemas costuma trazer espaços "inquebráveis" (a linha não quebra): vira espaço comum */
 const EVO_ESPACOS=/[\u00A0\u2007\u202F\u2000-\u200A\u3000]/g;
