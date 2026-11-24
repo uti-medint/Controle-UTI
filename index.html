@@ -5144,7 +5144,7 @@ const EVO_DIA_CSS=`@page evdia{size:A4 portrait;margin:7mm 8mm}
 .evd .r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.4mm;margin-bottom:1.3mm}.evd .r3>.box{margin-bottom:0}.evd .r2{display:grid;grid-template-columns:1.05fr 1fr;gap:1.4mm;margin-bottom:1.3mm}.evd .r2>.box{margin-bottom:0}
 .evd ul{margin:0;padding-left:3.2mm}.evd li{margin:0}.evd .mut{color:#555}.evd .sm{font-size:7.4pt}
 .evd table{width:100%;border-collapse:collapse}.evd th,.evd td{border:.4pt solid #888;padding:.25mm 1mm;text-align:center;font-size:7.8pt}.evd th{font-size:6.6pt;text-transform:uppercase;background:#eee}.evd td.l,.evd th.l{text-align:left}
-.evd .st{font-size:7pt;font-weight:900;text-transform:uppercase;letter-spacing:.05em;background:#000;color:#fff;padding:.3mm 1.4mm}
+.evd .svt td{white-space:nowrap}.evd .st{font-size:7pt;font-weight:900;text-transform:uppercase;letter-spacing:.05em;background:#000;color:#fff;padding:.3mm 1.4mm}
 .evd .sx{border:.8pt solid #000;margin-bottom:1.3mm}.evd .lr{display:grid;grid-template-columns:27mm 1fr;border-bottom:.4pt solid #999}.evd .lr:last-child{border-bottom:0}
 .evd .lr .k{font-weight:900;font-size:7pt;text-transform:uppercase;padding:.4mm 1mm;background:#eee;border-right:.4pt solid #999}.evd .lr .v{padding:.4mm 1.4mm}
 .evd .sup{display:inline-block;border-left:1.6pt solid #000;padding-left:1.2mm;margin-left:.6mm}
@@ -5200,7 +5200,7 @@ function evoDiaHtml(id,n,nDatas){
   const culs=evoCulturasPos(b).map(x=>`<li>${e(x.sitio||"Cultura")} ${x.data?fmtDate(x.data):""}: <b>${e(culGermeTxt(x))}</b>${culPerfilRel(x).length?" · "+e(culPerfilRel(x).join(", ")):""}${pData&&x.data&&x.data>pData?" "+NOVO:""}</li>`).join("");
   /* últimas 24h/12h */
   const sv=d.sv||{}, kg=evoNum(c.peso), horas=diur?24:12, di=evoNum(sv.diu), pa=evoPAM(sv.pamin), pz=evoPAM(sv.pamax);
-  const svRow=`<table><tr><th>PA mín</th><th>PA máx</th><th>PAM mín–máx</th><th>FC mín–máx</th><th>FR mín–máx</th><th>SatO2 mín–máx</th><th>Febre &gt; 38 °C</th><th>HGT &gt; 150</th><th>Diurese</th><th>BH</th></tr>
+  const svRow=`<table class="svt"><tr><th>PA mín</th><th>PA máx</th><th>PAM mín–máx</th><th>FC mín–máx</th><th>FR mín–máx</th><th>SatO2 mín–máx</th><th>Febre &gt; 38 °C</th><th>HGT &gt; 150</th><th>Diurese</th><th>BH</th></tr>
   <tr><td>${e(sv.pamin||"—")}</td><td>${e(sv.pamax||"—")}</td><td>${pa||pz?(pa||"?")+" – "+(pz||"?"):"—"}</td><td>${e(sv.fc||"—")}</td><td>${e(sv.fr||"—")}</td><td>${e(sv.sat?sv.sat.replace(/%?$/,"%"):"—")}</td>
   <td>${sv.feb==="sim"?"Sim"+(sv.tmax?" · "+e(sv.tmax)+" °C":""):sv.feb==="nao"?"Não":"—"}</td><td>${sv.hgt==="sim"?"Sim"+(sv.hgtX?" · "+e(sv.hgtX)+"×":""):sv.hgt==="nao"?"Não":"—"}</td>
   <td>${di?e(sv.diu)+" mL"+(kg?" · "+evoFmt(di/kg/horas)+" mL/kg/h":""):"—"}</td><td>${e(sv.bh||"—")}</td></tr></table>`;
@@ -5244,7 +5244,7 @@ ${String(d.interc||"").trim()?`<div class="box"><div class="bt">Intercorrências
 <div class="st">Exame físico e suporte por sistema</div><div class="sx">${linhas}</div>
 ${labT||imgs?`<div class="r2"><div class="box"><div class="bt">Exames laboratoriais especiais</div>${labT||"—"}</div><div class="box"><div class="bt">Exames de imagem <span class="mut">(2 mais recentes)</span></div><ul>${imgs||"<li>—</li>"}</ul></div></div>`:""}
 ${d.imp&&(d.imp.txt||"").trim()?`<div class="imp"><div class="bt">Impressão / avaliação</div>${d.imp.st?`<span class="s2">${e(d.imp.st)}</span>`:""}${e(d.imp.txt)}</div>`:""}
-<div class="box cdt"><div class="bt">Conduta</div>${fx?`<div><b>${fx}</b></div>`:""}${protos?`<ul>${protos}</ul>`:""}${String(k.livre||"").trim()?`<div style="white-space:pre-wrap">${e(k.livre)}</div>`:""}</div>
+<div class="box"><div class="bt">Conduta</div>${fx?`<div><b>${fx}</b></div>`:""}${protos?`<ul>${protos}</ul>`:""}${String(k.livre||"").trim()?`<div style="white-space:pre-wrap">${e(k.livre)}</div>`:""}</div>
 ${evoSigs(d,evoAssinatura(autor),diur,`${/^M[ée]dic[oa] Diarista/i.test(diar||"")?"":"Diarista: "}${e(diar||"")}`,e)}
 <div class="foot"><span>Evolução ${diur?"diurna":"noturna"} · ${fmtDate(dh.slice(0,10),true)} ${dh.slice(11,16)} · ${e(bedLabel(b))}<span class="evfs"></span></span><span>Página 1/1</span></div></div>`;
 }
@@ -5263,34 +5263,43 @@ function evoFolha(id,n){
   const fs=f.querySelector(".evfs"); if(fs&&z<1) fs.textContent=" · fonte ajustada para "+(base*z).toFixed(1).replace(".",",")+" pt";
   const html=f.outerHTML; box.remove(); return {html,ok};
 }
-/* folha com pouco conteúdo: ocupa a página inteira. Letra até 12% maior, mais espaço entre os blocos e nas linhas,
-   e as assinaturas descem para o pé da página. Devolve o zoom final. */
+/* folha com pouco conteúdo: ocupa a página inteira, de forma proporcional. Primeiro a letra cresce (até 20%; cabeçalho e identificação não),
+   depois o espaço que sobra é dividido entre as linhas do texto, os blocos, as caixas e as linhas do exame físico.
+   Nenhuma caixa cresce sozinha. Devolve o zoom final. */
 function evoFolhaEspaca(f,lim,z){
   const mm=96/25.4, alt=()=>f.getBoundingClientRect().height;
-  const zoom=v=>{ f.style.zoom=v; f.style.width=(194/v)+"mm"; };
-  if(z>=1){ const alvo=alt()+(lim-alt())*0.4;   /* parte da sobra vira letra maior; o resto, espaço */
-    while(z<1.12){ const nz=+(z+0.01).toFixed(2); zoom(nz); if(alt()>alvo){ zoom(z); break; } z=nz; } }
+  lim-=3*mm;   /* folga: a impressora pode quebrar uma linha de outro jeito */
+  if(alt()>lim) return z;
+  /* mede já no arranjo final (coluna flexível: as margens não se sobrepõem) */
+  f.style.display="flex"; f.style.flexDirection="column";
+  if(alt()>lim){ f.style.display=""; f.style.flexDirection=""; return z; }
+  /* cabeçalho e identificação ficam no tamanho original (colunas em mm); o resto cresce */
+  const fixos=[...f.querySelectorAll(":scope>.hd,:scope>.id")]; fixos.forEach(x=>x.style.lineHeight="1.28");
+  const zoom=v=>{ f.style.zoom=v; f.style.width=(194/v)+"mm"; fixos.forEach(x=>x.style.zoom=(1/v).toFixed(4)); };
+  if(z>=1){ const alvo=alt()+(lim-alt())*0.6;
+    while(z<1.2){ const nz=+(z+0.01).toFixed(2); zoom(nz); if(alt()>alvo){ zoom(z); break; } z=nz; } }
   const blocos=[...f.children].filter(x=>!x.matches(".hd,.st,.sig,.foot")&&!(x.matches(".alerts")&&!x.children.length));
-  const linhas=[...f.querySelectorAll(".lr .k,.lr .v")], caixas=[...f.querySelectorAll(".box,.imp")];
+  const linhas=[...f.querySelectorAll(".lr .k,.lr .v")], caixas=[...f.querySelectorAll(".box,.imp")], cels=[...f.querySelectorAll("td,th")];
   const px=(x,p)=>parseFloat(getComputedStyle(x)[p])||0;
-  const mb0=blocos.map(x=>px(x,"marginBottom")), lp0=linhas.map(x=>px(x,"paddingTop")), cp0=caixas.map(x=>px(x,"paddingTop"));
+  const mb0=blocos.map(x=>px(x,"marginBottom")), lp0=linhas.map(x=>px(x,"paddingTop")), cp0=caixas.map(x=>px(x,"paddingTop")), tp0=cels.map(x=>px(x,"paddingTop"));
   const sobra=lim-alt();
   if(sobra>0){
-    const nL=f.querySelectorAll(".lr").length||1;
-    const eB=Math.min(sobra*0.5/(blocos.length||1),5*mm)/z, eL=Math.min(sobra*0.25/nL/2,1.4*mm)/z, eC=Math.min(sobra*0.15/(caixas.length||1)/2,1.2*mm)/z;
+    const nL=f.querySelectorAll(".lr").length||1, nT=f.querySelectorAll("tr").length||1;
+    const eB=Math.min(sobra*0.3/(blocos.length||1),6*mm)/z, eL=Math.min(sobra*0.25/nL/2,2.5*mm)/z,
+      eC=Math.min(sobra*0.1/(caixas.length||1)/2,1.5*mm)/z, eT=Math.min(sobra*0.05/nT/2,1*mm)/z, eH=0.3;   /* eH: entrelinha a mais (1,28 → até 1,58) */
     const aplica=k=>{
+      f.style.lineHeight=(1.28+eH*k).toFixed(3);
       blocos.forEach((x,i)=>x.style.marginBottom=(mb0[i]+eB*k).toFixed(1)+"px");
       linhas.forEach((x,i)=>{ const v=(lp0[i]+eL*k).toFixed(1)+"px"; x.style.paddingTop=v; x.style.paddingBottom=v; });
       caixas.forEach((x,i)=>{ const v=(cp0[i]+eC*k).toFixed(1)+"px"; x.style.paddingTop=v; x.style.paddingBottom=v; });
+      cels.forEach((x,i)=>{ const v=(tp0[i]+eT*k).toFixed(1)+"px"; x.style.paddingTop=v; x.style.paddingBottom=v; });
     };
     let k=1; aplica(k);
-    while(alt()>lim&&k>0){ k=+(k-0.05).toFixed(2); aplica(Math.max(k,0)); }
+    while(alt()>lim&&k>0){ k=+(k-0.02).toFixed(2); aplica(Math.max(k,0)); }
   }
-  /* o que ainda sobrar fica na caixa da conduta (espaço para anotar à mão); assinaturas e rodapé no pé da página */
-  const sig=f.querySelector(".sig"), cdt=f.querySelector(".cdt");
-  if(sig&&alt()<lim){ f.style.display="flex"; f.style.flexDirection="column"; f.style.minHeight=((lim-1.5*mm)/z).toFixed(1)+"px";
-    if(cdt) cdt.style.flex="1 0 auto"; else sig.style.marginTop="auto";
-    if(alt()>lim){ f.style.minHeight=""; f.style.display=""; if(cdt) cdt.style.flex=""; sig.style.marginTop=""; } }
+  /* o pouco que ainda sobrar fica acima das assinaturas, que ficam no pé da página */
+  const sig=f.querySelector(".sig");
+  if(sig&&alt()<lim){ f.style.minHeight=(lim/z).toFixed(1)+"px"; sig.style.marginTop="auto"; }
   return z;
 }
 function evoDiaMontar(id,n){ const r=evoFolha(id,n); $("#printArea").innerHTML=`<style>${EVO_DIA_CSS}</style>`+r.html; return r.ok; }
