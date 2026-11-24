@@ -4426,28 +4426,17 @@ function evoAssinCtl(d,diur,salvar){
   const rot=k=>{ const q=per[k]||evoPerfil(k); if(!q) return k; if(q.generico) return q.assin||k; return `${evoTratamento(q)} — ${(EVO_GRUPO[q.grupo]||EVO_GRUPO.plant)[q.sexo==="F"?1:0]}${q.crm?" · CRM "+q.crm:""}`; };
   const s=el("select",{class:"txt",style:"max-width:440px"},ks.map(k=>{ const o=el("option",{value:k},rot(k)); if(k===d.autor) o.selected=true; return o; }));
   s.onchange=()=>{ if(!s.value||s.value===d.autor) return;
-    d.trocas=(d.trocas||[]).concat([{de:d.autor,para:s.value,por:EVO.eu||"",ts:Date.now()}]).slice(-20);
     d.assumidoDe=d.autor; d.autor=s.value; d.assumidoEm=Date.now(); salvar(); };
   return el("div",{class:"ev-sign",style:"margin-top:10px"},el("span",{class:"hint"},"Assina como: "),
     el("b",{},diur==null?evoAssinatura(au):evoAssinTurno(au,diur)),
     el("div",{style:"margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"},el("span",{class:"hint"},"Trocar médico:"),s,
-      EVO.eu&&d.autor!==EVO.eu&&per[EVO.eu]?el("button",{class:"btn small",type:"button",onclick:()=>{ s.value=EVO.eu; s.onchange(); }},"Sou eu"):null),
-    evoAssinHist(d));
-}
-/* histórico das trocas de quem assina a folha (mais recente primeiro) */
-function evoAssinHist(d){
-  const nm=k=>{ const q=evoPerfil(k); return q?evoTratamento(q):(k||"—"); };
-  const T=(d.trocas||[]).slice().reverse();
-  if(!T.length&&d.assumidoDe) T.push({de:d.assumidoDe,para:d.autor,por:d.autor,ts:d.assumidoEm});   /* trocas feitas pelo antigo "Assumir" */
-  if(!T.length) return null;
-  return el("details",{style:"margin-top:8px"},el("summary",{class:"hint",style:"cursor:pointer"},`Trocas de assinatura (${T.length})`),
-    el("ul",{class:"hint",style:"margin:4px 0 0;padding-left:18px"},T.map(t=>el("li",{},`${t.ts?new Date(t.ts).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):""} · ${nm(t.de)} → ${nm(t.para)}${t.por&&t.por!==t.para?" (por "+nm(t.por)+")":""}`))));
+      EVO.eu&&d.autor!==EVO.eu&&per[EVO.eu]?el("button",{class:"btn small",type:"button",onclick:()=>{ s.value=EVO.eu; s.onchange(); }},"Sou eu"):null));
 }
 /* ao imprimir uma folha iniciada por outro médico, pergunta quem assina (evita sair o nome de quem só abriu a folha) */
 function evoConfAssin(d,oque){
   if(!d||!d.autor||!EVO.eu||d.autor===EVO.eu||!EVO.perfil||EVO.perfil.generico||EVO.perfil.grupo==="coord") return;
   const a=evoPerfil(d.autor), nA=a?evoTratamento(a):d.autor;
-  if(confirm(`${oque} por ${nA}.\n\nOK: a folha sai assinada por você (${evoTratamento()}).\nCancelar: mantém ${nA} na assinatura.`)){ d.trocas=(d.trocas||[]).concat([{de:d.autor,para:EVO.eu,por:EVO.eu,ts:Date.now()}]).slice(-20); d.assumidoDe=d.autor; d.autor=EVO.eu; d.assumidoEm=Date.now(); evoDocSave(d); }
+  if(confirm(`${oque} por ${nA}.\n\nOK: a folha sai assinada por você (${evoTratamento()}).\nCancelar: mantém ${nA} na assinatura.`)){ d.assumidoDe=d.autor; d.autor=EVO.eu; d.assumidoEm=Date.now(); evoDocSave(d); }
 }
 /* texto colado de outros sistemas costuma trazer espaços "inquebráveis" (a linha não quebra): vira espaço comum */
 const EVO_ESPACOS=/[\u00A0\u2007\u202F\u2000-\u200A\u3000]/g;
@@ -5040,11 +5029,11 @@ function evoDiaFaltam(id,d){
   if(d.turno==="D"&&!d.diarista) f.push("diarista");
   return f;
 }
-/* PAM de "140 x 90"; com só a sistólica ("140") a PAM é estimada supondo PAD ≈ 60% da PAS (sai com "≈") */
-function evoPAMx(pa){ const s=String(pa||""), m=s.match(/(\d{2,3})\s*[x×X\/]\s*(\d{2,3})/); if(m) return {v:Math.round((+m[1]+2*+m[2])/3),est:false};
-  const u=s.match(/^\D*?(\d{2,3})(?:[.,]\d+)?\D*$/); return u&&+u[1]>=40?{v:Math.round(+u[1]*2.2/3),est:true}:null; }
-function evoPAM(pa){ const x=evoPAMx(pa); return x?x.v:null; }
-function evoPAMtxt(a,b){ const x=evoPAMx(a), z=evoPAMx(b), f=y=>y?(y.est?"≈":"")+y.v:"?"; return x||z?f(x)+" – "+f(z):"—"; }
+/* PAM padrão de cada caixa ("140 x 90"). Se cada caixa tem um número só, a mínima é a diastólica e a máxima a sistólica: PAM = (PAS + 2·PAD)/3 */
+function evoPAM(pa){ const m=String(pa||"").match(/(\d{2,3})\s*[x×X\/]\s*(\d{2,3})/); return m?Math.round((+m[1]+2*+m[2])/3):null; }
+function evoPAUm(v){ const u=String(v||"").match(/^\D*?(\d{2,3})(?:[.,]\d+)?\D*$/); return u?+u[1]:null; }
+function evoPAMum(sv){ const d=evoPAUm(sv&&sv.pamin), s=evoPAUm(sv&&sv.pamax); return d!=null&&s!=null&&s>=d?Math.round((s+2*d)/3):null; }
+function evoPAMtxt(a,b){ const u=evoPAMum({pamin:a,pamax:b}); if(u!=null) return String(u); const x=evoPAM(a), z=evoPAM(b); return x||z?(x||"?")+" – "+(z||"?"):"—"; }
 /* drenos da evolução: sítios marcados nos dispositivos do passômetro (+ os que já têm débito anotado nesta folha) */
 function evoDrenos(b,sv){
   const dr=b&&b.disp&&b.disp.dreno, L=dr&&dr.on?((dr.sitios&&dr.sitios.length)?dr.sitios.slice():["Dreno"]):[];
@@ -5132,7 +5121,7 @@ function evoDiaEditor(id){
   /* últimas 24h / 12h */
   const sv=d.sv, horas=d.turno==="D"?24:12;
   const pamOut=el("div",{class:"ev-calc"}), dOut=el("div",{class:"ev-calc"});
-  const calc=()=>{ pamOut.textContent=evoPAMtxt(sv.pamin,sv.pamax); pamOut.title=/≈/.test(pamOut.textContent)?"≈ estimada só pela sistólica (PAD ≈ 60% da PAS)":"";
+  const calc=()=>{ pamOut.textContent=evoPAMtxt(sv.pamin,sv.pamax);
     const di=evoNum(sv.diu); dOut.textContent=di&&kg?evoFmt(di/kg/horas)+" mL/kg/h":"—"; };
   calc();
   const tx2=(k,ph)=>{ const i=txt(sv,k,ph); i.addEventListener("input",calc); return i; };
@@ -6710,7 +6699,7 @@ function bolSugestao(id,data){
   if(ex.neuro&&ex.neuro.sed&&ex.neuro.sed.on) v.nc="sed";
   else { const g=evoGlasgow(ex.neuro); if(g) v.nc=g.total>=15?"con":g.total>=9?"son":"com"; }
   const sup=ex.resp&&ex.resp.sup; if(sup) v.re=sup==="vm"||sup==="vni"?"apa":sup==="o2"?"dif":"nor";
-  const dva=ex.cv&&ex.cv.dva&&ex.cv.dva.on, pamMin=evoPAM(sv.pamin||sv.pa), pas=Number((String(sv.pamax||sv.pa||"").match(/(\d{2,3})/)||[])[1]);
+  const dva=ex.cv&&ex.cv.dva&&ex.cv.dva.on, pamMin=evoPAMum(sv)!=null?evoPAMum(sv):evoPAM(sv.pamin||sv.pa), pas=Number((String(sv.pamax||sv.pa||"").match(/(\d{2,3})/)||[])[1]);
   if(dva||(pamMin!=null&&pamMin<65)) v.pa="bai"; else if(pas>160) v.pa="alt"; else if(pamMin!=null||pas) v.pa="nor";
   const diu=parseFloat(String(sv.diu||"").replace(",",".")), peso=parseFloat(String(evoC(id).peso||"").replace(",",".")), horas=d.turno==="D"?24:12;
   if(!isNaN(diu)){ if(diu<(horas===24?100:50)) v.ur="aus"; else if(peso>0) v.ur=diu/peso/horas>=0.5?"nor":"dim"; }
