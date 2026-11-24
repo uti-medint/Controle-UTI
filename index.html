@@ -5020,6 +5020,12 @@ function evoPAMx(pa){ const s=String(pa||""), m=s.match(/(\d{2,3})\s*[x×X\/]\s*
   const u=s.match(/^\D*?(\d{2,3})(?:[.,]\d+)?\D*$/); return u&&+u[1]>=40?{v:Math.round(+u[1]*2.2/3),est:true}:null; }
 function evoPAM(pa){ const x=evoPAMx(pa); return x?x.v:null; }
 function evoPAMtxt(a,b){ const x=evoPAMx(a), z=evoPAMx(b), f=y=>y?(y.est?"≈":"")+y.v:"?"; return x||z?f(x)+" – "+f(z):"—"; }
+/* drenos da evolução: sítios marcados nos dispositivos do passômetro (+ os que já têm débito anotado nesta folha) */
+function evoDrenos(b,sv){
+  const dr=b&&b.disp&&b.disp.dreno, L=dr&&dr.on?((dr.sitios&&dr.sitios.length)?dr.sitios.slice():["Dreno"]):[];
+  Object.keys((sv&&sv.drenos)||{}).forEach(k=>{ const x=sv.drenos[k]; if(!L.includes(k)&&x&&(String(x.deb||"").trim()||String(x.asp||"").trim())) L.push(k); });
+  return L;
+}
 function evoAtbEditor(b,onRe){
   b.atb=b.atb||[]; const ref=todayISO(), box=el("div");
   b.atb.forEach((a,i)=>{
@@ -5112,7 +5118,12 @@ function evoDiaEditor(id){
     el("div",{style:"display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-top:10px"},
       el("div",{},lab("Diurese (mL)"),tx2("diu","1850")),el("div",{},lab("mL/kg/h"),dOut),el("div",{},lab("BH (mL)"),txt(sv,"bh","+640")),
       el("div",{},lab("Febre > 38 °C"),seg(sv,"feb",[["nao","Não"],["sim","Sim"]]),sv.feb==="sim"?el("div",{style:"margin-top:6px"},txt(sv,"tmax","Tmáx (ex.: 38,9)")):null),
-      el("div",{},lab("HGT > 150"),seg(sv,"hgt",[["nao","Não"],["sim","Sim"]]),sv.hgt==="sim"?el("div",{style:"margin-top:6px"},txt(sv,"hgtX","Vezes (ex.: 3)")):null))));
+      el("div",{},lab("HGT > 150"),seg(sv,"hgt",[["nao","Não"],["sim","Sim"]]),sv.hgt==="sim"?el("div",{style:"margin-top:6px"},txt(sv,"hgtX","Vezes (ex.: 3)")):null)),
+    (()=>{ const drs=evoDrenos(b,sv); if(!drs.length) return null; sv.drenos=sv.drenos||{};
+      return el("div",{style:"margin-top:12px"},el("div",{class:"lbl",style:"font-weight:700"},"Débito de drenos"),
+        el("div",{style:"display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px"},drs.map(s=>{ const o=sv.drenos[s]=sv.drenos[s]||{};
+          return el("div",{},lab(s+" (mL)"),txt(o,"deb","Ex.: 250",{inputmode:"numeric"}),el("div",{style:"margin-top:6px"},txt(o,"asp","Aspecto (ex.: serossanguinolento)"))); })),
+        el("p",{class:"hint",style:"margin:6px 0 0"},"Os drenos vêm dos dispositivos do passômetro. Lembre de somar o débito nas perdas do BH.")); })()));
   /* intercorrências */
   const it=el("textarea",{class:"par-ta",style:"min-height:60px",placeholder:"Texto livre (ex.: febre de 38,9 °C às 23h; agitação psicomotora)…"}); it.value=d.interc||""; it.addEventListener("input",()=>{ d.interc=it.value; onCh(); });
   const iqs=evoIqDoPeriodo(id,d);
@@ -5221,7 +5232,11 @@ function evoDiaHtml(id,n,nDatas){
   const svRow=`<table class="svt"><tr><th>PA mín</th><th>PA máx</th><th>PAM mín–máx</th><th>FC mín–máx</th><th>FR mín–máx</th><th>SatO2 mín–máx</th><th>Febre &gt; 38 °C</th><th>HGT &gt; 150</th><th>Diurese</th><th>BH</th></tr>
   <tr><td>${e(sv.pamin||"—")}</td><td>${e(sv.pamax||"—")}</td><td>${evoPAMtxt(sv.pamin,sv.pamax)}</td><td>${e(sv.fc||"—")}</td><td>${e(sv.fr||"—")}</td><td>${e(sv.sat?sv.sat.replace(/%?$/,"%"):"—")}</td>
   <td>${sv.feb==="sim"?"Sim"+(sv.tmax?" · "+e(sv.tmax)+" °C":""):sv.feb==="nao"?"Não":"—"}</td><td>${sv.hgt==="sim"?"Sim"+(sv.hgtX?" · "+e(sv.hgtX)+"×":""):sv.hgt==="nao"?"Não":"—"}</td>
-  <td>${di?e(sv.diu)+" mL"+(kg?" · "+evoFmt(di/kg/horas)+" mL/kg/h":""):"—"}</td><td>${e(sv.bh||"—")}</td></tr></table>`;
+  <td>${di?e(sv.diu)+" mL"+(kg?" · "+evoFmt(di/kg/horas)+" mL/kg/h":""):"—"}</td><td>${e(sv.bh||"—")}</td></tr></table>`
+    +(()=>{ const pd=(prev&&prev.sv&&prev.sv.drenos)||{}, it=evoDrenos(b,sv).map(s=>{ const o=(sv.drenos||{})[s]||{}; if(!String(o.deb||"").trim()&&!String(o.asp||"").trim()) return "";
+        const v=evoNum(o.deb), pv=pd[s]?evoNum(pd[s].deb):null;
+        return `${e(s)}: <b>${o.deb?e(o.deb)+(/ml/i.test(o.deb)?"":" mL"):"—"}</b>${o.asp?" ("+e(o.asp)+")":""}${chg(v,pv,x=>x+" mL")}`; }).filter(Boolean);
+      return it.length?`<div class="sm" style="margin-top:.5mm"><b>Débito de drenos:</b> ${it.join(" · ")}</div>`:""; })();
   /* exame físico com marcadores */
   const ex=d.ex, pex=prev&&prev.ex, gl=evoGlasgow(ex.neuro), pgl=pex&&evoGlasgow(pex.neuro);
   const drugMap=o=>{ const m={}; (o&&o.on?o.itens||[]:[]).forEach(it=>{ if(it.snap) m[it.snap.nome]=it.snap.dose; }); return m; };
