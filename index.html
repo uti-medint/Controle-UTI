@@ -4188,10 +4188,13 @@ function evoTurnoKey(){ return "evo_turno_"+EVO.email; }
 function evoQuemKey(){ return "evo_quem_"+EVO.email; }
 function evoQuemGet(){ try{ const q=JSON.parse(localStorage.getItem(evoQuemKey())||"null"); return q&&q.k&&q.fim>Date.now()&&evoPerfil(q.k)?q.k:""; }catch(e){ return ""; } }
 function evoQuemAtivo(){ return !!(EVO.eu&&evoQuemGet()===EVO.eu&&evoTurnoAtivo()); }
-function evoQuemSet(k,fim){ try{ localStorage.setItem(evoQuemKey(),JSON.stringify({k,fim,ts:Date.now()})); }catch(e){} EVO.eu=k; evoPerfilRefresh(); }
+function evoQuemSet(k,fim,k2){ try{ localStorage.setItem(evoQuemKey(),JSON.stringify({k,k2:k2||"",fim,ts:Date.now()})); }catch(e){} EVO.eu=k; evoPerfilRefresh(); }
+/* login geral: segundo médico/residente escolhido junto (entra como 2ª assinatura nas folhas novas) */
+function evoParGet(){ try{ const q=JSON.parse(localStorage.getItem(evoQuemKey())||"null"); return q&&q.k2&&q.fim>Date.now()&&evoPerfil(q.k2)?q.k2:""; }catch(e){ return ""; } }
+function evoParAssin(){ const k=EVO.compart?evoParGet():""; return k&&k!==EVO.eu?evoAssinatura(evoPerfil(k)):""; }
 /* médicos que podem ser escolhidos (cadastro em Configurações → Usuários) */
 function evoMedicos(){ const d=evoData("usr:perfis").perfis, all=Object.assign({},EVO_PERFIS,d);
-  return Object.keys(all).filter(k=>all[k]&&!all[k].generico&&all[k].nome&&!all[k].inativo&&(!EVO.soRes||all[k].grupo==="res")).map(k=>({k,p:evoPerfil(k)})).sort((a,b)=>(a.p.grupo==="coord"?0:a.p.grupo==="res"?1:2)-(b.p.grupo==="coord"?0:b.p.grupo==="res"?1:2)||a.p.nome.localeCompare(b.p.nome)); }
+  return Object.keys(all).filter(k=>all[k]&&!all[k].generico&&all[k].nome&&!all[k].inativo).map(k=>({k,p:evoPerfil(k)})).sort((a,b)=>(a.p.grupo==="coord"?0:a.p.grupo==="res"?1:2)-(b.p.grupo==="coord"?0:b.p.grupo==="res"?1:2)||a.p.nome.localeCompare(b.p.nome)); }
 function evoQuem(k){ const p=k?evoPerfil(k):null; if(p&&!p.generico&&p.nome) return (p.sexo==="F"?"Dra ":"Dr ")+(p.curto||p.nome.split(" ")[0]); if(p&&p.generico) return p.trat||"Residente"; return String(k||"").split("@")[0]; }
 function evoTurnoGet(){ try{ return JSON.parse(localStorage.getItem(evoTurnoKey())||"null"); }catch(e){ return null; } }
 function evoTurnoAtivo(){ const t=evoTurnoGet(); return !!(t&&t.fim&&Date.now()<t.fim); }
@@ -4240,16 +4243,20 @@ function evoBoasVindas(trocar){
   });
   const dataExt=now.toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"});
   /* login geral: escolha de quem está de plantão neste computador */
-  let selK=EVO.compart?(EVO.eu||""):"", medBox=null, outroBox=null, nomeEl=null, errQ=null;
+  let selK=EVO.compart?(EVO.eu||""):"", selK2=EVO.compart&&EVO.eu?evoParGet():"", medBox=null, outroBox=null, nomeEl=null, errQ=null;
   const oNome=el("input",{class:"txt",placeholder:"Nome completo do médico"}), oCrm=el("input",{class:"txt",placeholder:"CRM-GO",inputmode:"numeric",style:"max-width:120px"});
   const oSexo=el("select",{class:"txt",style:"max-width:120px"},el("option",{value:"M"},"Dr"),el("option",{value:"F"},"Dra"));
   const oGrupo=el("select",{class:"txt",style:"max-width:170px"},el("option",{value:"plant"},"Plantonista"),el("option",{value:"res"},"Residente"),el("option",{value:"coord"},"Diarista"));
-  const pintaMed=()=>{ if(!medBox) return; medBox.querySelectorAll(".bv-med").forEach(b=>b.classList.toggle("on",b.dataset.k===selK)); outroBox.style.display=selK==="__outro"?"":"none";
-    if(nomeEl) nomeEl.textContent=selK&&selK!=="__outro"?", "+evoTratamento(evoPerfil(selK)):""; };
+  /* clique: 1º escolhido assina a folha; 2º (opcional) entra como segunda assinatura; clicar de novo desmarca */
+  const escolhe=k=>{ if(k===selK){ selK=selK2; selK2=""; } else if(k===selK2) selK2=""; else if(!selK) selK=k; else selK2=k; pintaMed(); };
+  const pintaMed=()=>{ if(!medBox) return; medBox.querySelectorAll(".bv-med").forEach(b=>{ const k=b.dataset.k, n=k===selK?1:k===selK2?2:0; b.classList.toggle("on",!!n);
+      let t=b.querySelector(".bv-ord"); if(!n){ if(t) t.remove(); return; } if(!t){ t=el("small",{class:"bv-ord",style:"color:var(--accent);font-weight:700"}); b.append(t); } t.textContent=n===1?"assina a folha":"2ª assinatura"; });
+    outroBox.style.display=selK==="__outro"||selK2==="__outro"?"":"none";
+    if(nomeEl) nomeEl.textContent=[selK,selK2].filter(k=>k&&k!=="__outro").map(k=>evoTratamento(evoPerfil(k))).join(" e ").replace(/^./,m=>", "+m); };
   if(EVO.compart){
-    medBox=el("div",{class:"bv-meds"},...evoMedicos().map(({k,p})=>el("button",{type:"button",class:"bv-med","data-k":k,onclick:()=>{ selK=k; pintaMed(); }},
+    medBox=el("div",{class:"bv-meds"},...evoMedicos().map(({k,p})=>el("button",{type:"button",class:"bv-med","data-k":k,onclick:()=>escolhe(k)},
         (p.sexo==="F"?"Dra ":"Dr ")+(p.curto||p.nome.split(" ")[0]),el("small",{},(EVO_GRUPO[p.grupo]||EVO_GRUPO.plant)[p.sexo==="F"?1:0].replace(/^Médic[oa] /,"")))),
-      el("button",{type:"button",class:"bv-med","data-k":"__outro",onclick:()=>{ selK="__outro"; pintaMed(); oNome.focus(); }},EVO.soRes?"Outro residente":"Outro médico",el("small",{},"digitar nome e CRM")));
+      el("button",{type:"button",class:"bv-med","data-k":"__outro",onclick:()=>{ escolhe("__outro"); if(selK==="__outro"||selK2==="__outro") oNome.focus(); }},"Outro médico ou residente",el("small",{},"digitar nome e CRM")));
     if(EVO.soRes) oGrupo.value="res";
     outroBox=el("div",{style:"display:none;margin:6px auto 0;max-width:640px"},el("div",{style:"display:flex;gap:8px;flex-wrap:wrap;justify-content:center"},oSexo,oNome,oCrm,oGrupo));
     errQ=el("p",{class:"ev-warn",style:"text-align:center;margin:6px 0 0"});
@@ -4258,14 +4265,15 @@ function evoBoasVindas(trocar){
     const o=op.ops.find(x=>x.id===esc0);
     if(EVO.compart){
       if(!selK){ errQ.textContent="Escolha quem está de plantão neste computador."; return; }
-      if(selK==="__outro"){
+      if(selK==="__outro"||selK2==="__outro"){
         const nm=oNome.value.trim().replace(/\s+/g," "); if(nm.split(" ").length<2){ errQ.textContent="Digite o nome completo do médico."; return; }
         if(!/^\d{3,7}$/.test(oCrm.value.trim())){ errQ.textContent="Digite o número do CRM (só números)."; return; }
-        const k="outro_"+uid(), D=evoData("usr:perfis");
+        const k="outro_"+uid(), D=evoData("usr:perfis");   /* "Outro" pode ser o 1º ou o 2º escolhido */
         D.perfis[k]={nome:nm.replace(/\b\w/g,m=>m.toUpperCase()),curto:nm.split(" ")[0].replace(/^./,m=>m.toUpperCase()),sexo:oSexo.value,grupo:oGrupo.value,crm:oCrm.value.trim(),rqe:"",outro:true,diarista:oGrupo.value==="coord"};
-        evoHist("usr:perfis",`Médico incluído pela tela de plantão: ${D.perfis[k].nome} (CRM ${D.perfis[k].crm})`); save(); selK=k;
+        evoHist("usr:perfis",`Médico incluído pela tela de plantão: ${D.perfis[k].nome} (CRM ${D.perfis[k].crm})`); save();
+        if(selK==="__outro") selK=k; else selK2=k;
       }
-      evoQuemSet(selK,o.fim);
+      evoQuemSet(selK,o.fim,selK2);
     }
     try{ localStorage.setItem(evoTurnoKey(),JSON.stringify({tipo:o.id,t:o.t,fim:o.fim,ts:Date.now()})); }catch(e){}
     if(!EVO.arq){ EVO.evoKey=""; EVO.destrava=""; }    /* plantão novo: não deixa aberta a evolução do plantão anterior */
@@ -4280,7 +4288,8 @@ function evoBoasVindas(trocar){
       EVO.compart?el("h2",{},saud,(nomeEl=el("span",{})),"!"):el("h2",{},saud+", ",el("span",{},evoTratamento()),"!"),
       el("p",{class:"bv-lead"},lead),
       el("div",{class:"bv-pills"},pill(ocup.length,"pacientes internados"),pill(adm,"admissões desde ontem"),pill(alta,alta===1?"alta prevista para hoje":"altas previstas para hoje")),
-      EVO.compart?el("p",{class:"bv-q"},EVO.soRes?"Qual residente está usando este computador?":"Quem está de plantão neste computador?"):null,medBox,outroBox,
+      EVO.compart?el("p",{class:"bv-q"},"Quem está de plantão neste computador?"):null,
+      EVO.compart?el("p",{class:"hint",style:"text-align:center;margin:-4px 0 8px"},"Médicos e residentes. Escolha um ou dois: o 1º assina a folha e o 2º entra como segunda assinatura."):null,medBox,outroBox,
       el("p",{class:"bv-q"},trocar&&!EVO.compart?"Trocar o plantão:":(noite?"Como vai ser o seu plantão?":"Como vai ser o seu plantão hoje?")),
       el("div",{class:"bv-opts"},cards),
       el("div",{class:"bv-go"},go,
@@ -4399,7 +4408,7 @@ function evoAgoraLocal(){ const d=new Date(); return new Date(d-d.getTimezoneOff
 function evoDiurno(dt){ const h=dt?Number(String(dt).slice(11,13)):new Date().getHours(); return h>=7&&h<19; }
 function evoAdmNovo(id){
   const b=SV.med.beds.find(x=>x.id===id);
-  return {tipo:"adm",pid:pacOf(id).pid,leito:id,autor:EVO.eu,criado:Date.now(),upd:Date.now(),
+  return {tipo:"adm",pid:pacOf(id).pid,leito:id,autor:EVO.eu,residente:evoParAssin(),criado:Date.now(),upd:Date.now(),
     dataHora:(b&&b.admissao&&b.admissao<todayISO()?b.admissao+"T12:00":evoAgoraLocal()),
     procedencia:"",procedOutro:"",queixa:"",hda:"",cir:{sim:"",nome:"",data:"",cirurgiao:""},hpp:{},hppOutros:"",meds:"",
     social:{tab:"",tabTxt:"",eti:"",drogas:""},familiares:"",sv:{},ex:evoExNovo(),escores:{saps3:"",sofa:""},cid:{cod:"",desc:""},
@@ -4985,7 +4994,7 @@ function evoDiaCriar(id,t){
   const rev={};
   if(src){ if(evoGlasgow(ex.neuro)||ex.neuro.rass) rev.gcs="pend"; if(ex.neuro.sed&&ex.neuro.sed.on) rev.sed="pend"; if(ex.cv.dva&&ex.cv.dva.on) rev.dva="pend"; if(["vm","vni","o2"].includes(ex.resp.sup)) rev.vent="pend"; }
   const agora=evoAgoraLocal(), dentro=evoTurno(agora).data===t.data&&evoTurno(agora).tipo===t.tipo;
-  EVO_DOCS[n]={tipo:"dia",turno:t.tipo,data:t.data,pid:pacOf(id).pid,leito:id,autor:EVO.eu,criado:Date.now(),upd:Date.now(),
+  EVO_DOCS[n]={tipo:"dia",turno:t.tipo,data:t.data,pid:pacOf(id).pid,leito:id,autor:EVO.eu,residente:evoParAssin(),criado:Date.now(),upd:Date.now(),
     dataHora:dentro?agora:t.data+(t.tipo==="D"?"T08:00":"T20:00"),copiadoDe:prev?evoDiaRotulo(L[L.length-1]):adm?"adendo de internação":"",
     sv:{},interc:"",ex,rev,imp:{st:"",txt:""},conduta:{fixos:{presc:false,exames:false,vig:false},protos:[],livre:""},diarista:""};
   save(); return n;
@@ -5169,20 +5178,25 @@ const EVO_DIA_CSS=`@page evdia{size:A4 portrait;margin:7mm 8mm}
 .evd .sig{display:grid;grid-template-columns:1fr 1fr;gap:6mm;margin-top:3mm}.evd .sig.um{grid-template-columns:1fr}.evd .sig.tres{grid-template-columns:1fr 1fr 1fr;gap:4mm}.evd .sig.um .ln{width:95mm;margin-left:auto}
 .evd .ln{border-top:.7pt solid #000;padding-top:.6mm;text-align:center;font-size:7.6pt}.evd .foot{margin-top:1mm;font-size:6.4pt;color:#555;display:flex;justify-content:space-between}`;
 /* médico residente da folha (opcional): escolhido na lista de residentes cadastrados, como o diarista */
-function evoResidentes(){ const all=Object.assign({},EVO_PERFIS,evoData("usr:perfis").perfis);
-  return Object.keys(all).filter(k=>all[k]&&!all[k].generico&&all[k].nome&&!all[k].inativo&&all[k].grupo==="res").map(k=>evoAssinatura(evoPerfil(k))); }
+/* segunda assinatura: residentes e médicos (plantonistas e diaristas) cadastrados, menos quem assina a folha */
+function evoResidentes(autor){ const all=Object.assign({},EVO_PERFIS,evoData("usr:perfis").perfis);
+  const L=Object.keys(all).filter(k=>all[k]&&!all[k].generico&&all[k].nome&&!all[k].inativo&&k!==autor).map(k=>evoPerfil(k)).sort((a,b)=>a.nome.localeCompare(b.nome));
+  return {res:L.filter(p=>p.grupo==="res").map(p=>evoAssinatura(p)),med:L.filter(p=>p.grupo!=="res").map(p=>evoAssinatura(p))}; }
 function evoResCampo(d,onRe,onCh){
-  const res=evoResidentes(), atual=d.residente||"";
-  const sr=el("select",{class:"txt"},el("option",{value:""},"Sem residente"),res.concat(["Outro"]).map(x=>{ const o=el("option",{value:x},x); if(atual===x||(x==="Outro"&&atual&&!res.includes(atual))) o.selected=true; return o; }));
+  const G=evoResidentes(d.autor), todos=G.res.concat(G.med), atual=d.residente||"";
+  const op=x=>{ const o=el("option",{value:x},x); if(atual===x) o.selected=true; return o; };
+  const sr=el("select",{class:"txt"},el("option",{value:""},"Sem segunda assinatura"),
+    G.res.length?el("optgroup",{label:"Residentes"},G.res.map(op)):null,G.med.length?el("optgroup",{label:"Médicos"},G.med.map(op)):null,
+    (()=>{ const o=el("option",{value:"Outro"},"Outro (digitar nome e CRM)"); if(atual&&!todos.includes(atual)) o.selected=true; return o; })());
   sr.onchange=()=>{ d.residente=sr.value==="Outro"?"Outro: ":sr.value; onRe(); };
-  return el("div",{style:"margin-top:10px"},el("label",{class:"lbl"},"Médico residente (opcional)"),sr,
-    atual&&atual.startsWith("Outro")?el("div",{style:"margin-top:8px"},(()=>{ const i=el("input",{class:"txt",value:atual.replace(/^Outro:\s*/,""),placeholder:"Nome e CRM do residente"}); i.addEventListener("input",()=>{ d.residente="Outro: "+i.value; onCh(); }); return i; })()):null);
+  return el("div",{style:"margin-top:10px"},el("label",{class:"lbl"},"Segunda assinatura — residente ou médico (opcional)"),sr,
+    atual&&!todos.includes(atual)?el("div",{style:"margin-top:8px"},(()=>{ const i=el("input",{class:"txt",value:atual.replace(/^Outro:\s*/,""),placeholder:"Nome e CRM do residente ou médico"}); i.addEventListener("input",()=>{ d.residente="Outro: "+i.value; onCh(); }); return i; })()):null);
 }
 /* linhas de assinatura: diarista (diurno), residente (se houver) e o médico que assina */
 function evoSigs(d,autorAssin,comDiarista,diarTxt,e){
   const res=d.residente&&d.residente.startsWith("Outro")?d.residente.replace(/^Outro:\s*/,"").trim():(d.residente||"");
   const L=[]; if(comDiarista) L.push(`<div class="ln">${diarTxt}</div>`);
-  if(res&&res!==autorAssin) L.push(`<div class="ln">${/^M[ée]dic[oa] Residente/i.test(res)?"":"Residente: "}${e(res)}</div>`);
+  if(res&&res!==autorAssin) L.push(`<div class="ln">${e(res)}</div>`);   /* residente ou médico (2ª assinatura) */
   L.push(`<div class="ln">${e(autorAssin)}<br>Médico — assinatura e carimbo</div>`);
   return `<div class="sig${L.length===1?" um":L.length===3?" tres":""}">${L.join("")}</div>`;
 }
