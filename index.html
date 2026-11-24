@@ -4616,7 +4616,7 @@ function evoAdmitir(id0){
   const pl=picker({key:"plano",single:true,placeholder:"Escolher ou digitar o convênio",get:()=>plano,set:v=>{ plano=v||""; }});
   const err=el("p",{class:"ev-warn"}), ra=el("div");
   nome.addEventListener("input",()=>{ ra.innerHTML=""; const L=evoReadmissoes(nome.value,"",null).slice(0,3);
-    if(L.length) ra.append(el("div",{class:"ev-sign",style:"background:#fff6d6;border-color:#e6c25a;margin-top:8px;font-size:13.5px"},el("b",{},"Já esteve na UTI: "),L.map(evoAltaRot).join(" | "),el("div",{class:"hint",style:"margin:4px 0 0"},"Depois de admitir, o cadastro mostra a internação anterior e permite copiar nascimento, sexo, altura e alergias."))); });
+    if(L.length) ra.append(el("div",{class:"ev-sign",style:"background:#fff6d6;border-color:#e6c25a;margin-top:8px;font-size:13.5px"},el("b",{},"Já esteve na UTI: "),L.map(evoAltaRot).join(" | "),el("div",{class:"hint",style:"margin:4px 0 0"},"Depois de admitir, o adendo de internação mostra a internação anterior e permite puxar os dados anteriores (cadastro, convênio, história pregressa, medicações, hábitos e antecedentes)."))); });
   const b0=id0?SV.med.beds.find(x=>x.id===id0):null;
   const body=el("div",{},el("p",{class:"hint"},b0?`O paciente entra no ${bedLabel(b0)} e aparece também nos passômetros médico e de enfermagem.`:"O paciente aparece também nos passômetros médico e de enfermagem."),
     sLeito?el("div",{style:"margin-bottom:10px"},el("label",{class:"lbl ev-req"},"Leito"),sLeito):null,
