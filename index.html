@@ -5252,8 +5252,11 @@ function evoDiaHtml(id,n,nDatas){
     return `<div class="lr"><div class="k">${e(kk)}</div><div class="v">${vv}${ss?` <span class="sup">${ss}</span>`:""}</div></div>`; }).join("");
   /* laboratório: até 5 (ou 3) datas mais recentes */
   const labT=(()=>{ if(!labEspOn(b)) return ""; const X=(b.labesp.exames||[]).filter(x=>x.nome&&(x.res||[]).length); if(!X.length) return "";
-    const datas=[...new Set(X.flatMap(x=>x.res.map(r=>r.data).filter(Boolean)))].filter(x=>x<=ref).sort().slice(-(nDatas||5));
-    return `<table><tr><th class="l">Exame</th>${datas.map(x=>`<th>${fmtDate(x)}</th>`).join("")}</tr>`+X.map(x=>{ const v=dt=>{ const r=x.res.filter(r=>r.data===dt).pop(); return r?r.valor:""; };
+    /* uma coluna por resultado: dois lactatos no mesmo dia viram "24/11 1ª" e "24/11 2ª" */
+    const dias=[...new Set(X.flatMap(x=>x.res.map(r=>r.data).filter(Boolean)))].filter(x=>x<=ref).sort(),
+      noDia=(x,dt)=>x.res.filter(r=>r.data===dt&&String(r.valor||"").trim()),
+      datas=dias.flatMap(dt=>{ const nn=Math.max(1,...X.map(x=>noDia(x,dt).length)); return Array.from({length:nn},(_,i)=>({dt,i,nn})); }).slice(-(nDatas||5));
+    return `<table><tr><th class="l">Exame</th>${datas.map(c=>`<th>${fmtDate(c.dt)}${c.nn>1?" "+(c.i+1)+"ª":""}</th>`).join("")}</tr>`+X.map(x=>{ const v=c=>{ const r=noDia(x,c.dt)[c.i]; return r?r.valor:""; };
       const vals=datas.map(v), last=vals.length-1; let arrow=""; const a=labNum(vals[last]); for(let i=last-1;i>=0;i--){ const z=labNum(vals[i]); if(!isNaN(z)){ if(!isNaN(a)&&a!==z) arrow=a>z?" ↑":" ↓"; break; } }
       return `<tr><td class="l">${e(x.nome)}${x.unidade?" ("+e(x.unidade)+")":""}</td>${vals.map((y,i)=>`<td>${i===last&&y?"<b>"+e(y)+arrow+"</b>":e(y||"—")}</td>`).join("")}</tr>`; }).join("")+"</table>"; })();
   const imgs=(b.imagem||[]).filter(x=>x.nome).sort((a,z)=>String(z.data).localeCompare(String(a.data))).slice(0,2).map(x=>`<li><b>${e(x.nome)}</b>${x.data?" "+fmtDate(x.data):""}${pData&&x.data&&x.data>pData?" "+NOVO:""}${x.achado?": "+e(x.achado):""}</li>`).join("");
