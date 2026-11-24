@@ -4160,6 +4160,12 @@ function evoAssinatura(p){
   const f=p.sexo==="F";
   return `${EVO_GRUPO[p.grupo]?EVO_GRUPO[p.grupo][f?1:0]:EVO_GRUPO.plant[f?1:0]} ${f?"Dra":"Dr"} ${p.nome}${p.crm?" CRM-GO "+p.crm:""}${p.rqe?"/ "+p.rqe:""}`;
 }
+/* assinatura da folha conforme o turno: no noturno o residente assina como Médico(a) Plantonista */
+function evoAssinTurno(p,diur){
+  p=p||EVO.perfil; if(!p) return "";
+  if(!diur&&p.grupo==="res") return p.generico?"Médico Plantonista":evoAssinatura(Object.assign({},p,{grupo:"plant"}));
+  return evoAssinatura(p);
+}
 function evoTratamento(p){ p=p||EVO.perfil; if(!p) return ""; if(p.generico) return p.trat||"Residente"; return (p.sexo==="F"?"Dra. ":"Dr. ")+(p.curto||String(p.nome||"").split(" ")[0]); }
 function evoFem(){ return !!(EVO.perfil&&EVO.perfil.sexo==="F"); }
 
@@ -4191,7 +4197,7 @@ function evoQuemAtivo(){ return !!(EVO.eu&&evoQuemGet()===EVO.eu&&evoTurnoAtivo(
 function evoQuemSet(k,fim){ try{ localStorage.setItem(evoQuemKey(),JSON.stringify({k,fim,ts:Date.now()})); }catch(e){} EVO.eu=k; evoPerfilRefresh(); }
 /* médicos que podem ser escolhidos (cadastro em Configurações → Usuários) */
 function evoMedicos(){ const d=evoData("usr:perfis").perfis, all=Object.assign({},EVO_PERFIS,d);
-  return Object.keys(all).filter(k=>all[k]&&!all[k].generico&&all[k].nome&&!all[k].inativo&&(!EVO.soRes||all[k].grupo==="res")).map(k=>({k,p:evoPerfil(k)})).sort((a,b)=>(a.p.grupo==="coord"?0:a.p.grupo==="res"?1:2)-(b.p.grupo==="coord"?0:b.p.grupo==="res"?1:2)||a.p.nome.localeCompare(b.p.nome)); }
+  return Object.keys(all).filter(k=>all[k]&&!all[k].generico&&all[k].nome&&!all[k].inativo).map(k=>({k,p:evoPerfil(k)})).sort((a,b)=>(a.p.grupo==="coord"?0:a.p.grupo==="res"?1:2)-(b.p.grupo==="coord"?0:b.p.grupo==="res"?1:2)||a.p.nome.localeCompare(b.p.nome)); }
 function evoQuem(k){ const p=k?evoPerfil(k):null; if(p&&!p.generico&&p.nome) return (p.sexo==="F"?"Dra ":"Dr ")+(p.curto||p.nome.split(" ")[0]); if(p&&p.generico) return p.trat||"Residente"; return String(k||"").split("@")[0]; }
 function evoTurnoGet(){ try{ return JSON.parse(localStorage.getItem(evoTurnoKey())||"null"); }catch(e){ return null; } }
 function evoTurnoAtivo(){ const t=evoTurnoGet(); return !!(t&&t.fim&&Date.now()<t.fim); }
@@ -4249,7 +4255,7 @@ function evoBoasVindas(trocar){
   if(EVO.compart){
     medBox=el("div",{class:"bv-meds"},...evoMedicos().map(({k,p})=>el("button",{type:"button",class:"bv-med","data-k":k,onclick:()=>{ selK=k; pintaMed(); }},
         (p.sexo==="F"?"Dra ":"Dr ")+(p.curto||p.nome.split(" ")[0]),el("small",{},(EVO_GRUPO[p.grupo]||EVO_GRUPO.plant)[p.sexo==="F"?1:0].replace(/^Médic[oa] /,"")))),
-      el("button",{type:"button",class:"bv-med","data-k":"__outro",onclick:()=>{ selK="__outro"; pintaMed(); oNome.focus(); }},EVO.soRes?"Outro residente":"Outro médico",el("small",{},"digitar nome e CRM")));
+      el("button",{type:"button",class:"bv-med","data-k":"__outro",onclick:()=>{ selK="__outro"; pintaMed(); oNome.focus(); }},"Outro médico ou residente",el("small",{},"digitar nome e CRM")));
     if(EVO.soRes) oGrupo.value="res";
     outroBox=el("div",{style:"display:none;margin:6px auto 0;max-width:640px"},el("div",{style:"display:flex;gap:8px;flex-wrap:wrap;justify-content:center"},oSexo,oNome,oCrm,oGrupo));
     errQ=el("p",{class:"ev-warn",style:"text-align:center;margin:6px 0 0"});
@@ -4280,7 +4286,7 @@ function evoBoasVindas(trocar){
       EVO.compart?el("h2",{},saud,(nomeEl=el("span",{})),"!"):el("h2",{},saud+", ",el("span",{},evoTratamento()),"!"),
       el("p",{class:"bv-lead"},lead),
       el("div",{class:"bv-pills"},pill(ocup.length,"pacientes internados"),pill(adm,"admissões desde ontem"),pill(alta,alta===1?"alta prevista para hoje":"altas previstas para hoje")),
-      EVO.compart?el("p",{class:"bv-q"},EVO.soRes?"Qual residente está usando este computador?":"Quem está de plantão neste computador?"):null,medBox,outroBox,
+      EVO.compart?el("p",{class:"bv-q"},"Quem está de plantão neste computador? (médico ou residente)"):null,medBox,outroBox,
       el("p",{class:"bv-q"},trocar&&!EVO.compart?"Trocar o plantão:":(noite?"Como vai ser o seu plantão?":"Como vai ser o seu plantão hoje?")),
       el("div",{class:"bv-opts"},cards),
       el("div",{class:"bv-go"},go,
@@ -4746,9 +4752,8 @@ function evoAdmEditor(id){
   sd.onchange=()=>{ d.diarista=sd.value==="Outro"?"Outro: ":sd.value; onRe(); };
   wrap.append(card("Assinaturas",
     diur?el("div",{},lab("Diarista (plantão diurno)",true),sd,d.diarista&&d.diarista.startsWith("Outro")?el("div",{style:"margin-top:8px"},lab("Nome e CRM do diarista"),(()=>{ const i=el("input",{class:"txt",value:d.diarista.replace(/^Outro:\s*/,""),placeholder:"Ex.: Dr Fulano CRM-GO 0000"}); i.addEventListener("input",()=>{ d.diarista="Outro: "+i.value; onCh(); }); return i; })()):null)
-        :el("p",{class:"hint",style:"margin:0 0 6px"},"Adendo feito no período noturno: sem diarista."),
-    evoResCampo(d,onRe,onCh),
-    el("div",{class:"ev-sign",style:"margin-top:10px"},el("span",{class:"hint"},"Assina como: "),el("b",{},evoAssinatura(evoPerfil(d.autor)||EVO.perfil)),d.autor!==EVO.eu?el("div",{style:"margin-top:8px"},el("button",{class:"btn small",type:"button",onclick:()=>{ if(!confirm("Assumir este adendo? A assinatura da folha passa a ser a sua.")) return; d.assumidoDe=d.autor; d.autor=EVO.eu; d.assumidoEm=Date.now(); onRe(); }},"Assumir este adendo")):null)));
+        :el("p",{class:"hint",style:"margin:0 0 6px"},"Adendo feito no período noturno: sem diarista; assina só o plantonista."),
+    el("div",{class:"ev-sign",style:"margin-top:10px"},el("span",{class:"hint"},"Assina como: "),el("b",{},evoAssinTurno(evoPerfil(d.autor)||EVO.perfil,diur)),d.autor!==EVO.eu?el("div",{style:"margin-top:8px"},el("button",{class:"btn small",type:"button",onclick:()=>{ if(!confirm("Assumir este adendo? A assinatura da folha passa a ser a sua.")) return; d.assumidoDe=d.autor; d.autor=EVO.eu; d.assumidoEm=Date.now(); onRe(); }},"Assumir este adendo")):null)));
   const bar=el("div",{class:"card",id:"evoAdmBar",style:"position:sticky;bottom:0;display:flex;gap:12px;align-items:center;box-shadow:0 -4px 16px rgba(0,0,0,.06)"});
   wrap.append(bar); setTimeout(()=>evoAdmResumo(id,d),0);
   return wrap;
@@ -5131,9 +5136,8 @@ function evoDiaEditor(id){
   sd.onchange=()=>{ d.diarista=sd.value==="Outro"?"Outro: ":sd.value; onRe(); };
   corpo.append(card("Assinaturas",
     d.turno==="D"?el("div",{},lab("Diarista",true),sd,d.diarista&&d.diarista.startsWith("Outro")?el("div",{style:"margin-top:8px"},(()=>{ const i=el("input",{class:"txt",value:d.diarista.replace(/^Outro:\s*/,""),placeholder:"Nome e CRM do diarista"}); i.addEventListener("input",()=>{ d.diarista="Outro: "+i.value; onCh(); }); return i; })()):null)
-      :el("p",{class:"hint",style:"margin:0 0 6px"},"Evolução noturna: sem diarista."),
-    evoResCampo(d,onRe,onCh),
-    el("div",{class:"ev-sign",style:"margin-top:10px"},el("span",{class:"hint"},"Assina como: "),el("b",{},evoAssinatura(evoPerfil(d.autor)||EVO.perfil)),
+      :el("p",{class:"hint",style:"margin:0 0 6px"},"Evolução noturna: sem diarista; assina só o plantonista."),
+    el("div",{class:"ev-sign",style:"margin-top:10px"},el("span",{class:"hint"},"Assina como: "),el("b",{},evoAssinTurno(evoPerfil(d.autor)||EVO.perfil,d.turno==="D")),
       d.autor!==EVO.eu?el("div",{style:"margin-top:8px"},el("button",{class:"btn small",type:"button",onclick:()=>{ if(!confirm("Assumir esta evolução? A assinatura da folha passa a ser a sua.")) return; d.assumidoDe=d.autor; d.autor=EVO.eu; d.assumidoEm=Date.now(); onRe(); }},"Assumir esta evolução")):null)));
   if(trava) wrap.append(corpo);
   wrap.append(el("div",{class:"card",id:"evoDiaBar",style:"position:sticky;bottom:0;display:flex;gap:12px;align-items:center;box-shadow:0 -4px 16px rgba(0,0,0,.06)"}));
@@ -5168,21 +5172,9 @@ const EVO_DIA_CSS=`@page evdia{size:A4 portrait;margin:7mm 8mm}
 .evd .imp{border:1.2pt solid #000;padding:.6mm 1.4mm;margin-bottom:1.3mm}.evd .imp .s2{font-weight:900;border:1pt solid #000;padding:0 1.2mm;margin-right:1mm}
 .evd .sig{display:grid;grid-template-columns:1fr 1fr;gap:6mm;margin-top:3mm}.evd .sig.um{grid-template-columns:1fr}.evd .sig.tres{grid-template-columns:1fr 1fr 1fr;gap:4mm}.evd .sig.um .ln{width:95mm;margin-left:auto}
 .evd .ln{border-top:.7pt solid #000;padding-top:.6mm;text-align:center;font-size:7.6pt}.evd .foot{margin-top:1mm;font-size:6.4pt;color:#555;display:flex;justify-content:space-between}`;
-/* médico residente da folha (opcional): escolhido na lista de residentes cadastrados, como o diarista */
-function evoResidentes(){ const all=Object.assign({},EVO_PERFIS,evoData("usr:perfis").perfis);
-  return Object.keys(all).filter(k=>all[k]&&!all[k].generico&&all[k].nome&&!all[k].inativo&&all[k].grupo==="res").map(k=>evoAssinatura(evoPerfil(k))); }
-function evoResCampo(d,onRe,onCh){
-  const res=evoResidentes(), atual=d.residente||"";
-  const sr=el("select",{class:"txt"},el("option",{value:""},"Sem residente"),res.concat(["Outro"]).map(x=>{ const o=el("option",{value:x},x); if(atual===x||(x==="Outro"&&atual&&!res.includes(atual))) o.selected=true; return o; }));
-  sr.onchange=()=>{ d.residente=sr.value==="Outro"?"Outro: ":sr.value; onRe(); };
-  return el("div",{style:"margin-top:10px"},el("label",{class:"lbl"},"Médico residente (opcional)"),sr,
-    atual&&atual.startsWith("Outro")?el("div",{style:"margin-top:8px"},(()=>{ const i=el("input",{class:"txt",value:atual.replace(/^Outro:\s*/,""),placeholder:"Nome e CRM do residente"}); i.addEventListener("input",()=>{ d.residente="Outro: "+i.value; onCh(); }); return i; })()):null);
-}
-/* linhas de assinatura: diarista (diurno), residente (se houver) e o médico que assina */
+/* linhas de assinatura: diurno = diarista + plantonista ou residente; noturno = só o plantonista */
 function evoSigs(d,autorAssin,comDiarista,diarTxt,e){
-  const res=d.residente&&d.residente.startsWith("Outro")?d.residente.replace(/^Outro:\s*/,"").trim():(d.residente||"");
   const L=[]; if(comDiarista) L.push(`<div class="ln">${diarTxt}</div>`);
-  if(res&&res!==autorAssin) L.push(`<div class="ln">${/^M[ée]dic[oa] Residente/i.test(res)?"":"Residente: "}${e(res)}</div>`);
   L.push(`<div class="ln">${e(autorAssin)}<br>Médico — assinatura e carimbo</div>`);
   return `<div class="sig${L.length===1?" um":L.length===3?" tres":""}">${L.join("")}</div>`;
 }
@@ -5261,13 +5253,13 @@ ${String(d.interc||"").trim()?`<div class="box"><div class="bt">Intercorrências
 ${labT||imgs?`<div class="r2"><div class="box"><div class="bt">Exames laboratoriais especiais</div>${labT||"—"}</div><div class="box"><div class="bt">Exames de imagem <span class="mut">(2 mais recentes)</span></div><ul>${imgs||"<li>—</li>"}</ul></div></div>`:""}
 ${d.imp&&(d.imp.txt||"").trim()?`<div class="imp"><div class="bt">Impressão / avaliação</div>${d.imp.st?`<span class="s2">${e(d.imp.st)}</span>`:""}${e(d.imp.txt)}</div>`:""}
 <div class="box"><div class="bt">Conduta</div>${fx?`<div><b>${fx}</b></div>`:""}${protos?`<ul>${protos}</ul>`:""}${String(k.livre||"").trim()?`<div style="white-space:pre-wrap">${e(k.livre)}</div>`:""}</div>
-${evoSigs(d,evoAssinatura(autor),diur,`${/^M[ée]dic[oa] Diarista/i.test(diar||"")?"":"Diarista: "}${e(diar||"")}`,e)}
+${evoSigs(d,evoAssinTurno(autor,diur),diur,`${/^M[ée]dic[oa] Diarista/i.test(diar||"")?"":"Diarista: "}${e(diar||"")}`,e)}
 <div class="foot"><span>Evolução ${diur?"diurna":"noturna"} · ${fmtDate(dh.slice(0,10),true)} ${dh.slice(11,16)} · ${e(bedLabel(b))}<span class="evfs"></span></span><span>Página 1/1</span></div></div>`;
 }
 /* ajusta UMA folha para caber numa página (5→3 datas no laboratório; fonte até 7,5 pt). Devolve o HTML já ajustado. */
 function evoFolha(id,n){
   const box=el("div",{style:"position:absolute;left:-10000px;top:0;width:194mm;visibility:hidden"}); document.body.append(box);
-  const lim=283*96/25.4, base=8.6, min=7.5; let ok=false, z=1, f=null;
+  const lim=280*96/25.4, base=8.6, min=7.5;   /* página útil: 283 mm; 3 mm de folga para a impressão */ let ok=false, z=1, f=null;
   for(const nd of [5,3]){
     box.innerHTML=`<style>${EVO_DIA_CSS}</style>`+evoDiaHtml(id,n,nd);
     f=box.querySelector(".evd"); z=1; const alt=()=>f.getBoundingClientRect().height;
@@ -5284,7 +5276,8 @@ function evoFolha(id,n){
    Nenhuma caixa cresce sozinha. Devolve o zoom final. */
 function evoFolhaEspaca(f,lim,z){
   const mm=96/25.4, alt=()=>f.getBoundingClientRect().height;
-  lim-=3*mm;   /* folga: a impressora pode quebrar uma linha de outro jeito */
+  lim-=7*mm;   /* folga: na impressão o navegador mede o texto de outro jeito (quebra linhas a mais, margens da impressora);
+                  com folga pequena a folha cheia passava para a 2ª página */
   if(alt()>lim) return z;
   /* mede já no arranjo final (coluna flexível: as margens não se sobrepõem) */
   f.style.display="flex"; f.style.flexDirection="column";
@@ -5481,7 +5474,7 @@ function evoAdmHtml(id){
     q("Profilaxia TEV",`<b>${k.tev==="sim"?"Sim":"Não"}</b>${k.tevMot?" · "+e(k.tevMot):""}${k.compressao?" · compressão pneumática intermitente":""}`),
     k.swab?q("Swab de vigilância",e(k.swab)):""].join("");
   const protos=(k.protos||[]).map(x=>`<p style="border:1pt solid #000;padding:1mm 1.6mm"><b>${e(x.nome.toUpperCase())}</b> · ${e(x.texto)}</p>`).join("");
-  const diur=evoDiurno(dh), autor=evoPerfil(d.autor)||EVO.perfil, assin=e(evoAssinatura(autor));
+  const diur=evoDiurno(dh), autor=evoPerfil(d.autor)||EVO.perfil, assin=e(evoAssinTurno(autor,diur));
   const diar=d.diarista&&d.diarista.startsWith("Outro")?d.diarista.replace(/^Outro:\s*/,""):d.diarista;
   const logo=SHARED.logo?`<img src="${SHARED.logo}" alt="">`:"";
   return `<style>${EVO_PRINT_CSS}</style><div class="evp">
@@ -5503,7 +5496,7 @@ ${imgs||lab?`<h3>Exames de imagem e laboratoriais</h3><p>${[imgs,lab].filter(Boo
 <div class="two"><div><h3>Diagnósticos / lista de problemas</h3><p>${probs}</p></div><div><h3>CID-10 principal</h3><p><b>${e(d.cid.cod)}</b> — ${e(d.cid.desc)}</p></div></div>
 <h3>Conduta</h3><div>${conduta}</div>${protos}
 ${fx?`<p><b>${fx}</b></p>`:""}${k.livre.trim()?`<p style="white-space:pre-wrap">${e(k.livre)}</p>`:""}
-${evoSigs(d,evoAssinatura(autor),diur,e(diar||"Diarista"),e)}
+${evoSigs(d,evoAssinTurno(autor,diur),diur,e(diar||"Diarista"),e)}
 <div class="foot">Adendo de internação · ${e(p.nome)} · ${e(bedLabel(b))} · página 2/2</div></div>`;
 }
 /* página 1 do adendo preenchida: letra até 20% maior e espaço extra entre as seções; com história longa, letra até 15% menor para caber */
