@@ -1416,12 +1416,13 @@ function renderEditor(){
   }
   renderPrec();
   const admAvisoEl=el("div",{class:"adm-aviso",role:"alert"},admAviso(b.admissao,b.idade));
+  const readm=pasReadmLinha(b);
   put("id",el("div",{class:"card"},el("h3",{},"Identificação"),el("div",{class:"grid4"},
-    f("Nome",el("input",{class:"txt",type:"text",value:b.nome,oninput:e=>{b.nome=e.target.value;afterChange();}})),
+    f("Nome",el("input",{class:"txt",type:"text",value:b.nome,oninput:e=>{b.nome=e.target.value;afterChange();readm.pinta();}})),
     f("Idade",el("input",{class:"txt",type:"text",inputmode:"numeric",value:b.idade,oninput:e=>{b.idade=e.target.value;admAvisoEl.textContent=admAviso(b.admissao,b.idade);afterChange();}})),
     f("Admissão na UTI",el("input",{class:"txt",type:"date",max:todayISO(),value:b.admissao,oninput:e=>{b.admissao=e.target.value;admAvisoEl.textContent=admAviso(b.admissao,b.idade);afterChange();}}),admAvisoEl),
     f("Plano de saúde",picker({key:"plano",single:true,placeholder:"Escolher plano",get:()=>b.plano,set:v=>b.plano=v}))
-  ),precBox));
+  ),readm,precBox));
 
   const listCard=(title,key,prop,ph)=>el("div",{class:"card"},el("h3",{},title),
     picker({key,placeholder:ph,get:()=>b[prop],set:v=>b[prop]=v}));
@@ -6504,6 +6505,19 @@ function pacReinternado(b){
   if(!EVO.on||!b||!String(b.nome||"").trim()) return null;
   const p=pacOf(b.id), c=(p.evc&&typeof p.evc==="object")?p.evc:{};
   return evoReadmissoes(b.nome,c.nasc||"",p.pid||null)[0]||null;
+}
+/* passômetros: internações anteriores de mesmo nome, só para leitura (copiar dados fica no adendo) */
+function pasReadmLinha(b){
+  const box=el("div");
+  box.pinta=()=>{ box.innerHTML=""; if(!EVO.on||!String(b.nome||"").trim()) return;
+    const p=pacOf(b.id), c=(p.evc&&typeof p.evc==="object")?p.evc:{};
+    const L=evoReadmissoes(b.nome,c.nasc||"",p.pid||null); if(!L.length) return;
+    const per=x=>`${x.admissao?fmtDate(x.admissao,true):"?"} a ${x.alta&&x.alta.data?fmtDate(x.alta.data,true):"?"}${evoMotivoTxt(x.alta)?" · "+evoMotivoTxt(x.alta):""}`;
+    box.append(el("div",{class:"ev-sign",style:"background:#fff6d6;border-color:#e6c25a;margin-top:10px;font-size:14px"},
+      el("b",{},`Já esteve na UTI (${L.length}): `),L.slice(0,5).map(per).join("  |  ")+(L.length>5?" …":""),
+      el("div",{class:"hint",style:"margin:4px 0 0"},(L[0].nasc?"Nascimento na internação anterior: "+fmtDate(L[0].nasc,true)+". ":"")+"Confirme se é o mesmo paciente. Os dados anteriores podem ser puxados pelo médico no adendo de internação.")));
+  };
+  box.pinta(); return box;
 }
 /* "Puxar dados anteriores": tudo da internação anterior, menos HDA, exame físico, CID e conduta (esses só para ver).
    Também não vêm os dados que são da admissão atual (data e hora, procedência, queixa, sinais vitais, cirurgia, escores).
