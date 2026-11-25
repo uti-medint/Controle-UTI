@@ -4459,11 +4459,24 @@ function evoAssinCtl(d,diur,salvar){
     el("div",{style:"margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"},el("span",{class:"hint"},"Trocar médico:"),s,
       EVO.eu&&d.autor!==EVO.eu&&per[EVO.eu]?el("button",{class:"btn small",type:"button",onclick:()=>{ s.value=EVO.eu; s.onchange(); }},"Sou eu"):null));
 }
-/* ao imprimir uma folha iniciada por outro médico, pergunta quem assina (evita sair o nome de quem só abriu a folha) */
-function evoConfAssin(d,oque){
-  if(!d||!d.autor||!EVO.eu||d.autor===EVO.eu||!EVO.perfil||EVO.perfil.generico||EVO.perfil.grupo==="coord") return;
-  const a=evoPerfil(d.autor), nA=a?evoTratamento(a):d.autor;
-  if(confirm(`${oque} por ${nA}.\n\nOK: a folha sai assinada por você (${evoTratamento()}).\nCancelar: mantém ${nA} na assinatura.`)){ d.assumidoDe=d.autor; d.autor=EVO.eu; d.assumidoEm=Date.now(); evoDocSave(d); }
+/* ao imprimir uma folha iniciada por outro médico, pergunta quem assina.
+   O padrão é MANTER quem iniciou (muitas vezes a pessoa só está imprimindo algo que ficou para trás);
+   assumir a folha é uma escolha explícita. Fechar a janela cancela a impressão. */
+function evoConfAssin(d,oque,seguir){
+  if(!d||!d.autor||!EVO.eu||d.autor===EVO.eu||!EVO.perfil||EVO.perfil.generico||EVO.perfil.grupo==="coord"){ seguir(); return; }
+  const a=evoPerfil(d.autor), nA=a?evoTratamento(a):d.autor, eu=evoTratamento();
+  let close;
+  const vai=assumir=>{ close(); document.querySelectorAll(".overlay").forEach(o=>o.remove());
+    if(assumir){ d.assumidoDe=d.autor; d.autor=EVO.eu; d.assumidoEm=Date.now(); evoDocSave(d); }
+    seguir(); if(assumir&&view==="evo") renderEvo(); };
+  const bManter=el("button",{class:"btn primary",type:"button",style:"width:100%;padding:12px;font-weight:700",onclick:()=>vai(false)},`Só imprimir — mantém a assinatura de ${nA}`);
+  const body=el("div",{},
+    el("p",{style:"margin:0 0 14px"},`${oque} por `,el("b",{},nA),"."),
+    el("div",{style:"display:flex;flex-direction:column;gap:10px"},bManter,
+      el("button",{class:"btn",type:"button",style:"width:100%;padding:12px",onclick:()=>vai(true)},`Assumir a folha — sai assinada por mim (${eu})`)),
+    el("p",{class:"hint",style:"margin:12px 0 0"},"Para não imprimir agora, clique em Fechar. Se precisar, a troca de médico também pode ser feita em “Assina como”."));
+  close=openModal("Quem assina esta folha?",body);
+  setTimeout(()=>bManter.focus(),0);
 }
 /* texto colado de outros sistemas costuma trazer espaços "inquebráveis" (a linha não quebra): vira espaço comum */
 const EVO_ESPACOS=/[\u00A0\u2007\u202F\u2000-\u200A\u3000]/g;
@@ -5468,7 +5481,7 @@ function evoVerVersao(v){
 function evoDiaImprimir(id,n,previa){
   const d=EVO_DOCS[n]; if(!d) return;
   if(!previa&&evoDiaFaltam(id,d).length){ alert("Ainda há campos obrigatórios. Veja a barra no fim da evolução."); return; }
-  if(!previa) evoConfAssin(d,"Esta evolução foi iniciada");
+  if(!previa&&!evoDiaImprimir._ok){ evoConfAssin(d,"Esta evolução foi iniciada",()=>{ evoDiaImprimir._ok=true; try{ evoDiaImprimir(id,n,false); } finally{ evoDiaImprimir._ok=false; } }); return; }
   const r=evoFolha(id,n);
   if(previa){
     const fr=el("iframe",{style:"width:100%;height:75vh;border:1px solid var(--line);border-radius:8px;background:#fff"});
@@ -5665,7 +5678,7 @@ function evoAdmAjusta(html){
   }catch(e){ return html; } finally{ box.remove(); }
 }
 function evoAdmImprimir(id,previa){
-  if(!previa) evoConfAssin(evoAdmDoc(id,false),"Este adendo foi iniciado");
+  if(!previa&&!evoAdmImprimir._ok){ evoConfAssin(evoAdmDoc(id,false),"Este adendo foi iniciado",()=>{ evoAdmImprimir._ok=true; try{ evoAdmImprimir(id,false); } finally{ evoAdmImprimir._ok=false; } }); return; }
   const h=evoAdmAjusta(evoAdmHtml(id)); if(!h) return;
   if(previa){
     const fr=el("iframe",{style:"width:100%;height:75vh;border:1px solid var(--line);border-radius:8px;background:#fff"});
@@ -6133,7 +6146,7 @@ ${cel(3,"Convênio",p.plano)}${cel(2,"Admissão UTI",p.admissao?fmtDate(p.admiss
 function evoIqImprimir(id,n,previa){
   const d=EVO_DOCS[n]||evoIqDoc(); if(!d) return;
   if(!previa&&evoIqFaltam(d).length){ alert("Preencha a data e o texto antes de imprimir."); return; }
-  if(!previa&&EVO_DOCS[n]) evoConfAssin(d,"Esta intercorrência foi iniciada");
+  if(!previa&&EVO_DOCS[n]&&!evoIqImprimir._ok){ evoConfAssin(d,"Esta intercorrência foi iniciada",()=>{ evoIqImprimir._ok=true; try{ evoIqImprimir(id,n,false); } finally{ evoIqImprimir._ok=false; } }); return; }
   const html=evoIqHtml(id,d);
   if(previa){
     const fr=el("iframe",{style:"width:100%;height:75vh;border:1px solid var(--line);border-radius:8px;background:#fff"});
