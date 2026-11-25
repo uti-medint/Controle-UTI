@@ -498,6 +498,12 @@ textarea.par-ta:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2
 .ev-ro small,.ev-calc small{font-weight:500;color:var(--muted);font-size:12px}
 .ev-togs{display:flex;gap:6px;flex-wrap:wrap}
 .ev-req::after{content:" *";color:var(--danger);font-weight:700}
+.ev-pend{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}.ev-pend-h{display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:var(--danger);font-size:14px}
+.ev-pend-l{display:flex;flex-wrap:wrap;gap:5px;max-height:84px;overflow:auto}
+.ev-pchip{border:1px solid #e3a7a1;background:#fdf1f0;color:#a3271b;border-radius:999px;padding:3px 10px;font-size:12.5px;cursor:pointer;font-family:inherit}
+.ev-pchip:hover{background:#f9dcd9;border-color:#c9483b}
+.ev-flash{animation:evflash 1.8s ease-out;border-radius:8px}@keyframes evflash{0%,40%{box-shadow:0 0 0 3px #e0574a;background-color:#fdecea}100%{box-shadow:0 0 0 3px transparent}}
+.ev-volta{display:flex;gap:12px;align-items:center;background:#eef6f4;border-color:#9cc8bf;position:sticky;top:0;z-index:5}
 .ev-warn{color:var(--danger);font-size:12.5px;font-weight:600;margin-top:4px;line-height:1.3}
 .ev-tag{display:inline-block;font-weight:800;font-size:12.5px;padding:3px 9px;border-radius:5px;background:var(--danger);color:#fff}
 .ev-tag.o{background:#fff;color:var(--ink);border:1.5px solid var(--ink)}
@@ -4390,6 +4396,13 @@ let EVO_FIM_REF="";
 function evoHojeRef(){ const h=todayISO(); return EVO_FIM_REF&&EVO_FIM_REF<h?EVO_FIM_REF:h; }
 function evoDiasUTI(adm){ if(!adm||!/^\d{4}-\d{2}-\d{2}$/.test(adm)) return null; const d=daysSince(adm,evoHojeRef())-1; return d>=0?d:null; }
 const EVO_REQ=[["nasc","data de nascimento"],["sexo","sexo"],["peso","peso"],["altura","altura"],["alergias","alergias"],["reanim","status de reanimação"]];
+const EVO_REQ_LBL={nasc:"Data de nascimento",sexo:"Sexo",peso:"Peso",altura:"Altura",alergias:"Alergias",reanim:"Status de reanimação"};
+/* pendências do cadastro, uma por campo, com o atalho para o campo na aba Cadastro */
+function evoFaltamCad(id,add){ const c=evoC(id); EVO_REQ.forEach(([k,l])=>{ const aqui=k==="alergias"||k==="reanim";   /* estes dois têm cartão no próprio adendo/evolução */
+  if(!c[k]) add((aqui?"":"cadastro: ")+l,aqui?{t:EVO_REQ_LBL[k]}:{tab:"cad",t:EVO_REQ_LBL[k]});
+  else if(k==="reanim"&&c.reanim==="lim"&&!String(c.reanimTxt||"").trim()) add("qual a limitação de suporte",{t:EVO_REQ_LBL[k]}); }); }
+/* lista de pendências: array de textos; f.alvo[texto] diz onde fica o campo ({t: rótulo na tela, tab: aba}) */
+function evoPendLista(){ const f=[]; f.alvo={}; f.add=(l,a)=>{ f.push(l); if(a) f.alvo[l]=a; }; return f; }
 function evoFaltam(id){ const c=evoC(id); return EVO_REQ.filter(([k])=>!c[k]||(k==="reanim"&&c.reanim==="lim"&&!String(c.reanimTxt||"").trim())).map(([,l])=>l); }
 
 /* ============ Adendo de internação (Fase 3) ============
@@ -4508,12 +4521,12 @@ function evoExTexto(ex,fem){
   L.push([supHem?"Hemato · membros":"Membros",j(evoTgTxt(ex.memb.tg),ex.memb.livre),supHem]);
   return L.filter(x=>x[1]||x[2]);
 }
-function evoExFaltam(ex){
-  const f=[];
-  if(!ex.geral.estado) f.push("estado geral");
-  if(!evoGlasgow(ex.neuro)) f.push("Glasgow");
-  [["cv","cardiovascular"],["resp","respiratório"],["abd","abdome"],["memb","membros"]].forEach(([k,l])=>{ if(!(ex[k].tg||[]).length&&!String(ex[k].livre||"").trim()) f.push(l); });
-  if(!ex.resp.sup) f.push("suporte ventilatório");
+function evoExFaltam(ex,add){
+  const f=[]; add=add||(l=>f.push(l));
+  if(!ex.geral.estado) add("estado geral",{t:"Estado geral"});
+  if(!evoGlasgow(ex.neuro)) add("Glasgow",{t:"AO"});
+  [["cv","cardiovascular","Cardiovascular"],["resp","respiratório","Respiratório"],["abd","abdome","Abdome"],["memb","membros",["Membros","Hemato · membros"]]].forEach(([k,l,t])=>{ if(!(ex[k].tg||[]).length&&!String(ex[k].livre||"").trim()) add(l,{t}); });
+  if(!ex.resp.sup) add("suporte ventilatório",{t:"SUPORTE"});
   return f;
 }
 /* formulário (onCh = salvar sem redesenhar; onRe = salvar e redesenhar) */
@@ -4525,7 +4538,7 @@ function evoExForm(ex,ctx){
     const pend=rev[key]==="pend";
     const tag=pend?el("span",{class:"ev-nrt"},"copiado — confirmar"):el("span",{class:"ev-rvt"},"✓ revisado");
     const bt=pend?el("button",{class:"btn small",type:"button",onclick:()=>{ rev[key]="ok"; onRe(); }},"✓ Confirmar"):null;
-    const box=el("div",{class:pend?"ev-nr":"",style:pend?"":"margin-top:0"},el("div",{style:"display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px"},el("b",{style:"font-size:12.5px;color:var(--accent);text-transform:uppercase"},titulo),tag,bt),node);
+    const box=el("div",{class:pend?"ev-nr":"",style:pend?"":"margin-top:0"},el("div",{style:"display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px"},el("b",{class:"ev-rowt",style:"font-size:12.5px;color:var(--accent);text-transform:uppercase"},titulo),tag,bt),node);
     if(pend){   /* mudar qualquer coisa dentro do bloco já conta como revisado */
       const confirma=ev=>{ if(rev[key]!=="pend"||ev.target===bt) return; rev[key]="ok"; box.className=""; tag.className="ev-rvt"; tag.textContent="✓ revisado"; if(bt) bt.remove(); onCh(); };
       box.addEventListener("input",confirma,true); box.addEventListener("change",confirma,true);
@@ -4539,7 +4552,7 @@ function evoExForm(ex,ctx){
   const txt=(obj,k,ph,attrs)=>{ const i=el("input",Object.assign({class:"txt",value:obj[k]||"",placeholder:ph||""},attrs||{})); i.addEventListener("input",()=>{ obj[k]=i.value; onCh(); }); return i; };
   const livre=obj=>el("div",{style:"margin-top:8px"},el("label",{class:"lbl",style:"font-weight:700;color:var(--accent)"},"Registro livre"),txt(obj,"livre","Registro livre — digite o que quiser acrescentar…"));
   const sel=(obj,k,opts,ph)=>{ const s=el("select",{class:"txt"},el("option",{value:""},ph||"—"),opts.map(o=>{ const [v,l]=Array.isArray(o)?o:[o,o]; const op=el("option",{value:v},l); if(obj[k]===v) op.selected=true; return op; })); s.addEventListener("change",()=>{ obj[k]=s.value; onRe(); }); return s; };
-  const row=(k,req,...kids)=>el("div",{style:"display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;padding:10px 0;border-top:1px solid #e7eceb"},el("div",{style:"font-weight:700;padding-top:6px"+(req?"":"")},k,req?el("span",{style:"color:var(--danger)"}," *"):null),el("div",{},...kids));
+  const row=(k,req,...kids)=>el("div",{style:"display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;padding:10px 0;border-top:1px solid #e7eceb"},el("div",{class:"ev-rowt",style:"font-weight:700;padding-top:6px"},k,req?el("span",{style:"color:var(--danger)"}," *"):null),el("div",{},...kids));
   const preview=t=>t?el("div",{class:"hint",style:"margin:6px 0 0;background:#f3f7f6;border:1px dashed #9cc8bf;border-radius:6px;padding:5px 9px"},"Na folha: ",el("b",{},t)):null;
   /* Geral */
   const g=ex.geral, cz=(k)=>{ const i=el("input",{class:"txt",style:"width:56px;text-align:center;font-weight:700",value:g[k]||"",inputmode:"numeric",maxlength:"1",placeholder:"1–4"}); i.addEventListener("input",()=>{ i.value=i.value.replace(/[^1-4]/g,""); g[k]=i.value; onCh(); }); i.addEventListener("change",onRe); return el("span",{style:"display:inline-flex;gap:4px;align-items:center;margin-left:8px;font-weight:700"},i,"/4+"); };
@@ -4597,7 +4610,7 @@ function evoExForm(ex,ctx){
   /* Respiratório e suporte */
   const r=ex.resp; r.vm=r.vm||{}; r.vni=r.vni||{}; r.o2=r.o2||{};
   const supBox=el("div",{style:"background:#f6f9f8;border:1px solid #e1e8e6;border-radius:8px;padding:10px 12px;margin-top:8px"},
-    el("div",{style:"display:flex;gap:10px;align-items:center;flex-wrap:wrap"},el("b",{style:"color:var(--accent);font-size:13px"},"SUPORTE"),
+    el("div",{style:"display:flex;gap:10px;align-items:center;flex-wrap:wrap"},el("b",{class:"ev-rowt",style:"color:var(--accent);font-size:13px"},"SUPORTE"),
       seg(r,"sup",[["aa","Ar ambiente"],["o2","Oxigenoterapia"],["vni","VNI"],["vm","Ventilação mecânica"]])));
   const f=(o,k,l,ph)=>el("div",{},lab(l),txt(o,k,ph,{inputmode:"decimal"}));
   if(r.sup==="vm"){ const pf=evoPF(r.vm); supBox.append(el("div",{style:"display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-top:8px"},
@@ -4631,12 +4644,15 @@ function evoCidCarregar(){ if(EVO_CID) return Promise.resolve(EVO_CID); if(!EVO_
 function evoCidBusca(q){ const t=norm(q).split(" ").filter(Boolean); if(!t.length||!EVO_CID) return []; const out=[]; for(const it of EVO_CID){ if(t.every(w=>it[2].includes(w))){ out.push(it); if(out.length>=30) break; } } return out; }
 
 /* ---- admitir paciente num leito vago ---- */
+/* leitos vagos: os fixos e também os extras (mesmo os que ainda não estão "em uso": admitir já os ativa) */
+function evoVagos(){ const L=SV.med.beds.filter(x=>!x.nome); return L.filter(x=>!x.extra).concat(L.filter(x=>x.extra)); }
+function evoVagoRot(x){ return bedLabel(x)+(x.extra&&x.local?" · "+x.local:"")+(x.extra&&!x.ativo?" (leito extra)":""); }
 function evoAdmitir(id0){
   /* sem leito (botão do topo da lista): a janela pede para escolher o leito vago */
-  const vagos=SV.med.beds.filter(x=>!x.nome&&(!x.extra||x.ativo!==false));
+  const vagos=evoVagos();
   if(!id0&&!vagos.length){ alert("Nenhum leito vago no momento."); return; }
   if(id0&&!SV.med.beds.some(x=>x.id===id0)) return;
-  const sLeito=id0?null:el("select",{class:"txt"},el("option",{value:""},"Escolha o leito vago…"),vagos.map(x=>el("option",{value:x.id},bedLabel(x))));
+  const sLeito=id0?null:el("select",{class:"txt"},el("option",{value:""},"Escolha o leito vago…"),vagos.map(x=>el("option",{value:x.id},evoVagoRot(x))));
   const nome=el("input",{class:"txt",placeholder:"Nome completo",autocomplete:"off"});
   const agora=evoAgoraLocal(); let dIso=agora.slice(0,10), dHora=agora.slice(11,16);
   const dt=el("div",{style:"display:grid;grid-template-columns:minmax(0,1fr) 80px;gap:6px"},evoDataInput(dIso,v=>{ dIso=v; },{max:todayISO()}),evoHoraInput(dHora,h=>{ dHora=h; }));
@@ -4684,23 +4700,23 @@ function evoPlanoCampo(id){
 }
 /* ---- tela do adendo ---- */
 function evoAdmFaltam(id,d){
-  const f=[], c=evoC(id);
-  if(evoFaltam(id).length) f.push("cadastro ("+evoFaltam(id).join(", ")+")");
-  if(!d.dataHora) f.push("data e hora");
-  if(!d.procedencia||(d.procedencia==="Outro"&&!d.procedOutro.trim())) f.push("procedência");
-  if(!d.queixa.trim()) f.push("queixa principal");
-  if(!d.hda.trim()) f.push("história da doença atual");
-  if(!["pa","fc","fr","sat"].every(k=>String((d.sv||{})[k]||"").trim())) f.push("sinais vitais (PA, FC, FR, SatO2)");
-  f.push(...evoExFaltam(d.ex).map(x=>"exame: "+x));
-  if(!(pacOf(id).problemas||[]).length) f.push("lista de problemas");
-  if(!d.cid.cod) f.push("CID-10 principal");
+  const f=evoPendLista(), A=f.add;
+  evoFaltamCad(id,A);
+  if(!d.dataHora) A("data e hora",{t:"Data e hora do adendo"});
+  if(!d.procedencia||(d.procedencia==="Outro"&&!d.procedOutro.trim())) A("procedência",{t:d.procedencia==="Outro"?"Qual?":"Procedência"});
+  if(!d.queixa.trim()) A("queixa principal",{t:"Queixa principal"});
+  if(!d.hda.trim()) A("história da doença atual",{t:"História da doença atual"});
+  if(!["pa","fc","fr","sat"].every(k=>String((d.sv||{})[k]||"").trim())) A("sinais vitais (PA, FC, FR, SatO2)",{t:"Sinais vitais"});
+  evoExFaltam(d.ex,(l,a)=>A("exame: "+l,a));
+  if(!(pacOf(id).problemas||[]).length) A("lista de problemas",{t:"Lista de problemas"});
+  if(!d.cid.cod) A("CID-10 principal",{t:"CID-10 principal"});
   const k=d.conduta;
-  if(!k.dieta||(k.dieta==="Zero"&&!k.dietaMot.trim())) f.push("dieta");
-  if(!k.atbSem&&!(k.atbs||[]).length) f.push("antibioticoterapia");
-  if(!k.lamg) f.push("profilaxia LAMG");
-  if(!k.tev||!k.tevMot.trim()) f.push("profilaxia TEV");
-  if(!(Object.values(k.fixos||{}).some(Boolean)||(k.protos||[]).length||k.livre.trim())) f.push("conduta");
-  if(evoDiurno(d.dataHora)&&!d.diarista) f.push("diarista");
+  if(!k.dieta) A("dieta",{t:"Dieta"});
+  if(!k.atbSem&&!(k.atbs||[]).length) A("antibioticoterapia",{t:"Antibioticoterapia"});
+  if(!k.lamg) A("profilaxia LAMG",{t:"Profilaxia LAMG",seg:true});
+  if(!k.tev) A("profilaxia TEV",{t:"Profilaxia TEV",seg:true});
+  if(!(Object.values(k.fixos||{}).some(Boolean)||(k.protos||[]).length||k.livre.trim())) A("conduta",{t:"Conduta",seg:true});
+  if(evoDiurno(d.dataHora)&&!d.diarista) A("diarista",{t:"Diarista"});
   return f;
 }
 function evoAdmEditor(id){
@@ -4742,8 +4758,7 @@ function evoAdmEditor(id){
   /* antecedentes */
   wrap.append(card("História patológica pregressa",
     el("div",{class:"ev-togs"},EVO_HPP.map(([k,l])=>el("button",{type:"button",class:"tog"+(d.hpp[k]?" on":""),"aria-pressed":String(!!d.hpp[k]),onclick:()=>{ d.hpp[k]=!d.hpp[k]; onRe(); }},l))),
-    el("div",{class:"ev-g",style:"margin-top:10px"},el("div",{class:"s2"},lab("Outros"),txt(d,"hppOutros","Ex.: diverticulose")),
-      el("div",{class:"s2"},lab("Alergias (do cadastro)"),el("div",{class:"ev-ro"},c.alergias||el("small",{},"preencher na aba Cadastro")))),
+    el("div",{class:"ev-g",style:"margin-top:10px"},el("div",{class:"s2"},lab("Outros"),txt(d,"hppOutros","Ex.: diverticulose"))),
     el("div",{style:"margin-top:10px"},lab("Medicações de uso contínuo"),area(d,"meds","Ex.: Losartana 50 mg 12/12h; Metformina 850 mg 12/12h",60)),
     el("div",{class:"ev-g",style:"margin-top:10px"},
       el("div",{},lab("Tabagista"),seg(d.social,"tab",[["nao","Não"],["sim","Sim"],["ex","Ex"]])),
@@ -4751,6 +4766,7 @@ function evoAdmEditor(id){
       el("div",{},lab("Drogas ilícitas"),seg(d.social,"drogas",[["nao","Não"],["sim","Sim"]])),
       el("div",{},lab("Detalhe (ex.: 40 maços-ano)"),txt(d.social,"tabTxt",""))),
     el("div",{style:"margin-top:10px"},lab("Antecedentes familiares"),txt(d,"familiares","Ex.: nega"))));
+  wrap.append(evoAlerReanimCard(id,d,onCh,onRe));
   /* sinais vitais */
   const sv=d.sv;
   wrap.append(card("Sinais vitais na admissão",el("div",{style:"display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px"},
@@ -4780,9 +4796,65 @@ function evoAdmEditor(id){
   wrap.append(bar); setTimeout(()=>evoAdmResumo(id,d),0);
   return wrap;
 }
+/* ---- atalho das pendências: cada item da barra leva ao campo que falta ---- */
+/* alergias e status de reanimação editáveis dentro do adendo e da evolução (o dado é o do cadastro) */
+function evoAlerReanimCard(id,d,onCh,onRe){
+  const c=evoC(id), lab=(t,req)=>el("label",{class:"lbl"+(req?" ev-req":"")},t);
+  const marca=()=>{ if(d&&d.impresso){ d.cadSnap=evoCadSnapDe(c); evoDocSave(d); } };   /* folha já impressa: a mudança feita nela vale para ela */
+  const inp=(k,ph)=>{ const i=el("input",{class:"txt",value:c[k]||"",placeholder:ph}); i.addEventListener("input",()=>{ evoSet(id,k,i.value.trim()); marca(); onCh(); }); i.addEventListener("change",()=>evoNavRefresh()); return i; };
+  const set=(k,v)=>{ evoSet(id,k,v); marca(); evoNavRefresh(); onRe(); };
+  const lim=c.reanim==="lim";
+  const snap=d&&d.impresso&&d.cadSnap, dif=snap&&(snap.alergias!==(c.alergias||"")||snap.reanim!==(c.reanim||"")||snap.reanimTxt!==(c.reanimTxt||""));
+  const rs=x=>x.reanim==="pleno"?"suporte pleno":x.reanim==="lim"?"limitação de suporte"+(x.reanimTxt?" ("+x.reanimTxt+")":""):"—";
+  return el("div",{class:"card"},el("h3",{},"Alergias e status de reanimação"),
+    el("div",{class:"ev-g"},
+      el("div",{class:"s2"},lab("Alergias",true),el("div",{style:"display:flex;gap:8px"},inp("alergias","Ex.: Dipirona, contraste iodado"),
+        el("button",{class:"btn",type:"button",onclick:()=>set("alergias","Nega")},"Nega"))),
+      el("div",{class:"s2"},lab("Status de reanimação",true),
+        el("div",{class:"ev-togs"},[["pleno","Suporte pleno"],["lim","Limitação de suporte"]].map(([v,l])=>el("button",{type:"button",class:"tog"+(c.reanim===v?" on":""),"aria-pressed":String(c.reanim===v),onclick:()=>set("reanim",c.reanim===v?"":v)},l))),
+        lim?el("div",{style:"margin-top:8px"},inp("reanimTxt","Qual limitação? Ex.: não intubar, não iniciar diálise (obrigatório)")):null)),
+    el("p",{class:"hint",style:"margin:8px 0 0"},"É o mesmo dado da aba Cadastro: mudar aqui atualiza o paciente (passômetro e próximas folhas)."),
+    dif?el("p",{class:"ev-warn",style:"margin:6px 0 0"},`Esta folha foi impressa com: alergias ${snap.alergias||"—"} · ${rs(snap)}. Ao reimprimir, sai como foi impressa, a menos que você altere aqui.`):null);
+}
+function evoPendChips(f,nomeDoc){
+  return el("div",{class:"ev-pend"},
+    el("div",{class:"ev-pend-h"},el("b",{},"Para imprimir, falta"+(f.length>1?"m ":" ")+f.length),
+      el("button",{class:"btn small primary",type:"button",onclick:()=>evoIrPend(f.alvo[f[0]],nomeDoc)},"Próxima pendência →")),
+    el("div",{class:"ev-pend-l"},f.map(l=>el("button",{type:"button",class:"ev-pchip",title:"Ir ao campo",onclick:()=>evoIrPend(f.alvo[l],nomeDoc)},l))));
+}
+function evoIrPend(a,nomeDoc){
+  if(!a) return;
+  if(a.tab&&a.tab!==EVO.tab){
+    const s=$("#evoApp section.editor");
+    EVO.volta={sel:EVO.sel,tab:EVO.tab,top:s?s.scrollTop:0,nome:nomeDoc};
+    EVO.tab=a.tab; renderEvo(); setTimeout(()=>evoAchaCampo(a),80); return;
+  }
+  evoAchaCampo(a);
+}
+function evoAchaCampo(a){
+  const root=$("#evoApp section.editor")||$("#evoApp"); if(!root) return;
+  const ts=[].concat(a.t), norm=x=>x.textContent.replace(/\s*\*\s*$/,"").replace(/\s+/g," ").trim().toLowerCase();
+  let alvo=null, box=null;
+  const vis=[".lbl",".ev-rowt","span.hint","h3"].map(sel=>[...root.querySelectorAll(sel)].filter(x=>x.offsetParent!==null));
+  for(const exato of [true,false]){   /* primeiro o rótulo igual; depois o que começa com o texto */
+    for(const L of vis){ alvo=L.find(x=>ts.some(t=>{ const n=norm(x), q=t.toLowerCase(); return exato?n===q:n.startsWith(q); })); if(alvo) break; }
+    if(alvo) break;
+  }
+  if(!alvo) return;
+  if(alvo.matches("h3")) box=alvo.closest(".card");
+  else if(a.rev) box=alvo.closest(".ev-nr")||alvo.parentElement.parentElement;
+  else if(alvo.matches(".ev-rowt")) box=alvo.parentElement;
+  else box=alvo.parentElement;
+  box.scrollIntoView({behavior:"smooth",block:"center"});
+  box.classList.remove("ev-flash"); void box.offsetWidth; box.classList.add("ev-flash"); setTimeout(()=>box.classList.remove("ev-flash"),1800);
+  const campos=[...box.querySelectorAll("input:not([type=checkbox]),textarea,select")].filter(x=>x.offsetParent!==null&&!x.disabled);
+  const tg=a.seg&&box.querySelector(".ev-togs .tog");
+  const foco=tg?tg:a.rev?[...box.querySelectorAll("button")].find(x=>/Confirmar/.test(x.textContent)):(campos.find(x=>!x.value)||campos[0]||box.querySelector("button:not([disabled])"));
+  if(foco) setTimeout(()=>{ try{ foco.focus({preventScroll:true}); }catch(e){ foco.focus(); } },350);
+}
 function evoAdmResumo(id,d){
   const bar=$("#evoAdmBar"); if(!bar) return; const f=evoAdmFaltam(id,d); bar.innerHTML="";
-  bar.append(f.length?el("span",{style:"color:var(--danger);font-weight:600;flex:1;font-size:14px"},"Para imprimir, falta: "+f.join(" · ")):el("span",{style:"color:#2e7d32;font-weight:600;flex:1"},"✓ Pronto para imprimir"),
+  bar.append(f.length?evoPendChips(f,"adendo"):el("span",{style:"color:#2e7d32;font-weight:600;flex:1"},"✓ Pronto para imprimir"),
     el("button",{class:"btn",type:"button",onclick:()=>evoAdmImprimir(id,true)},"Pré-visualizar"),
     el("button",{class:"btn primary",type:"button",disabled:f.length?"disabled":null,onclick:()=>evoAdmImprimir(id,false)},"Imprimir adendo"));
   if(!f.length) bar.lastChild.removeAttribute("disabled");
@@ -4924,7 +4996,7 @@ function evoAdmConduta(id,d,b,onRe,onCh){
   const k=d.conduta, lab=(t,req)=>el("label",{class:"lbl"+(req?" ev-req":"")},t);
   const seg=(o,key,opts)=>el("div",{class:"ev-togs"},opts.map(([v,l])=>el("button",{type:"button",class:"tog"+(o[key]===v?" on":""),"aria-pressed":String(o[key]===v),onclick:()=>{ o[key]=o[key]===v?"":v; onRe(); }},l)));
   const txt=(o,key,ph)=>{ const i=el("input",{class:"txt",value:o[key]||"",placeholder:ph||""}); i.addEventListener("input",()=>{ o[key]=i.value; onCh(); }); return i; };
-  const row=(l,...kids)=>el("div",{style:"display:grid;grid-template-columns:170px minmax(0,1fr);gap:12px;padding:10px 0;border-top:1px solid #e7eceb"},el("div",{style:"font-weight:700;padding-top:6px"},l,el("span",{style:"color:var(--danger)"}," *")),el("div",{},...kids));
+  const row=(l,...kids)=>el("div",{style:"display:grid;grid-template-columns:170px minmax(0,1fr);gap:12px;padding:10px 0;border-top:1px solid #e7eceb"},el("div",{class:"ev-rowt",style:"font-weight:700;padding-top:6px"},l,el("span",{style:"color:var(--danger)"}," *")),el("div",{},...kids));
   /* antibióticos: entram também na lista do passômetro médico, com início na data do adendo */
   const atbNome=el("input",{class:"txt",list:"evoAtbList",placeholder:"Antibiótico"});
   const atbFoco=el("select",{class:"txt"},el("option",{value:""},"Foco…"),EVO_FOCOS.map(x=>el("option",{value:x},x)));
@@ -4950,12 +5022,12 @@ function evoAdmConduta(id,d,b,onRe,onCh){
   const fx=[["adm","Faço admissão em UTI"],["exames","Solicito exames admissionais"],["vig","Vigilância e cuidados intensivos"]];
   const livre=el("textarea",{class:"par-ta",style:"min-height:70px",placeholder:"Texto livre (opcional)"}); livre.value=k.livre||""; livre.addEventListener("input",()=>{ k.livre=livre.value; onCh(); });
   return el("div",{class:"card",style:"border-color:#e9b48c"},el("h3",{},"Conduta da admissão"),
-    row("Dieta",seg(k,"dieta",[["Zero","Zero"],["VO","VO"],["Enteral","Enteral"],["GTT","Via GTT"],["Parenteral","Parenteral"]]),k.dieta==="Zero"?el("div",{style:"margin-top:6px"},txt(k,"dietaMot","Motivo da dieta zero (obrigatório)")):null),
+    row("Dieta",seg(k,"dieta",[["Zero","Zero"],["VO","VO"],["Enteral","Enteral"],["GTT","Via GTT"],["Parenteral","Parenteral"]]),k.dieta==="Zero"?el("div",{style:"margin-top:6px"},txt(k,"dietaMot","Motivo da dieta zero (opcional)")):null),
     row("Antibioticoterapia",atbBox),
     row("Profilaxia LAMG",seg(k,"lamg",[["sim","Sim"],["nao","Não"]]),el("div",{style:"margin-top:6px"},txt(k,"lamgMot",k.lamg==="nao"?"Observação (opcional)":"Qual (opcional, ex.: omeprazol 40 mg EV)"))),
-    row("Profilaxia TEV",seg(k,"tev",[["sim","Sim"],["nao","Não"]]),el("div",{style:"margin-top:6px"},txt(k,"tevMot",k.tev==="nao"?"Motivo (ex.: sangramento ativo, plaquetas < 50 mil)":"Qual (ex.: enoxaparina 40 mg SC)")),
+    row("Profilaxia TEV",seg(k,"tev",[["sim","Sim"],["nao","Não"]]),el("div",{style:"margin-top:6px"},txt(k,"tevMot",k.tev==="nao"?"Motivo (opcional, ex.: sangramento ativo, plaquetas < 50 mil)":"Qual (opcional, ex.: enoxaparina 40 mg SC)")),
       k.tev==="nao"?el("label",{style:"display:flex;gap:6px;align-items:center;margin-top:6px"},(()=>{ const c=el("input",{type:"checkbox"}); c.checked=!!k.compressao; c.onchange=()=>{ k.compressao=c.checked; onRe(); }; return c; })(),"Compressão pneumática intermitente"):null),
-    el("div",{style:"display:grid;grid-template-columns:170px minmax(0,1fr);gap:12px;padding:10px 0;border-top:1px solid #e7eceb"},el("div",{style:"font-weight:700;padding-top:6px"},"Status de reanimação"),el("div",{class:"ev-ro"},evoC(id).reanim==="pleno"?"Suporte pleno":evoC(id).reanim==="lim"?"Limitação de suporte: "+(evoC(id).reanimTxt||""):el("small",{},"preencher na aba Cadastro"))),
+    el("div",{style:"display:grid;grid-template-columns:170px minmax(0,1fr);gap:12px;padding:10px 0;border-top:1px solid #e7eceb"},el("div",{style:"font-weight:700;padding-top:6px"},"Status de reanimação"),el("div",{class:"ev-ro"},evoC(id).reanim==="pleno"?"Suporte pleno":evoC(id).reanim==="lim"?"Limitação de suporte: "+(evoC(id).reanimTxt||""):el("small",{},"preencher no cartão “Alergias e status de reanimação”"))),
     el("div",{style:"display:grid;grid-template-columns:170px minmax(0,1fr);gap:12px;padding:10px 0;border-top:1px solid #e7eceb"},el("div",{style:"font-weight:700;padding-top:6px"},"Swab de vigilância"),seg(k,"swab",[["Não indicado","Não indicado"],["Coletado","Coletado"],["Solicitado","Solicitado"]])),
     el("div",{style:"display:grid;grid-template-columns:170px minmax(0,1fr);gap:12px;padding:10px 0;border-top:1px solid #e7eceb"},el("div",{style:"font-weight:700;padding-top:6px"},"Protocolos"),protos),
     row("Conduta",el("div",{class:"ev-togs",style:"margin-bottom:8px"},fx.map(([key,l])=>el("button",{type:"button",class:"tog"+(k.fixos[key]?" on":""),onclick:()=>{ k.fixos[key]=!k.fixos[key]; onRe(); }},l))),livre,
@@ -5018,17 +5090,17 @@ function evoDiaCriar(id,t){
   save(); return n;
 }
 function evoDiaFaltam(id,d){
-  const f=[], c=evoC(id), sv=d.sv||{};
-  if(evoFaltam(id).length) f.push("cadastro ("+evoFaltam(id).join(", ")+")");
-  if(!String(c.nint||"").trim()) f.push("nº de internação (aba Cadastro)");
-  if(!d.dataHora) f.push("data e hora");
-  if(!["pamin","pamax","fc","fr","sat"].every(k=>String(sv[k]||"").trim())) f.push("sinais vitais (PA mín e máx, FC, FR, SatO2)");
-  f.push(...evoExFaltam(d.ex).map(x=>"exame: "+x));
-  const nomes={gcs:"Glasgow e RASS",sed:"sedação",dva:"droga vasoativa",vent:"ventilação"};
-  Object.keys(d.rev||{}).forEach(k=>{ if(d.rev[k]==="pend") f.push("confirmar "+nomes[k]); });
+  const f=evoPendLista(), A=f.add, c=evoC(id), sv=d.sv||{};
+  evoFaltamCad(id,A);
+  if(!String(c.nint||"").trim()) A("cadastro: nº de internação",{tab:"cad",t:"Nº de internação"});
+  if(!d.dataHora) A("data e hora",{t:"Data"});
+  if(!["pamin","pamax","fc","fr","sat"].every(k=>String(sv[k]||"").trim())) A("sinais vitais (PA mín e máx, FC, FR, SatO2)",{t:"PA mínima"});
+  evoExFaltam(d.ex,(l,a)=>A("exame: "+l,a));
+  const nomes={gcs:"Glasgow e RASS",sed:"sedação",dva:"droga vasoativa",vent:"ventilação"}, tit={gcs:"Glasgow e RASS",sed:"Sedação",dva:"Droga vasoativa",vent:"Suporte ventilatório"};
+  Object.keys(d.rev||{}).forEach(k=>{ if(d.rev[k]==="pend") A("confirmar "+nomes[k],{t:tit[k],rev:true}); });
   const k=d.conduta, b=SV.med.beds.find(x=>x.id===id);
-  if(!(Object.values(k.fixos||{}).some(Boolean)||(k.protos||[]).length||String(k.livre||"").trim()||(b&&pfOf(b).alta==="24"))) f.push("conduta");
-  if(d.turno==="D"&&!d.diarista) f.push("diarista");
+  if(!(Object.values(k.fixos||{}).some(Boolean)||(k.protos||[]).length||String(k.livre||"").trim()||(b&&pfOf(b).alta==="24"))) A("conduta",{t:"Conduta",seg:true});
+  if(d.turno==="D"&&!d.diarista) A("diarista",{t:"Diarista"});
   return f;
 }
 /* PAM padrão de cada caixa ("140 x 90"). Se cada caixa tem um número só, a mínima é a diastólica e a máxima a sistólica: PAM = (PAS + 2·PAD)/3 */
@@ -5127,6 +5199,7 @@ function evoDiaEditor(id){
     const di=evoNum(sv.diu); dOut.textContent=di&&kg?evoFmt(di/kg/horas)+" mL/kg/h":"—"; };
   calc();
   const tx2=(k,ph)=>{ const i=txt(sv,k,ph); i.addEventListener("input",calc); return i; };
+  corpo.append(evoAlerReanimCard(id,d,onCh,onRe));
   corpo.append(card(d.turno==="D"?"Últimas 24h — fechamento 07h a 07h":"Últimas 12h — parcial 07h a 19h",
     el("div",{style:"display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px"},
       el("div",{},lab("PA mínima",true),tx2("pamin","90 × 50")),el("div",{},lab("PA máxima",true),tx2("pamax","150 × 80")),el("div",{},lab("PAM (mín–máx)"),pamOut),
@@ -5182,7 +5255,7 @@ function evoDiaEditor(id){
 }
 function evoDiaResumo(id,d){
   const bar=$("#evoDiaBar"); if(!bar) return; const f=evoDiaFaltam(id,d); bar.innerHTML="";
-  bar.append(f.length?el("span",{style:"color:var(--danger);font-weight:600;flex:1;font-size:14px"},"Para imprimir, falta: "+f.join(" · ")):el("span",{style:"color:#2e7d32;font-weight:600;flex:1"},"✓ Pronta para imprimir"),
+  bar.append(f.length?evoPendChips(f,"evolução"):el("span",{style:"color:#2e7d32;font-weight:600;flex:1"},"✓ Pronta para imprimir"),
     el("button",{class:"btn",type:"button",onclick:()=>evoDiaImprimir(id,EVO.evoKey,true)},"Pré-visualizar"),
     (()=>{ const bt=el("button",{class:"btn primary",type:"button",onclick:()=>evoDiaImprimir(id,EVO.evoKey,false)},"Imprimir evolução"); if(f.length) bt.disabled=true; return bt; })());
 }
@@ -5223,9 +5296,10 @@ function evoDiaHtml(id,n,nDatas){
   const cel=(span,l,v,cls)=>`<div class="${cls||""}" style="grid-column:span ${span}"><label>${l}</label><div class="v">${e(v||"—")}</div></div>`;
   const diur=d.turno==="D", dh=d.dataHora||"";
   const tags=[];
-  if(c.alergias) tags.push(/^nega/i.test(c.alergias)?'<span class="tag o">ALERGIAS: NEGA</span>':`<span class="tag">ALERGIA: ${e(c.alergias.toUpperCase())}</span>`);
+  const cs=evoCadSnap(d,c);
+  if(cs.alergias) tags.push(/^nega/i.test(cs.alergias)?'<span class="tag o">ALERGIAS: NEGA</span>':`<span class="tag">ALERGIA: ${e(cs.alergias.toUpperCase())}</span>`);
   if(precTxt(b)) tags.push(`<span class="tag">PRECAUÇÃO ${e(precTxt(b))}</span>`);
-  if(c.reanim==="pleno") tags.push('<span class="tag o">SUPORTE PLENO</span>'); if(c.reanim==="lim") tags.push(`<span class="tag o">LIMITAÇÃO DE SUPORTE${c.reanimTxt?": "+e(c.reanimTxt.toUpperCase()):""}</span>`);
+  if(cs.reanim==="pleno") tags.push('<span class="tag o">SUPORTE PLENO</span>'); if(cs.reanim==="lim") tags.push(`<span class="tag o">LIMITAÇÃO DE SUPORTE${cs.reanimTxt?": "+e(cs.reanimTxt.toUpperCase()):""}</span>`);
   /* marcadores em relação à evolução anterior */
   const chg=(cur,old,fmt)=>{ if(cur==null||old==null||cur===old) return ""; return `<span class="chg">${cur>old?"▲":"▼"} ${e(fmt?fmt(old):old)}</span>`; };
   const NOVO='<span class="chg n">NOVO</span>';
@@ -5356,7 +5430,17 @@ function evoFolhaEspaca(f,lim,z){
 }
 function evoDiaMontar(id,n){ const r=evoFolha(id,n); $("#printArea").innerHTML=`<style>${EVO_DIA_CSS}</style>`+r.html; return r.ok; }
 /* guarda a versão exata que foi para o papel (sem o logo, para não pesar) */
+/* alergias e status de reanimação de cada folha: enquanto não é impressa, segue o cadastro;
+   na primeira impressão guarda os valores do dia (reimprimir depois sai igual). */
+function evoCadSnapDe(c){ return {alergias:c.alergias||"",reanim:c.reanim||"",reanimTxt:c.reanimTxt||""}; }
+function evoCadSnap(d,c){ return d&&d.impresso&&d.cadSnap?d.cadSnap:c; }
+function evoSnapNaImpressao(d,id){
+  if(d.cadSnap&&d.impresso) return;
+  if(id==null){ const b=SV.med.beds.find(x=>x.nome&&(x.id===d.leito||pacOf(x.id).pid===d.pid)); if(!b) return; id=b.id; }
+  d.cadSnap=evoCadSnapDe(evoC(id));
+}
 function evoGuardaVersao(d,html){
+  evoSnapNaImpressao(d);
   d.impresso=Date.now(); d.impressoPor=EVO.eu;
   d.versoes=(d.versoes||[]).concat([{ts:d.impresso,by:EVO.eu,html:String(html).replace(/<img src="data:[^"]*"/g,'<img data-logo=""')}]).slice(-3);
   evoDocSave(d);
@@ -5499,8 +5583,9 @@ function evoAdmHtml(id){
   const idade=evoIdade(c.nasc), imc=evoIMC(c);
   const cel=(span,l,v,cls)=>`<div class="${cls||""}" style="grid-column:span ${span}"><label>${l}</label><div class="v">${e(v||"—")}</div></div>`;
   const tags=[];
-  if(c.alergias) tags.push(`<span class="tag${/^nega/i.test(c.alergias)?" o":""}">${/^nega/i.test(c.alergias)?"ALERGIAS: NEGA":"ALERGIA: "+e(c.alergias.toUpperCase())}</span>`);
-  if(c.reanim==="pleno") tags.push('<span class="tag o">SUPORTE PLENO</span>'); if(c.reanim==="lim") tags.push(`<span class="tag o">LIMITAÇÃO DE SUPORTE${c.reanimTxt?": "+e(c.reanimTxt.toUpperCase()):""}</span>`);
+  const cs=evoCadSnap(d,c);
+  if(cs.alergias) tags.push(`<span class="tag${/^nega/i.test(cs.alergias)?" o":""}">${/^nega/i.test(cs.alergias)?"ALERGIAS: NEGA":"ALERGIA: "+e(cs.alergias.toUpperCase())}</span>`);
+  if(cs.reanim==="pleno") tags.push('<span class="tag o">SUPORTE PLENO</span>'); if(cs.reanim==="lim") tags.push(`<span class="tag o">LIMITAÇÃO DE SUPORTE${cs.reanimTxt?": "+e(cs.reanimTxt.toUpperCase()):""}</span>`);
   const proced=d.procedencia==="Outro"?d.procedOutro:d.procedencia;
   const ex=evoExTexto(d.ex,fem).map(([k,v,s])=>`<div class="lr"><div class="k">${e(k)}</div><div class="v">${e(v)}${s?` <span class="sup"><b>${e(s)}</b></span>`:""}</div></div>`).join("");
   const sv=d.sv, svt=[sv.pa&&`PA ${e(sv.pa)} mmHg`,sv.fc&&`FC ${e(sv.fc)} bpm`,sv.fr&&`FR ${e(sv.fr)} ipm`,sv.sat&&`SatO2 ${e(sv.sat)}%`,sv.tax&&`Tax ${e(sv.tax)} °C`,sv.hgt&&`HGT ${e(sv.hgt)} mg/dL`].filter(Boolean).join(" · ");
@@ -5577,7 +5662,7 @@ function evoAdmImprimir(id,previa){
     return;
   }
   $("#printArea").innerHTML=h; window.print();
-  const d=evoAdmDoc(id,false); if(d){ d.impresso=Date.now(); d.versoes=(d.versoes||[]).concat([{ts:Date.now(),by:EVO.eu,html:null}]).slice(-20); evoDocSave(d); }
+  const d=evoAdmDoc(id,false); if(d){ evoSnapNaImpressao(d,id); d.impresso=Date.now(); d.versoes=(d.versoes||[]).concat([{ts:Date.now(),by:EVO.eu,html:null}]).slice(-20); evoDocSave(d); }
 }
 
 /* ============ Configurações da Evolução médica (Fase 2) ============
@@ -6016,9 +6101,10 @@ function evoIqHtml(id,d){
   const e=x=>esc(String(x==null?"":x).replace(EVO_ESPACOS," ")), idade=evoIdade(c.nasc), imc=evoIMC(c), dias=evoDiasUTI(p.admissao);
   const cel=(span,l,v,cls)=>`<div class="${cls||""}" style="grid-column:span ${span}"><label>${l}</label><div class="v">${e(v||"—")}</div></div>`;
   const tags=[];
-  if(c.alergias) tags.push(/^nega/i.test(c.alergias)?'<span class="tag o">ALERGIAS: NEGA</span>':`<span class="tag">ALERGIA: ${e(c.alergias.toUpperCase())}</span>`);
+  const cs=evoCadSnap(d,c);
+  if(cs.alergias) tags.push(/^nega/i.test(cs.alergias)?'<span class="tag o">ALERGIAS: NEGA</span>':`<span class="tag">ALERGIA: ${e(cs.alergias.toUpperCase())}</span>`);
   if(b&&precTxt(b)) tags.push(`<span class="tag">PRECAUÇÃO ${e(precTxt(b))}</span>`);
-  if(c.reanim==="pleno") tags.push('<span class="tag o">SUPORTE PLENO</span>'); if(c.reanim==="lim") tags.push(`<span class="tag o">LIMITAÇÃO DE SUPORTE${c.reanimTxt?": "+e(c.reanimTxt.toUpperCase()):""}</span>`);
+  if(cs.reanim==="pleno") tags.push('<span class="tag o">SUPORTE PLENO</span>'); if(cs.reanim==="lim") tags.push(`<span class="tag o">LIMITAÇÃO DE SUPORTE${cs.reanimTxt?": "+e(cs.reanimTxt.toUpperCase()):""}</span>`);
   const probs=[evoPOTxt(adm&&adm.cir),...(p.problemas||[])].filter(Boolean);
   const autor=evoPerfil(d.autor)||EVO.perfil, logo=SHARED.logo?`<img src="${SHARED.logo}" alt="">`:"";
   const sem=d.data?new Date(d.data+"T12:00").toLocaleDateString("pt-BR",{weekday:"long"}).replace(/^./,m=>m.toUpperCase()):"";
@@ -6910,14 +6996,14 @@ function evoEditor(){
   if(EVO.arq&&!EVO.sel) return evoArqEditor();
   if(!EVO.sel){
     /* tela inicial: quadro "Admitir paciente" com os leitos vagos (ideia C aprovada) */
-    const vagos=SV.med.beds.filter(b=>!b.nome&&(!b.extra||b.ativo!==false));
+    const vagos=evoVagos();
     const mais='<svg viewBox="0 0 24 24" style="width:32px;height:32px;stroke:var(--accent);fill:none;stroke-width:2.2;stroke-linecap:round"><path d="M12 5v14M5 12h14"/></svg>';
     return el("div",{},
       el("div",{class:"ev-admitir"},
         el("div",{class:"ic",html:mais}),
         el("h2",{},"Admitir paciente"),
         el("p",{class:"hint",style:"font-size:14.5px;margin:0"},vagos.length?"Clique no leito vago onde o paciente vai ficar. Depois preencha o cadastro e o adendo de internação.":"Nenhum leito vago no momento."),
-        vagos.length?el("div",{class:"ev-adm-grid"},vagos.map(b=>el("button",{type:"button",onclick:()=>evoAdmitir(b.id)},bedLabel(b),el("small",{},"vago")))):null),
+        vagos.length?el("div",{class:"ev-adm-grid"},vagos.map(b=>el("button",{type:"button",onclick:()=>evoAdmitir(b.id)},bedLabel(b),el("small",{},b.extra?"extra · vago":"vago")))):null),
       SV.med.beds.some(b=>b.nome)?evoPainel():null,
       evoSaidasPainel(),
       el("div",{class:"ev-empty",style:"padding-top:6px"},
@@ -6965,6 +7051,9 @@ function evoEditor(){
   }
   if(tab==="dia"){ wrap.append(evoDiaEditor(id)); return wrap; }
   { const ra=evoReadmAviso(id); if(ra) wrap.append(ra); }
+  if(EVO.volta&&EVO.volta.sel===id){ const v=EVO.volta;
+    wrap.append(el("div",{class:"card ev-volta"},el("span",{style:"flex:1"},"Você veio da barra de pendências "+(v.nome==="adendo"?"do adendo":"da evolução")+"."),
+      el("button",{class:"btn primary",type:"button",onclick:()=>{ EVO.volta=null; EVO.tab=v.tab; renderEvo(); setTimeout(()=>{ const s=$("#evoApp section.editor"); if(s) s.scrollTop=v.top; },60); }},"↩ Voltar "+(v.nome==="adendo"?"ao adendo":"à evolução")))); }
   /* identificação (nome, admissão e convênio vêm do passômetro) */
   const idadeOut=el("div",{class:"ev-calc"}), idadeAviso=el("div",{class:"ev-warn"});
   const atualizaIdade=()=>{
