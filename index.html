@@ -2300,7 +2300,7 @@ function netError(e,part){
 }
 
 let cotaAte=0, againForce=false; const ultEnvio={};
-const EVO_INTERVALO=15000;   /* folhas da Evolução: no máximo 1 gravação a cada 15s por folha (cada gravação é lida por todos os computadores abertos) */
+const EVO_INTERVALO=60000;   /* folhas da Evolução: no máximo 1 gravação por minuto por folha (cada gravação é lida por todos os computadores abertos) */
 async function pushDirty(force){
   if(!NET||Date.now()<cotaAte) return;
   if(pushing){ again=true; if(force) againForce=true; return; }
