@@ -2295,11 +2295,13 @@ function isNetErr(e){ return !navigator.onLine||!e||!e.code||/^(unavailable|dead
 function netError(e,part){
   if(e&&e.code==="permission-denied"){ blockAccess(); return; }
   console.error("Falha de sincronização"+(part?" em "+part:""),e);
+  if(e&&e.code==="resource-exhausted"){ cotaAte=Date.now()+5*60000; setNet(false,false,"limite diário do Firebase atingido"); return; }   /* não insiste a cada 3s */
   if(isNetErr(e)) setNet(false); else setNet(false,false,(e.code||"erro")+(part?" em "+part:""));
 }
 
+let cotaAte=0;
 async function pushDirty(){
-  if(!NET) return;
+  if(!NET||Date.now()<cotaAte) return;
   if(pushing){ again=true; return; }
   pushing=true; let sent=false, falha=null;
   try{
@@ -2314,7 +2316,7 @@ async function pushDirty(){
       try{ r=await FB.put(n,versions[n]||0,getPart(n),netUser,CID); }
       catch(e){ if(/^cul/.test(n)&&e&&e.code==="permission-denied"){ culNegado(); synced[n]=js; continue; }
         if(n.startsWith("par:")&&e&&e.code==="permission-denied"){ parNegado(); synced[n]=js; continue; }
-        if(isNetErr(e)||(e&&e.code==="permission-denied")){ netError(e,n); return; }
+        if(isNetErr(e)||(e&&/^(permission-denied|resource-exhausted)$/.test(e.code))){ netError(e,n); return; }
         falha=falha||{e,n}; continue; }   /* erro só deste registro (ex.: grande demais): não trava os demais */
       if(r.conflict){
         const cur=r.current;
@@ -2333,7 +2335,7 @@ async function pushDirty(){
     }
     for(const n of Object.keys(synced)){           /* histórico apagado localmente */
       if((isImmutable(n)||n.startsWith("cul:")||n.startsWith("par:"))&&!names.includes(n)){
-        try{ await FB.remove(n); delete synced[n]; delete versions[n]; sent=true; }catch(e){ if(/^(cul|par):/.test(n)&&e&&e.code==="permission-denied"){ if(n.startsWith("cul:")) culNegado(); else parNegado(); delete synced[n]; continue; } if(isNetErr(e)||(e&&e.code==="permission-denied")){ netError(e,n); return; } falha=falha||{e,n}; }
+        try{ await FB.remove(n); delete synced[n]; delete versions[n]; sent=true; }catch(e){ if(/^(cul|par):/.test(n)&&e&&e.code==="permission-denied"){ if(n.startsWith("cul:")) culNegado(); else parNegado(); delete synced[n]; continue; } if(isNetErr(e)||(e&&/^(permission-denied|resource-exhausted)$/.test(e.code))){ netError(e,n); return; } falha=falha||{e,n}; }
       }
     }
     if(falha) netError(falha.e,falha.n); else setNet(true,sent);
@@ -2486,7 +2488,7 @@ async function netStart(){
   });
   ensurePlanos(); regPromoteAll(); limparHistoricos(); setInterval(limparHistoricos,60000); autoPlantao(); setInterval(autoPlantao,30000);
   setInterval(()=>{ tickN++; if(netDown||tickN%2===0) pushDirty(); flushPending(); if(needRender&&!editingNow()){ needRender=false; rerenderActive(); } },3000);
-  window.addEventListener("online",()=>{ setNet(true); pushDirty(); });
+  window.addEventListener("online",()=>{ cotaAte=0; setNet(true); pushDirty(); });
   window.addEventListener("offline",()=>setNet(false));
   window.addEventListener("beforeunload",e=>{
     if(partNames().some(n=>!(pending[n]&&pending[n].conflict)&&synced[n]!==serialize(n))){ e.preventDefault(); e.returnValue=""; }
@@ -6258,6 +6260,7 @@ const EVO_ARQ_ESPERA=6*3600000, EVO_ARQ_DIAS=365, EVO_ARQ_PEDACO=700000;
 function evoIdKey(pid){ return "evo:"+pid+":id"; }
 function evoRelKey(pid){ return "evo:"+pid+":rel"; }
 function evoPidsLocais(){ const s=new Set(); Object.keys(EVO_DOCS).forEach(k=>{ const m=k.match(/^evo:([^:_][^:]*):/); if(m) s.add(m[1]); }); return [...s]; }   /* "evo:_bol:..." (boletim) não é paciente */
+function jsonEstavel(v){ return JSON.stringify(v,(k,x)=>x&&typeof x==="object"&&!Array.isArray(x)?Object.keys(x).sort().reduce((o,c)=>(o[c]=x[c],o),{}):x); }
 function evoSnap(b){
   const p=pacOf(b.id);
   return {pac:JSON.parse(JSON.stringify(p)),bed:JSON.parse(JSON.stringify({atb:b.atb||[],culturas:b.culturas||[],imagem:b.imagem||[],labesp:b.labesp||{on:false,exames:[]}}))};
@@ -6272,7 +6275,7 @@ function evoIdSync(){
     const k=evoIdKey(p.pid), s=evoSnap(b), cur=EVO_DOCS[k];
     if(!cur){ EVO_DOCS[k]={tipo:"id",pid:p.pid,leito:b.id,pac:s.pac,bed:s.bed,criado:Date.now(),upd:Date.now()}; save(); return; }
     let mud=false;
-    if(JSON.stringify({pac:cur.pac,bed:cur.bed})!==JSON.stringify(s)){ cur.pac=s.pac; cur.bed=s.bed; mud=true; }
+    if(jsonEstavel({pac:cur.pac,bed:cur.bed})!==jsonEstavel(s)){   /* ignora a ordem das chaves: senão dois computadores regravam sem parar */ cur.pac=s.pac; cur.bed=s.bed; mud=true; }
     if(cur.leito!==b.id){ cur.leito=b.id; mud=true; }
     if(cur.alta){ delete cur.alta; mud=true; }                     /* estava marcado como saída, mas o paciente está no leito */
     if(mud) evoDocSave(cur);
