@@ -6125,7 +6125,7 @@ ${cel(3,"Convênio",p.plano)}${cel(2,"Admissão UTI",p.admissao?fmtDate(p.admiss
 <div class="alerts">${tags.join("")}</div>
 <div class="box"><div class="bt">Lista de problemas</div>${probs.length?e(probs.join(" · ")):"—"}</div>
 <div class="box" style="min-height:120mm"><div class="bt">Intercorrência</div><div style="white-space:pre-wrap;font-size:10pt;line-height:1.45">${e(d.texto)}</div></div>
-<div class="sig um"><div class="ln">${e(evoAssinTurno(autor,evoIqDiurno(d)))}</div></div>
+${evoSigs("")}
 <div class="foot"><span>${e(d.titulo||EVO_IQ_TIT)} · ${fmtDate(d.data,true)}${d.hora?" "+e(d.hora):""} · ${b?e(bedLabel(b)):""}</span><span></span></div></div>`;
 }
 function evoIqImprimir(id,n,previa){
