@@ -2275,10 +2275,10 @@ function unionList(a,b){
 function editingNow(){
   const a=document.activeElement; return !!(a&&($("#editor").contains(a)||$("#pocusApp").contains(a)||$("#examApp").contains(a)||$("#culApp").contains(a)||$("#parApp").contains(a)||$("#evoApp").contains(a))&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
 }
-function setNet(up,stamp){ setNet0(up,stamp); mirrorMsg(); }
-function setNet0(up,stamp){
+function setNet(up,stamp,erro){ setNet0(up,stamp,erro); mirrorMsg(); }
+function setNet0(up,stamp,erro){
   netDown=!up; const m=$("#savedMsg");
-  if(!up){ m.textContent="⚠ Sem conexão – alterações serão enviadas ao reconectar"; m.classList.add("bad"); return; }
+  if(!up){ m.textContent=erro?"⚠ Erro ao salvar ("+erro+") – tentando novamente":"⚠ Sem conexão – alterações serão enviadas ao reconectar"; m.classList.add("bad"); return; }
   m.classList.remove("bad");
   if(stamp||!m.textContent||m.textContent.startsWith("⚠")) m.textContent="Sincronizado às "+new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
 }
@@ -2290,12 +2290,18 @@ function blockAccess(){
     el("button",{class:"btn",onclick:()=>FB.signOut().then(()=>location.reload())},"Sair"));
   document.body.append(b);
 }
-function netError(e){ if(e&&e.code==="permission-denied") blockAccess(); else setNet(false); }
+/* só "unavailable"/"deadline-exceeded" (ou o navegador offline) são falta de internet; o resto é erro do próprio registro */
+function isNetErr(e){ return !navigator.onLine||!e||!e.code||/^(unavailable|deadline-exceeded|cancelled)$/.test(e.code)||e.code==="auth/network-request-failed"; }
+function netError(e,part){
+  if(e&&e.code==="permission-denied"){ blockAccess(); return; }
+  console.error("Falha de sincronização"+(part?" em "+part:""),e);
+  if(isNetErr(e)) setNet(false); else setNet(false,false,(e.code||"erro")+(part?" em "+part:""));
+}
 
 async function pushDirty(){
   if(!NET) return;
   if(pushing){ again=true; return; }
-  pushing=true; let sent=false;
+  pushing=true; let sent=false, falha=null;
   try{
     const names=partNames();
     for(const n of names){
@@ -2307,7 +2313,9 @@ async function pushDirty(){
       let r;
       try{ r=await FB.put(n,versions[n]||0,getPart(n),netUser,CID); }
       catch(e){ if(/^cul/.test(n)&&e&&e.code==="permission-denied"){ culNegado(); synced[n]=js; continue; }
-        if(n.startsWith("par:")&&e&&e.code==="permission-denied"){ parNegado(); synced[n]=js; continue; } netError(e); return; }
+        if(n.startsWith("par:")&&e&&e.code==="permission-denied"){ parNegado(); synced[n]=js; continue; }
+        if(isNetErr(e)||(e&&e.code==="permission-denied")){ netError(e,n); return; }
+        falha=falha||{e,n}; continue; }   /* erro só deste registro (ex.: grande demais): não trava os demais */
       if(r.conflict){
         const cur=r.current;
         if(cur&&JSON.stringify(cur.value)===JSON.stringify(getPart(n))){ versions[n]=cur.v; synced[n]=js; continue; }
@@ -2325,10 +2333,10 @@ async function pushDirty(){
     }
     for(const n of Object.keys(synced)){           /* histórico apagado localmente */
       if((isImmutable(n)||n.startsWith("cul:")||n.startsWith("par:"))&&!names.includes(n)){
-        try{ await FB.remove(n); delete synced[n]; delete versions[n]; sent=true; }catch(e){ if(/^(cul|par):/.test(n)&&e&&e.code==="permission-denied"){ if(n.startsWith("cul:")) culNegado(); else parNegado(); delete synced[n]; continue; } netError(e); return; }
+        try{ await FB.remove(n); delete synced[n]; delete versions[n]; sent=true; }catch(e){ if(/^(cul|par):/.test(n)&&e&&e.code==="permission-denied"){ if(n.startsWith("cul:")) culNegado(); else parNegado(); delete synced[n]; continue; } if(isNetErr(e)||(e&&e.code==="permission-denied")){ netError(e,n); return; } falha=falha||{e,n}; }
       }
     }
-    setNet(true,sent);
+    if(falha) netError(falha.e,falha.n); else setNet(true,sent);
   } finally { pushing=false; if(again){ again=false; pushDirty(); } }
 }
 function applyRemote(ev){
