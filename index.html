@@ -4642,12 +4642,15 @@ function evoCidCarregar(){ if(EVO_CID) return Promise.resolve(EVO_CID); if(!EVO_
 function evoCidBusca(q){ const t=norm(q).split(" ").filter(Boolean); if(!t.length||!EVO_CID) return []; const out=[]; for(const it of EVO_CID){ if(t.every(w=>it[2].includes(w))){ out.push(it); if(out.length>=30) break; } } return out; }
 
 /* ---- admitir paciente num leito vago ---- */
+/* leitos vagos: os fixos e também os extras (mesmo os que ainda não estão "em uso": admitir já os ativa) */
+function evoVagos(){ const L=SV.med.beds.filter(x=>!x.nome); return L.filter(x=>!x.extra).concat(L.filter(x=>x.extra)); }
+function evoVagoRot(x){ return bedLabel(x)+(x.extra&&x.local?" · "+x.local:"")+(x.extra&&!x.ativo?" (leito extra)":""); }
 function evoAdmitir(id0){
   /* sem leito (botão do topo da lista): a janela pede para escolher o leito vago */
-  const vagos=SV.med.beds.filter(x=>!x.nome&&(!x.extra||x.ativo!==false));
+  const vagos=evoVagos();
   if(!id0&&!vagos.length){ alert("Nenhum leito vago no momento."); return; }
   if(id0&&!SV.med.beds.some(x=>x.id===id0)) return;
-  const sLeito=id0?null:el("select",{class:"txt"},el("option",{value:""},"Escolha o leito vago…"),vagos.map(x=>el("option",{value:x.id},bedLabel(x))));
+  const sLeito=id0?null:el("select",{class:"txt"},el("option",{value:""},"Escolha o leito vago…"),vagos.map(x=>el("option",{value:x.id},evoVagoRot(x))));
   const nome=el("input",{class:"txt",placeholder:"Nome completo",autocomplete:"off"});
   const agora=evoAgoraLocal(); let dIso=agora.slice(0,10), dHora=agora.slice(11,16);
   const dt=el("div",{style:"display:grid;grid-template-columns:minmax(0,1fr) 80px;gap:6px"},evoDataInput(dIso,v=>{ dIso=v; },{max:todayISO()}),evoHoraInput(dHora,h=>{ dHora=h; }));
@@ -6991,14 +6994,14 @@ function evoEditor(){
   if(EVO.arq&&!EVO.sel) return evoArqEditor();
   if(!EVO.sel){
     /* tela inicial: quadro "Admitir paciente" com os leitos vagos (ideia C aprovada) */
-    const vagos=SV.med.beds.filter(b=>!b.nome&&(!b.extra||b.ativo!==false));
+    const vagos=evoVagos();
     const mais='<svg viewBox="0 0 24 24" style="width:32px;height:32px;stroke:var(--accent);fill:none;stroke-width:2.2;stroke-linecap:round"><path d="M12 5v14M5 12h14"/></svg>';
     return el("div",{},
       el("div",{class:"ev-admitir"},
         el("div",{class:"ic",html:mais}),
         el("h2",{},"Admitir paciente"),
         el("p",{class:"hint",style:"font-size:14.5px;margin:0"},vagos.length?"Clique no leito vago onde o paciente vai ficar. Depois preencha o cadastro e o adendo de internação.":"Nenhum leito vago no momento."),
-        vagos.length?el("div",{class:"ev-adm-grid"},vagos.map(b=>el("button",{type:"button",onclick:()=>evoAdmitir(b.id)},bedLabel(b),el("small",{},"vago")))):null),
+        vagos.length?el("div",{class:"ev-adm-grid"},vagos.map(b=>el("button",{type:"button",onclick:()=>evoAdmitir(b.id)},bedLabel(b),el("small",{},b.extra?"extra · vago":"vago")))):null),
       SV.med.beds.some(b=>b.nome)?evoPainel():null,
       evoSaidasPainel(),
       el("div",{class:"ev-empty",style:"padding-top:6px"},
