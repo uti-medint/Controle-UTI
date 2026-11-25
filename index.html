@@ -4804,6 +4804,7 @@ function evoAdmEditor(id){
     diur?el("div",{},lab("Diarista (plantão diurno)",true),sd,d.diarista&&d.diarista.startsWith("Outro")?el("div",{style:"margin-top:8px"},lab("Nome e CRM do diarista"),(()=>{ const i=el("input",{class:"txt",value:d.diarista.replace(/^Outro:\s*/,""),placeholder:"Ex.: Dr Fulano CRM-GO 0000"}); i.addEventListener("input",()=>{ d.diarista="Outro: "+i.value; onCh(); }); return i; })()):null)
         :el("p",{class:"hint",style:"margin:0 0 6px"},"Adendo feito no período noturno: sem diarista; assina só o plantonista."),
     evoAssinCtl(d,diur,onRe)));
+  { const x=evoFolhaApagarBtn(p.pid,evoAdmPart(id),"adm"); if(x) wrap.append(x); }
   const bar=el("div",{class:"card",id:"evoAdmBar",style:"position:sticky;bottom:0;display:flex;gap:12px;align-items:center;box-shadow:0 -4px 16px rgba(0,0,0,.06)"});
   wrap.append(bar); setTimeout(()=>evoAdmResumo(id,d),0);
   return wrap;
@@ -5271,6 +5272,7 @@ function evoDiaEditor(id){
       :el("p",{class:"hint",style:"margin:0 0 6px"},"Evolução noturna: sem diarista; assina só o plantonista."),
     evoAssinCtl(d,d.turno==="D",onRe)));
   if(trava) wrap.append(corpo);
+  { const x=evoFolhaApagarBtn(p.pid,n,"dia"); if(x) wrap.append(x); }
   wrap.append(el("div",{class:"card",id:"evoDiaBar",style:"position:sticky;bottom:0;display:flex;gap:12px;align-items:center;box-shadow:0 -4px 16px rgba(0,0,0,.06)"}));
   setTimeout(()=>evoDiaResumo(id,d),0);
   return wrap;
@@ -6389,6 +6391,27 @@ async function evoDescartar(x){
     if(EVO.arq===x.pid) EVO.arq=null;
     toast("Registro descartado"); renderEvo();
   }catch(e){ toast("Não foi possível descartar agora."); }
+}
+/* apaga de vez um adendo ou uma evolução (também de internação encerrada, já no arquivo ou não) */
+function evoFolhaApagarBtn(pid,k,tipo){
+  const d=EVO_DOCS[k]; if(!pid||!k||!d) return null;
+  const nome=tipo==="adm"?"o adendo de internação":"a evolução "+evoDiaRotulo(k);
+  return el("div",{style:"display:flex;justify-content:flex-end;margin:4px 0 10px"},
+    el("button",{class:"btn small danger",type:"button",onclick:()=>{
+      if(!confirm(`Apagar ${nome}?\n\nA folha some do sistema e da linha do tempo e não pode ser recuperada.`+(d.impresso?"\n\nEla já foi impressa: a folha em papel continua existindo.":""))) return;
+      evoFolhaApagar(pid,k,tipo); }},tipo==="adm"?"Apagar este adendo":"Apagar esta evolução"));
+}
+async function evoFolhaApagar(pid,k,tipo){
+  await null;   /* sai do contexto da internação encerrada (evoArqCtx) antes de mexer nas folhas */
+  const arq=!EVO_DOCS[evoIdKey(pid)]&&EVO.arqCache[pid]&&EVO.arqCache[pid].arquivada?EVO.arqCache[pid]:null;
+  try{
+    if(arq){ if(!evoArqOk()) throw new Error("arquivo indisponível"); clearTimeout(evoArqTimer); delete arq.docs[k]; arq.n=await evoArqGrava(arq,arq.n); }
+    else{ await FB.remove(k); delete EVO_DOCS[k]; delete synced[k]; delete versions[k]; delete pending[k]; }
+  }catch(e){ console.warn("Apagar folha:",e); toast("Não foi possível apagar agora. Verifique a internet e tente de novo."); return; }
+  if(EVO.evoKey===k) EVO.evoKey="";
+  if(EVO.destrava===k) EVO.destrava="";
+  if(EVO.arqEd&&EVO.arqEd.pid===pid){ EVO.arqEd=null; EVO.arqTab="tl"; }
+  toast(tipo==="adm"?"Adendo apagado":"Evolução apagada"); evoTopo(); renderEvo();
 }
 function evoMotivoTxt(a){ return a&&a.motivo?(a.motivo==="Outro"&&a.outro?a.outro:a.motivo):""; }
 /* desenha folhas de uma internação encerrada: põe o paciente num leito "de mentira" só durante a montagem (sem gravar nada) */
