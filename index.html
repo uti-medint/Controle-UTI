@@ -5292,12 +5292,10 @@ const EVO_DIA_CSS=`@page evdia{size:A4 portrait;margin:7mm 8mm}
 .evd .chg{font-size:.82em;font-weight:900;border:.6pt solid #000;padding:0 .5mm;margin-left:.5mm;white-space:nowrap}.evd .chg.n{background:#000;color:#fff}
 .evd .imp{border:1.2pt solid #000;padding:.6mm 1.4mm;margin-bottom:1.3mm}.evd .imp .s2{font-weight:900;border:1pt solid #000;padding:0 1.2mm;margin-right:1mm}
 .evd .sig{display:grid;grid-template-columns:1fr 1fr;gap:6mm;margin-top:3mm}.evd .sig.um{grid-template-columns:1fr}.evd .sig.tres{grid-template-columns:1fr 1fr 1fr;gap:4mm}.evd .sig.um .ln{width:95mm;margin-left:auto}
-.evd .ln{border-top:.7pt solid #000;padding-top:.6mm;text-align:center;font-size:7.6pt}.evd .foot{margin-top:1mm;font-size:6.4pt;color:#555;display:flex;justify-content:space-between}`;
-/* linhas de assinatura: diurno = diarista + plantonista ou residente; noturno = só o plantonista */
-function evoSigs(d,autorAssin,comDiarista,diarTxt,e){
-  const L=[]; if(comDiarista) L.push(`<div class="ln">${diarTxt}</div>`);
-  L.push(`<div class="ln">${e(autorAssin)}</div>`);
-  return `<div class="sig${L.length===1?" um":L.length===3?" tres":""}">${L.join("")}</div>`;
+.evd .dr{align-self:end;font-size:7.8pt}.evd .ln{border-top:.7pt solid #000;padding-top:.6mm;text-align:center;font-size:7.6pt}.evd .foot{margin-top:1mm;font-size:6.4pt;color:#555;display:flex;justify-content:space-between}`;
+/* assinatura: uma linha só, sem nome, para o médico plantonista. O diarista (só no diurno) sai como texto, sem linha. */
+function evoSigs(diarTxt){
+  return `<div class="sig${diarTxt?"":" um"}">${diarTxt?`<div class="dr">${diarTxt}</div>`:""}<div class="ln">Assinatura e carimbo do médico plantonista</div></div>`;
 }
 /* nome do diarista sem o cargo e o CRM (a assinatura completa fica na linha de assinatura) */
 function evoDiarCurto(s){ return String(s||"").replace(/^M[ée]dic[oa]\s+Diarista\s+/i,"").split(/\s+CRM/i)[0].trim(); }
@@ -5382,7 +5380,7 @@ ${String(d.interc||"").trim()?`<div class="box"><div class="bt">Intercorrências
 ${labT||imgs?`<div class="r2"><div class="box"><div class="bt">Exames laboratoriais especiais</div>${labT||"—"}</div><div class="box"><div class="bt">Exames de imagem <span class="mut">(2 mais recentes)</span></div><ul>${imgs||"<li>—</li>"}</ul></div></div>`:""}
 ${d.imp&&(d.imp.txt||"").trim()?`<div class="imp"><div class="bt">Impressão / avaliação</div>${d.imp.st?`<span class="s2">${e(d.imp.st)}</span>`:""}${e(d.imp.txt)}</div>`:""}
 <div class="box"><div class="bt">Conduta</div>${fx?`<div><b>${fx}</b></div>`:""}${protos?`<ul>${protos}</ul>`:""}${String(k.livre||"").trim()?`<div style="white-space:pre-wrap">${e(k.livre)}</div>`:""}</div>
-${evoSigs(d,evoAssinTurno(autor,diur),diur,`${/^M[ée]dic[oa] Diarista/i.test(diar||"")?"":"Diarista: "}${e(diar||"")}`,e)}
+${evoSigs("")}
 <div class="foot"><span>Evolução ${diur?"diurna":"noturna"} · ${fmtDate(dh.slice(0,10),true)} ${dh.slice(11,16)} · ${e(bedLabel(b))}<span class="evfs"></span></span><span>Página 1/1</span></div></div>`;
 }
 /* ajusta UMA folha para caber numa página (5→3 datas no laboratório; fonte até 7,5 pt). Devolve o HTML já ajustado. */
@@ -5588,7 +5586,7 @@ const EVO_PRINT_CSS=`@page evport{size:A4 portrait;margin:7mm 8mm}
 .evp .hpp{display:grid;grid-template-columns:repeat(5,1fr);gap:.6mm 2mm}.evp .ck{display:inline-block;width:2.5mm;height:2.5mm;border:.6pt solid #000;vertical-align:-.3mm;margin-right:.6mm}.evp .ck.x{background:#000}
 .evp .sig{display:grid;grid-template-columns:1fr 1fr;gap:6mm;margin-top:8mm;break-inside:avoid}.evp .sig.um{grid-template-columns:1fr}.evp .sig.tres{grid-template-columns:1fr 1fr 1fr;gap:4mm}.evp .sig.um .ln{width:95mm;margin-left:auto}
 .evp .pb{break-before:page;height:0}
-.evp .ln{border-top:.7pt solid #000;padding-top:.6mm;text-align:center;font-size:7.8pt}.evp .foot{margin-top:2mm;font-size:6.4pt;color:#555}`;
+.evp .dr{align-self:end;font-size:7.8pt}.evp .ln{border-top:.7pt solid #000;padding-top:.6mm;text-align:center;font-size:7.8pt}.evp .foot{margin-top:2mm;font-size:6.4pt;color:#555}`;
 function evoAdmHtml(id){
   const b=SV.med.beds.find(x=>x.id===id), p=pacOf(id), c=evoC(id), d=evoAdmDoc(id,false); if(!d) return "";
   const fem=c.sexo==="F", e=x=>esc(String(x==null?"":x).replace(EVO_ESPACOS," ")), dh=d.dataHora||"", dtx=dh?fmtDate(dh.slice(0,10),true)+" às "+dh.slice(11,16):"";
@@ -5637,7 +5635,7 @@ ${imgs||lab?`<h3>Exames de imagem e laboratoriais</h3><p>${[imgs,lab].filter(Boo
 <div class="two"><div><h3>Diagnósticos / lista de problemas</h3><p>${probs}</p></div><div><h3>CID-10 principal</h3><p><b>${e(d.cid.cod)}</b> — ${e(d.cid.desc)}</p></div></div>
 <h3>Conduta</h3><div>${conduta}</div>${protos}
 ${fx?`<p><b>${fx}</b></p>`:""}${k.livre.trim()?`<p style="white-space:pre-wrap">${e(k.livre)}</p>`:""}
-${evoSigs(d,evoAssinTurno(autor,diur),diur,e(diar||"Diarista"),e)}
+${evoSigs(diur&&diar?`<b>Diarista:</b> ${e(diar)}`:"")}
 <div class="foot">Adendo de internação · ${e(p.nome)} · ${e(bedLabel(b))} · página 2/2</div></div>`;
 }
 /* página 1 do adendo preenchida: letra até 20% maior e espaço extra entre as seções; com história longa, letra até 15% menor para caber */
