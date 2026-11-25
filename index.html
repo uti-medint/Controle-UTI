@@ -4693,10 +4693,10 @@ function evoAdmFaltam(id,d){
   if(!(pacOf(id).problemas||[]).length) f.push("lista de problemas");
   if(!d.cid.cod) f.push("CID-10 principal");
   const k=d.conduta;
-  if(!k.dieta||(k.dieta==="Zero"&&!k.dietaMot.trim())) f.push("dieta");
+  if(!k.dieta) f.push("dieta");
   if(!k.atbSem&&!(k.atbs||[]).length) f.push("antibioticoterapia");
   if(!k.lamg) f.push("profilaxia LAMG");
-  if(!k.tev||!k.tevMot.trim()) f.push("profilaxia TEV");
+  if(!k.tev) f.push("profilaxia TEV");
   if(!(Object.values(k.fixos||{}).some(Boolean)||(k.protos||[]).length||k.livre.trim())) f.push("conduta");
   if(evoDiurno(d.dataHora)&&!d.diarista) f.push("diarista");
   return f;
@@ -4948,10 +4948,10 @@ function evoAdmConduta(id,d,b,onRe,onCh){
   const fx=[["adm","Faço admissão em UTI"],["exames","Solicito exames admissionais"],["vig","Vigilância e cuidados intensivos"]];
   const livre=el("textarea",{class:"par-ta",style:"min-height:70px",placeholder:"Texto livre (opcional)"}); livre.value=k.livre||""; livre.addEventListener("input",()=>{ k.livre=livre.value; onCh(); });
   return el("div",{class:"card",style:"border-color:#e9b48c"},el("h3",{},"Conduta da admissão"),
-    row("Dieta",seg(k,"dieta",[["Zero","Zero"],["VO","VO"],["Enteral","Enteral"],["GTT","Via GTT"],["Parenteral","Parenteral"]]),k.dieta==="Zero"?el("div",{style:"margin-top:6px"},txt(k,"dietaMot","Motivo da dieta zero (obrigatório)")):null),
+    row("Dieta",seg(k,"dieta",[["Zero","Zero"],["VO","VO"],["Enteral","Enteral"],["GTT","Via GTT"],["Parenteral","Parenteral"]]),k.dieta==="Zero"?el("div",{style:"margin-top:6px"},txt(k,"dietaMot","Motivo da dieta zero (opcional)")):null),
     row("Antibioticoterapia",atbBox),
     row("Profilaxia LAMG",seg(k,"lamg",[["sim","Sim"],["nao","Não"]]),el("div",{style:"margin-top:6px"},txt(k,"lamgMot",k.lamg==="nao"?"Observação (opcional)":"Qual (opcional, ex.: omeprazol 40 mg EV)"))),
-    row("Profilaxia TEV",seg(k,"tev",[["sim","Sim"],["nao","Não"]]),el("div",{style:"margin-top:6px"},txt(k,"tevMot",k.tev==="nao"?"Motivo (ex.: sangramento ativo, plaquetas < 50 mil)":"Qual (ex.: enoxaparina 40 mg SC)")),
+    row("Profilaxia TEV",seg(k,"tev",[["sim","Sim"],["nao","Não"]]),el("div",{style:"margin-top:6px"},txt(k,"tevMot",k.tev==="nao"?"Motivo (opcional, ex.: sangramento ativo, plaquetas < 50 mil)":"Qual (opcional, ex.: enoxaparina 40 mg SC)")),
       k.tev==="nao"?el("label",{style:"display:flex;gap:6px;align-items:center;margin-top:6px"},(()=>{ const c=el("input",{type:"checkbox"}); c.checked=!!k.compressao; c.onchange=()=>{ k.compressao=c.checked; onRe(); }; return c; })(),"Compressão pneumática intermitente"):null),
     el("div",{style:"display:grid;grid-template-columns:170px minmax(0,1fr);gap:12px;padding:10px 0;border-top:1px solid #e7eceb"},el("div",{style:"font-weight:700;padding-top:6px"},"Status de reanimação"),el("div",{class:"ev-ro"},evoC(id).reanim==="pleno"?"Suporte pleno":evoC(id).reanim==="lim"?"Limitação de suporte: "+(evoC(id).reanimTxt||""):el("small",{},"preencher na aba Cadastro"))),
     el("div",{style:"display:grid;grid-template-columns:170px minmax(0,1fr);gap:12px;padding:10px 0;border-top:1px solid #e7eceb"},el("div",{style:"font-weight:700;padding-top:6px"},"Swab de vigilância"),seg(k,"swab",[["Não indicado","Não indicado"],["Coletado","Coletado"],["Solicitado","Solicitado"]])),
