@@ -4403,6 +4403,8 @@ const EVO_FOCOS=["Pulmonar","Abdominal","Urinário","Pele e partes moles","Corre
 function evoAdmPart(id){ const p=pacOf(id); return p&&p.pid?"evo:"+p.pid+":adm":""; }
 function evoAgoraLocal(){ const d=new Date(); return new Date(d-d.getTimezoneOffset()*60000).toISOString().slice(0,16); }
 function evoDiurno(dt){ const h=dt?Number(String(dt).slice(11,13)):new Date().getHours(); return h>=7&&h<19; }
+/* intercorrência: turno pela hora registrada (19h–7h = noturno: residente assina como plantonista) */
+function evoIqDiurno(d){ const h=/^\d{1,2}:/.test(String((d&&d.hora)||""))?String(d.hora).padStart(5,"0"):""; return h?evoDiurno("2000-01-01T"+h):evoDiurno(); }
 function evoAdmNovo(id){
   const b=SV.med.beds.find(x=>x.id===id);
   return {tipo:"adm",pid:pacOf(id).pid,leito:id,autor:EVO.eu,criado:Date.now(),upd:Date.now(),
@@ -5995,7 +5997,7 @@ function evoIqEditor(id){
     lab("Texto",true),tx,
     el("p",{class:"hint",style:"margin:6px 0 0"},"Texto livre. Sai em folha própria, com a identificação do paciente. Não tem campo de diarista.")));
   wrap.append(el("div",{class:"card"},el("h3",{},"Assinatura"),
-    evoAssinCtl(d,null,()=>{ evoIqSalva(d); renderEvo(); }),
+    evoAssinCtl(d,evoIqDiurno(d),()=>{ evoIqSalva(d); renderEvo(); }),
     salvo&&!d.impresso?el("div",{style:"margin-top:10px"},el("button",{class:"btn small",type:"button",style:"color:var(--danger)",onclick:()=>{
       if(!confirm("Excluir esta intercorrência? Ela some da lista e da linha do tempo.")) return; d.excluida=Date.now(); d.excluidaPor=EVO.eu; evoDocSave(d); EVO.iqKey=""; renderEvo(); }},"Excluir intercorrência")):null));
   wrap.append(el("div",{class:"card",id:"evoIqBar",style:"position:sticky;bottom:0;display:flex;gap:12px;align-items:center;box-shadow:0 -4px 16px rgba(0,0,0,.06)"}));
@@ -6027,7 +6029,7 @@ ${cel(3,"Convênio",p.plano)}${cel(2,"Admissão UTI",p.admissao?fmtDate(p.admiss
 <div class="alerts">${tags.join("")}</div>
 <div class="box"><div class="bt">Lista de problemas</div>${probs.length?e(probs.join(" · ")):"—"}</div>
 <div class="box" style="min-height:120mm"><div class="bt">Intercorrência</div><div style="white-space:pre-wrap;font-size:10pt;line-height:1.45">${e(d.texto)}</div></div>
-<div class="sig um"><div class="ln">${e(evoAssinatura(autor))}</div></div>
+<div class="sig um"><div class="ln">${e(evoAssinTurno(autor,evoIqDiurno(d)))}</div></div>
 <div class="foot"><span>${e(d.titulo||EVO_IQ_TIT)} · ${fmtDate(d.data,true)}${d.hora?" "+e(d.hora):""} · ${b?e(bedLabel(b)):""}</span><span></span></div></div>`;
 }
 function evoIqImprimir(id,n,previa){
