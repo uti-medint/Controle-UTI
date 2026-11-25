@@ -5212,6 +5212,22 @@ function evoDiaEditor(id){
     const di=evoNum(sv.diu); dOut.textContent=di&&kg?evoFmt(di/kg/horas)+" mL/kg/h":"—"; };
   calc();
   const tx2=(k,ph)=>{ const i=txt(sv,k,ph); i.addEventListener("input",calc); return i; };
+  /* drenos: "+ Dreno" na mesma linha dos sinais (6ª coluna); débitos logo abaixo */
+  const drs=evoDrenos(b,sv); sv.drenos=sv.drenos||{};
+  const dp=b&&b.disp&&b.disp.dreno, doPass=s=>!!(dp&&dp.on&&((dp.sitios&&dp.sitios.length)?dp.sitios.includes(s):s==="Dreno"));
+  const novo=el("input",{class:"txt",list:"evoDrenoList",placeholder:"Sítio (ex.: Tórax D)"});
+  const addDr=()=>{ let n=novo.value.replace(/\s+/g," ").trim()||"Dreno"; const L=SHARED.lists.sDreno||[], h=L.find(x=>norm(x)===norm(n)); if(h) n=h;
+    if(drs.some(x=>norm(x)===norm(n))){ if(!novo.value.trim()){ let i=2; while(drs.some(x=>norm(x)===norm("Dreno "+i))) i++; n="Dreno "+i; } else { novo.value=""; return; } }
+    sv.drenos[n]={...(sv.drenos[n]||{}),add:true}; onRe(); };
+  novo.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); addDr(); } });
+  const drAdd=el("div",{},lab("Drenos"),el("div",{style:"display:flex;gap:6px"},novo,el("button",{class:"btn primary",type:"button",style:"white-space:nowrap",title:"Incluir um dreno nesta folha",onclick:addDr},"+ Dreno")),
+    el("datalist",{id:"evoDrenoList"},(SHARED.lists.sDreno||[]).map(x=>el("option",{value:x}))));
+  const drBox=drs.length?el("div",{style:"margin-top:12px"},el("div",{class:"lbl",style:"font-weight:700"},"Débito de drenos"),
+    el("div",{style:"display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px"},drs.map(s=>{ const o=sv.drenos[s]=sv.drenos[s]||{};
+      const rm=doPass(s)?null:el("button",{class:"btn small",type:"button",title:"Remover este dreno da folha",style:"margin-left:6px;padding:0 8px",onclick:()=>{
+        if((String(o.deb||"").trim()||String(o.asp||"").trim())&&!confirm(`Remover o dreno "${s}" e o débito anotado desta folha?`)) return; delete sv.drenos[s]; onRe(); }},"×");
+      return el("div",{},el("div",{style:"display:flex;align-items:center"},lab(s+" (mL)"),rm),txt(o,"deb","Ex.: 250",{inputmode:"numeric"}),el("div",{style:"margin-top:6px"},txt(o,"asp","Aspecto (ex.: serossanguinolento)"))); })),
+    el("p",{class:"hint",style:"margin:6px 0 0"},"Lembre de somar o débito nas perdas do BH.")):null;
   corpo.append(evoAlerReanimCard(id,d,onCh,onRe));
   corpo.append(card(d.turno==="D"?"Últimas 24h — fechamento 07h a 07h":"Últimas 12h — parcial 07h a 19h",
     el("div",{style:"display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px"},
@@ -5220,22 +5236,9 @@ function evoDiaEditor(id){
     el("div",{style:"display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-top:10px"},
       el("div",{},lab("Diurese (mL)"),tx2("diu","1850")),el("div",{},lab("mL/kg/h"),dOut),el("div",{},lab("BH (mL)"),txt(sv,"bh","+640")),
       el("div",{},lab("Febre > 38 °C"),seg(sv,"feb",[["nao","Não"],["sim","Sim"]]),sv.feb==="sim"?el("div",{style:"margin-top:6px"},txt(sv,"tmax","Tmáx (ex.: 38,9)")):null),
-      el("div",{},lab("HGT > 150"),seg(sv,"hgt",[["nao","Não"],["sim","Sim"]]),sv.hgt==="sim"?el("div",{style:"margin-top:6px"},txt(sv,"hgtX","Vezes (ex.: 3)")):null)),
-    (()=>{ const drs=evoDrenos(b,sv); sv.drenos=sv.drenos||{};
-      const dp=b&&b.disp&&b.disp.dreno, doPass=s=>!!(dp&&dp.on&&((dp.sitios&&dp.sitios.length)?dp.sitios.includes(s):s==="Dreno"));
-      const novo=el("input",{list:"evoDrenoList",placeholder:"Sítio (ex.: Tórax D)",style:"max-width:240px"});
-      const add=()=>{ let n=novo.value.replace(/\s+/g," ").trim()||"Dreno"; const L=SHARED.lists.sDreno||[], h=L.find(x=>norm(x)===norm(n)); if(h) n=h;
-        if(drs.some(x=>norm(x)===norm(n))){ if(!novo.value.trim()){ let i=2; while(drs.some(x=>norm(x)===norm("Dreno "+i))) i++; n="Dreno "+i; } else { novo.value=""; return; } }
-        sv.drenos[n]={...(sv.drenos[n]||{}),add:true}; onRe(); };
-      novo.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); add(); } });
-      return el("div",{style:"margin-top:12px"},el("div",{class:"lbl",style:"font-weight:700"},"Débito de drenos"),
-        drs.length?el("div",{style:"display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px"},drs.map(s=>{ const o=sv.drenos[s]=sv.drenos[s]||{};
-          const rm=doPass(s)?null:el("button",{class:"btn small",type:"button",title:"Remover este dreno da folha",style:"margin-left:6px;padding:0 8px",onclick:()=>{
-            if((String(o.deb||"").trim()||String(o.asp||"").trim())&&!confirm(`Remover o dreno "${s}" e o débito anotado desta folha?`)) return; delete sv.drenos[s]; onRe(); }},"×");
-          return el("div",{},el("div",{style:"display:flex;align-items:center"},lab(s+" (mL)"),rm),txt(o,"deb","Ex.: 250",{inputmode:"numeric"}),el("div",{style:"margin-top:6px"},txt(o,"asp","Aspecto (ex.: serossanguinolento)"))); })):el("div",{class:"hint"},"Nenhum dreno marcado no passômetro."),
-        el("div",{style:"display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap"},novo,el("button",{class:"btn",type:"button",onclick:add},"+ Dreno"),
-          el("datalist",{id:"evoDrenoList"},(SHARED.lists.sDreno||[]).map(x=>el("option",{value:x})))),
-        el("p",{class:"hint",style:"margin:6px 0 0"},"Drenos marcados no passômetro aparecem sozinhos; use “+ Dreno” para incluir outro só nesta folha. Lembre de somar o débito nas perdas do BH.")); })()));
+      el("div",{},lab("HGT > 150"),seg(sv,"hgt",[["nao","Não"],["sim","Sim"]]),sv.hgt==="sim"?el("div",{style:"margin-top:6px"},txt(sv,"hgtX","Vezes (ex.: 3)")):null),
+      drAdd),
+    drBox));
   /* intercorrências */
   const it=el("textarea",{class:"par-ta",style:"min-height:60px",placeholder:"Texto livre (ex.: febre de 38,9 °C às 23h; agitação psicomotora)…"}); it.value=d.interc||""; it.addEventListener("input",()=>{ d.interc=it.value; onCh(); });
   const iqs=evoIqDoPeriodo(id,d);
