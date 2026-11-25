@@ -2299,10 +2299,11 @@ function netError(e,part){
   if(isNetErr(e)) setNet(false); else setNet(false,false,(e.code||"erro")+(part?" em "+part:""));
 }
 
-let cotaAte=0;
-async function pushDirty(){
+let cotaAte=0, againForce=false; const ultEnvio={};
+const EVO_INTERVALO=15000;   /* folhas da Evolução: no máximo 1 gravação a cada 15s por folha (cada gravação é lida por todos os computadores abertos) */
+async function pushDirty(force){
   if(!NET||Date.now()<cotaAte) return;
-  if(pushing){ again=true; return; }
+  if(pushing){ again=true; if(force) againForce=true; return; }
   pushing=true; let sent=false, falha=null;
   try{
     const names=partNames();
@@ -2310,6 +2311,7 @@ async function pushDirty(){
       if(pending[n]&&pending[n].conflict) continue;
       const js=serialize(n);
       if(synced[n]===js) continue;
+      if(!force&&n.startsWith("evo:")&&Date.now()-(ultEnvio[n]||0)<EVO_INTERVALO) continue;   /* o envio periódico (a cada 6s) manda depois */
       if(n.startsWith("pac:")&&versions[n]===undefined&&isPristine(n)){ synced[n]=js; continue; }   /* leito vazio e nunca gravado */
       if(n==="culmeta"&&versions[n]===undefined&&!SHARED.culmeta.impresso){ synced[n]=js; continue; }
       let r;
@@ -2331,7 +2333,7 @@ async function pushDirty(){
         if(cur){ pending[n]={ev:{part:n,v:cur.v,value:cur.value,by:cur.by},conflict:true}; renderBanner(); }
         continue;
       }
-      versions[n]=r.v; synced[n]=js; sent=true;
+      versions[n]=r.v; synced[n]=js; sent=true; ultEnvio[n]=Date.now();
     }
     for(const n of Object.keys(synced)){           /* histórico apagado localmente */
       if((isImmutable(n)||n.startsWith("cul:")||n.startsWith("par:"))&&!names.includes(n)){
@@ -2339,7 +2341,7 @@ async function pushDirty(){
       }
     }
     if(falha) netError(falha.e,falha.n); else setNet(true,sent);
-  } finally { pushing=false; if(again){ again=false; pushDirty(); } }
+  } finally { pushing=false; if(again){ const f=againForce; again=false; againForce=false; pushDirty(f); } }
 }
 function applyRemote(ev){
   versions[ev.part]=ev.v; applyPart(ev.part,ev.value); synced[ev.part]=serialize(ev.part); delete pending[ev.part];
@@ -4377,7 +4379,7 @@ function evoViraTurno(){
 }
 async function evoSairInativo(){
   evoSaindo=true;
-  try{ save(); await Promise.race([pushDirty(),new Promise(r=>setTimeout(r,5000))]); }catch(e){}
+  try{ save(); await Promise.race([pushDirty(true),new Promise(r=>setTimeout(r,5000))]); }catch(e){}
   try{ sessionStorage.setItem("evo_saiu","1"); }catch(e){}
   FB.signOut().then(()=>location.reload());
 }
