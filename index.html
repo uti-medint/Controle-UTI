@@ -12,6 +12,8 @@
 <link rel="icon" type="image/png" href="icons/favicon-64.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Passômetro – UTI IOG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&display=swap">
 <style>
 :root{
   --bg:#f2f5f4; --panel:#ffffff; --ink:#1b2a29; --muted:#5f716f; --line:#d4dcda;
@@ -455,6 +457,55 @@ textarea.par-ta:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2
 /* ===== Evolução médica ===== */
 #evoApp{display:flex;flex-direction:column;height:100vh}#evoApp[hidden]{display:none}
 .hub-card.evo-new{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+/* tela inicial dos médicos: 3 menus grandes com o resumo do plantão + outros menores */
+.hub-big{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.hub-big .hub-card{min-height:0;gap:8px}
+.hub-st{display:inline-flex;align-self:flex-start;align-items:center;gap:4px;border-radius:999px;padding:3px 11px;font-size:13px;font-weight:700;background:#eceff0;color:#5f716f}
+.hub-st.warn{background:var(--warn-soft);color:var(--warn)}.hub-st.ok{background:#e3f2e5;color:#2f7d3a}
+.hub-num{border-top:1px dashed var(--line);padding-top:8px;margin-top:2px;display:grid;gap:5px;font-size:13.5px;color:var(--muted)}
+.hub-num>div:first-child{display:flex;justify-content:space-between;gap:8px}
+.hub-num b{color:var(--ink);font-variant-numeric:tabular-nums}
+.hub-bar{height:7px;border-radius:4px;background:#eceff0;overflow:hidden}.hub-bar i{display:block;height:100%;background:var(--accent)}
+.hub-sec{margin:26px 0 10px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.hub-small{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.hub-sm{display:flex;align-items:center;gap:10px;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:10px 12px;min-height:52px;font-weight:700;font-size:14.5px;transition:border-color .15s}
+.hub-sm:hover{border-color:var(--accent)}
+.hub-sm .hub-ic{width:32px;height:32px;border-radius:9px;margin:0;flex:none}.hub-sm .hub-ic svg{width:19px;height:19px}
+.hub-sm small{display:block;font-weight:600;font-size:12px;color:var(--muted)}.hub-sm small.al{color:var(--warn)}
+.hub-sm.soon{border-style:dashed;opacity:.65}
+.hub-big.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+/* visual refinado: faixa verde em degradê com desenho de traço fino; caixas brancas com sombra suave por cima */
+.hub-band{position:relative;overflow:hidden;border-radius:20px;padding:28px 30px 84px;color:#fff;background:linear-gradient(135deg,#0b4f46 0%,#0f6b5e 55%,#1a8270 100%)}
+.hub-band .art{position:absolute;right:18px;top:10px;width:400px;max-width:44%;height:calc(100% - 20px);color:#fff;opacity:.2;pointer-events:none}
+.hub-band .art svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.hub-band h2{position:relative;margin:0 0 4px;font-family:Manrope,"Segoe UI",Roboto,sans-serif;font-size:26px;font-weight:800;letter-spacing:-.015em;color:#fff}
+.hub-band p{position:relative;margin:0;font-size:14.5px;color:rgba(255,255,255,.85)}
+.hub-band+.hub-big,.hub-band+.hub-grid{position:relative;margin-top:-58px;padding:0 14px}
+.hub-band~.hub-sec,.hub-band~.hub-small{padding-left:14px;padding-right:14px}
+.hub-big .hub-card,.hub-sm{border-color:#e1e9e6;box-shadow:0 1px 2px rgba(10,40,35,.05),0 8px 24px rgba(10,40,35,.07)}
+.hub-big .hub-card:hover,.hub-sm:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(10,40,35,.06),0 14px 32px rgba(10,40,35,.12)}
+.hub-sm{transition:border-color .15s,box-shadow .15s,transform .15s;box-shadow:0 1px 2px rgba(10,40,35,.04)}
+.hub-big .hub-ic,.hub-sm .hub-ic{background:transparent;border:1.5px solid #bcd6cf}
+.hub-big .hub-t{font-family:Manrope,"Segoe UI",Roboto,sans-serif;font-weight:800;letter-spacing:-.01em}
+.hub-sec{padding-top:4px}
+@media (max-width:700px){.hub-band{padding:22px 20px 76px;border-radius:16px}.hub-band h2{font-size:21px}.hub-band .art{max-width:46%;opacity:.16}.hub-band .art .xtra{display:none}
+  .hub-band+.hub-big,.hub-band+.hub-grid{padding:0 8px}.hub-band~.hub-sec,.hub-band~.hub-small{padding-left:0;padding-right:0}}
+@media (prefers-reduced-motion:reduce){.hub-big .hub-card:hover,.hub-sm:hover{transform:none}}
+/* login: mesmo degradê e desenho da tela inicial */
+.lg-bg{position:fixed;inset:0;background:linear-gradient(150deg,#0b4f46 0%,#0f6b5e 55%,#1a8270 100%)}
+.lg-bg .art{position:absolute;right:4%;bottom:6%;width:min(560px,70vw);color:#fff;opacity:.14}
+.lg-bg .art svg{width:100%;height:auto;fill:none;stroke:currentColor;stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round}
+#loginOv .modal{position:relative;box-shadow:0 24px 70px rgba(5,30,26,.35);border-radius:18px}
+#loginOv h2{font-family:Manrope,"Segoe UI",Roboto,sans-serif;font-weight:800;letter-spacing:-.015em}
+/* modo noturno (00h–05h): escurece todas as telas invertendo as cores; fotos, logo e a faixa verde voltam à cor original. A impressão sai sempre clara. */
+html.noite{filter:invert(1) hue-rotate(180deg) contrast(.88);background:#fff}
+html.noite img,html.noite video,html.noite canvas,html.noite .no-inv{filter:invert(1) hue-rotate(180deg)}
+html.noite .no-inv img{filter:none}
+html.noite .overlay{background:rgba(255,255,255,.6)}   /* depois da inversão vira um véu escuro */
+html.noite .bv-ov{background:radial-gradient(1000px 600px at 85% 0%,#a9c3df 0%,rgba(169,195,223,0) 60%),radial-gradient(900px 700px at 0% 100%,#a6e6dc 0%,rgba(166,230,220,0) 55%),#e6eef4}
+html.noite .hub-card,html.noite .hub-sm,html.noite .modal,html.noite .bv-card,html.noite .toast{box-shadow:0 0 0 1px rgba(0,0,0,.10)!important}   /* sombra invertida viraria brilho */
+@media print{html.noite{filter:none!important}html.noite img,html.noite .no-inv{filter:none!important}}
+@media (max-width:860px){.hub-big,.hub-big.two{grid-template-columns:1fr}}
 .ev-badge{font-size:11px;font-weight:700;background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:2px 8px;text-transform:uppercase;letter-spacing:.04em}
 .ev-user{font-size:13.5px;color:var(--muted);text-align:right;line-height:1.25}.ev-user b{color:var(--ink);display:block;font-size:14px}
 .bol-t{border-collapse:collapse;width:100%;font-size:13px}
@@ -2449,6 +2500,7 @@ function showLogin(){
     catch(e){ err.textContent=authMsg(e); }
   }},"Esqueci a senha");
   const ov=el("div",{class:"overlay",id:"loginOv",style:"background:var(--bg)"},
+    el("div",{class:"lg-bg no-inv"},el("div",{class:"art",html:HUB_ART.med})),
     el("div",{class:"modal",style:"width:min(400px,100%)"},el("div",{class:"body"},
       el("h2",{style:"margin:0 0 4px"},"Passômetro"),el("p",{class:"hint"},"UTI IOG – acesso restrito à equipe"),
       email,el("div",{style:"height:10px"}),pass,err,go,el("div",{style:"margin-top:10px;text-align:center"},reset))));
@@ -2519,22 +2571,102 @@ const ICONS={
   bol:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M9 10v9M15 10v9"/></svg>',
   visita:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.5 3-6 6-6s6 2.5 6 6"/><path d="M15.5 14.5c3 0 5.5 2 5.5 5.5"/></svg>'
 };
+/* tela inicial dos médicos (médico, residente, login geral): Evolução, Passômetro médico e Solicitação de exames em destaque,
+   cada um com o resumo do plantão atual da UTI inteira; os outros menus ficam menores embaixo. Ao clicar, abre a lista de leitos de sempre. */
+function hubIni(t){ return new Date(t.data+"T"+(t.tipo==="D"?"07:00":"19:00")).getTime(); }
+/* passômetro (médico ou enfermagem): leitos ocupados e quantos foram alterados desde o início do plantão (07h ou 19h) */
+function hubPass(svc){ const t=evoTurno(), ini=hubIni(t), beds=(SV[svc].beds||[]).filter(b=>b.nome); return {n:beds.length,ok:beds.filter(b=>(b.upd||0)>=ini).length}; }
+function hubResumo(){
+  const t=evoTurno(), beds=SV.med.beds.filter(b=>b.nome);
+  const st=beds.map(b=>evoStatus(b.id,evoDiaPart(b.id,t)).k), feitas=st.filter(k=>k==="imp"||k==="pronta").length;
+  const aberto=xd&&xd.leito&&(xd.lab.sel.length||xd.lab.gaso||(xd.lab.livres||[]).length||xd.img.length||xd.livre.length)?xd.leito:"";
+  return {t,n:beds.length,feitas,passOk:hubPass("med").ok,aberto,ult:SHARED.ped[0]||null,parPend:SHARED.par.filter(r=>!parRespondido(r)).length};
+}
+/* peças comuns das telas iniciais */
+function hubSt(cls,txt){ return el("span",{class:"hub-st"+(cls?" "+cls:"")},txt); }
+function hubNum(rot,val,a,b){ const pct=b?Math.round(a/b*100):0; return el("div",{class:"hub-num"},el("div",{},el("span",{},rot),el("b",{},val)),b!=null?el("div",{class:"hub-bar"},el("i",{style:`width:${pct}%`})):null); }
+function hubSm(ic,t,fn,nota,al,soon,nm){ return el("button",{class:"hub-sm"+(soon?" soon":"")+(nm?" no-mobile":""),type:"button",onclick:fn},el("div",{class:"hub-ic",html:ic}),el("div",{},t,nota?el("small",{class:al?"al":""},nota):null)); }
+function hubPassCard(card,svc,t,d){
+  const P=hubPass(svc), falta=P.n-P.ok, c=card(ICONS[svc],t,d,()=>showView(svc));
+  c.append(...[!P.n?hubSt("","Nenhum paciente internado"):falta?hubSt("warn",`${falta} ${falta>1?"leitos sem atualizar":"leito sem atualizar"}`):hubSt("ok","✓ Todos atualizados"),
+    P.n?hubNum("Atualizados neste plantão",`${P.ok} de ${P.n}`,P.ok,P.n):null].filter(Boolean));
+  return c;
+}
+function hubOutros(g,itens){ const o=el("div",{class:"hub-small",id:"hubSmall"},itens.filter(Boolean)); g.after(el("div",{class:"hub-sec",id:"hubSec"},"Outros"),o); }
+/* desenhos de traço fino da faixa: médicos (monitor, estetoscópio, folha de evolução) e enfermagem (prancheta, seringa, soro) */
+const HUB_ART={
+  med:'<svg viewBox="0 0 440 200"><rect x="200" y="22" width="176" height="112" rx="12"/><path d="M212 86 h36 l7 -13 l9 30 l10 -44 l9 27 h70"/><path d="M288 134 v20 M262 154 h52"/>'+
+    '<path d="M70 36 c0 54 19 80 46 80 s46 -26 46 -80"/><circle cx="70" cy="30" r="6"/><circle cx="162" cy="30" r="6"/><path d="M116 116 v32 c0 32 52 32 52 0 v-11"/><circle cx="168" cy="128" r="9"/>'+
+    '<g class="xtra"><rect x="388" y="66" width="44" height="62" rx="5"/><path d="M396 82 h28 M396 94 h28 M396 106 h18"/></g></svg>',
+  enf:'<svg viewBox="0 0 440 200"><rect x="214" y="30" width="118" height="150" rx="10"/><rect x="246" y="20" width="54" height="20" rx="6"/><path d="M234 70 h12 l5 6 l9 -12 M270 70 h44 M234 100 h12 l5 6 l9 -12 M270 100 h44 M234 130 h12 l5 6 l9 -12 M270 130 h34"/>'+
+    '<path d="M96 24 h52 v14 c0 6 4 10 4 18 v70 c0 8 -6 14 -14 14 h-32 c-8 0 -14 -6 -14 -14 v-70 c0 -8 4 -12 4 -18 z"/><path d="M104 74 h36 M104 92 h36 M104 110 h24"/><path d="M122 140 v26 c0 14 12 18 22 14"/><path d="M122 24 v-10"/>'+
+    '<g class="xtra"><path d="M352 168 l60 -60 M362 178 l60 -60 M352 168 l10 10 M404 116 l14 -14 l10 10 l-14 14 M418 102 l10 -10 M424 96 l8 8"/></g></svg>'};
+function hubSaud(){
+  const h=new Date().getHours(), p=EVO.perfil, mad=h<5;
+  const nome=!p?"":p.generico?(p.grupo==="enf"?"equipe de enfermagem":String(p.trat||"").toLowerCase()):evoTratamento(p);
+  const tit=mad?(p&&!p.generico?(p.sexo==="F"?"Bem-vinda":"Bem-vindo"):"Boas-vindas")+", colega da madrugada"
+    :(h<12?"Bom dia":h<18?"Boa tarde":"Boa noite")+(nome?", "+nome:"");
+  const t=evoTurno(), n=SV.med.beds.filter(b=>b.nome).length;
+  const dia=new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"});
+  const sub=[mad&&nome&&!p.generico?nome:"","Plantão "+(t.tipo==="D"?"diurno":"noturno"),dia,n?(n+(n>1?" pacientes internados":" paciente internado")):"nenhum paciente internado"].filter(Boolean).join(" · ");
+  return {tit,sub,mad};
+}
+function hubBand(g,arte){
+  const S2=hubSaud(), b=el("div",{class:"hub-band no-inv",id:"hubBand"},el("div",{class:"art",html:HUB_ART[arte]}),el("h2",{},S2.tit),el("p",{},S2.sub));
+  g.before(b); const h=document.querySelector(".hub-wrap>h2"); if(h) h.hidden=true;
+  if(S2.mad){ const k="madrug_"+todayISO(); try{ if(!localStorage.getItem(k)){ localStorage.setItem(k,"1"); setTimeout(()=>toast("Modo noturno ligado até as 05h. Bom plantão!"),400); } }catch(e){} }
+}
+/* modo noturno automático das 00h às 05h */
+function modoNoite(){
+  const on=new Date().getHours()<5, H=document.documentElement;
+  if(H.classList.contains("noite")===on) return;
+  H.classList.toggle("noite",on);
+  const m=document.querySelector('meta[name="theme-color"]'); if(m) m.content=on?"#1d2422":"#0f6b5e";
+  if(typeof view!=="undefined"&&view==="hub"&&typeof SV!=="undefined"&&SV.med) renderHub();
+}
+modoNoite(); setInterval(modoNoite,60000);
+function renderHubMed(g,card){
+  const R=hubResumo(), turno=R.t.tipo==="D"?"diurnas":"noturnas", falta=R.n-R.feitas;
+  const hora=ts=>{ const d=new Date(ts); return (d.toDateString()===new Date().toDateString()?"":fmtDate(new Date(ts-d.getTimezoneOffset()*60000).toISOString().slice(0,10))+" ")+d.toTimeString().slice(0,5); };
+  const bl=id=>{ const b=SV.med.beds.find(x=>x.id===id); return b?bedLabel(b):id; };
+  const evo=card(ICONS.evo,"Evolução médica","Adendo, evoluções, intercorrências e relatório de alta",()=>showView("evo"));
+  evo.append(...[!R.n?hubSt("","Nenhum paciente internado"):falta?hubSt("warn",`${falta} ${falta>1?turno+" pendentes":turno.slice(0,-1)+" pendente"}`):hubSt("ok",`✓ Todas as ${turno} feitas`),
+    R.n?hubNum("Feitas neste plantão",`${R.feitas} de ${R.n}`,R.feitas,R.n):null].filter(Boolean));
+  const ex=card(ICONS.lab,"Solicitação de exames","Laboratório e imagem, com guias dos convênios",()=>showView("exames"),false,true);
+  ex.append(...[R.aberto?hubSt("warn","Pedido em andamento · "+bl(R.aberto)):hubSt("ok","✓ Nenhum pedido aberto"),R.ult?hubNum("Último pedido",`${bl(R.ult.leito)} · ${hora(R.ult.ts)}`):null].filter(Boolean));
+  g.className="hub-big"; hubBand(g,"med");
+  g.append(evo,hubPassCard(card,"med","Passômetro médico","Passagem de plantão médica dos leitos"),ex);
+  hubOutros(g,[
+    hubSm(ICONS.bol,"Boletim médico",()=>{ EVO.mode="bol"; EVO.bolData=""; showView("evo"); }),
+    hubSm(ICONS.cult,"Controle de culturas",()=>showView("cult")),
+    hubSm(ICONS.par,"Parecer médico",()=>showView("par"),R.parPend?`${R.parPend} aguardando resposta`:"",!!R.parPend),
+    hubSm(ICONS.pocus,"POCUS",()=>showView("pocus")),
+    hubSm(ICONS.enf,"Passômetro enfermagem",()=>showView("enf")),
+    hubSm(ICONS.arq,"Prontuários anteriores",()=>{ EVO.mode="arq"; EVO.sel=null; EVO.arq=null; showView("evo"); evoIdxCarrega(); }),
+    hubSm(ICONS.visita,"Visita multidisciplinar",()=>toast("Visita multidisciplinar: em construção. Será montada em breve."),"em breve",false,true)]);
+}
+/* tela inicial da enfermagem: os dois passômetros em destaque, com o resumo do plantão */
+function renderHubEnf(g,card){
+  const parPend=SHARED.par.filter(r=>!parRespondido(r)).length;
+  g.className="hub-big two"; hubBand(g,"enf");
+  g.append(hubPassCard(card,"enf","Passômetro enfermagem","Passagem de plantão da enfermagem: dispositivos, pendências e exames de imagem"),
+    hubPassCard(card,"med","Passômetro médico","Passagem de plantão médica dos leitos"));
+  hubOutros(g,[
+    hubSm(ICONS.cult,"Controle de culturas",()=>showView("cult")),
+    hubSm(ICONS.pocus,"POCUS",()=>showView("pocus")),
+    hubSm(ICONS.lab,"Solicitação de exames",()=>showView("exames"),"","",false,true),
+    hubSm(ICONS.par,"Parecer médico",()=>showView("par"),parPend?`${parPend} aguardando resposta`:"",!!parPend),
+    hubSm(ICONS.visita,"Visita multidisciplinar",()=>toast("Visita multidisciplinar: em construção. Será montada em breve."),"em breve",false,true)]);
+}
 function renderHub(){
   const lg=$("#hubLogo"); if(SHARED.logo){ lg.src=SHARED.logo; lg.hidden=false; } else { lg.hidden=true; lg.removeAttribute("src"); }
   $("#hubTitle").textContent=(SV.med&&SV.med.unit)||"UTI IOG";
-  const g=$("#hubGrid"); g.innerHTML="";
+  const g=$("#hubGrid"); g.innerHTML=""; g.className="hub-grid"; ["#hubSec","#hubSmall","#hubBand"].forEach(q=>{ const x=$(q); if(x) x.remove(); }); { const h=document.querySelector(".hub-wrap>h2"); if(h) h.hidden=false; }
   const card=(ic,t,d,fn,soon,nm)=>el("button",{class:"hub-card"+(soon?" soon":"")+(nm?" no-mobile":""),type:"button",onclick:fn},
     el("div",{class:"hub-ic",html:ic}),
     el("div",{class:"hub-t"},t,soon?el("span",{class:"badge"},"Em breve"):null),
     el("div",{class:"hub-d"},d));
-  if(EVO.on&&!EVO.oculto){   /* Evolução médica: logins médicos (enfermagem não vê) */
-    const c=card(ICONS.evo,"Evolução médica","Cadastro do paciente, adendo de internação, evoluções, intercorrências e relatório de alta",()=>showView("evo"));
-    c.classList.add("evo-new"); g.append(c);
-    const cb=card(ICONS.bol,"Boletim médico","Boletim do dia para as famílias: vem da evolução noturna, o médico do plantão confere e imprime",()=>{ EVO.mode="bol"; EVO.bolData=""; showView("evo"); });
-    cb.classList.add("bol-card"); g.append(cb);
-    const cp=card(ICONS.arq,"Prontuários anteriores","Pacientes que já tiveram alta (1 ano): linha do tempo, folhas impressas e relatório de alta",()=>{ EVO.mode="arq"; EVO.sel=null; EVO.arq=null; showView("evo"); evoIdxCarrega(); });
-    cp.classList.add("arq-card"); g.append(cp);
-  }
+  if(EVO.on) return EVO.oculto?renderHubEnf(g,card):renderHubMed(g,card);
   g.append(
     card(ICONS.med,"Passômetro médico","Passagem de plantão médica dos leitos da UTI",()=>showView("med")),
     card(ICONS.enf,"Passômetro enfermagem","Passagem de plantão da enfermagem: dispositivos, pendências e exames de imagem",()=>showView("enf")),
@@ -4516,7 +4648,7 @@ function evoRespSupTxt(r){
 function evoPF(v){ const p=evoNum(v.pao2), f=evoNum(v.fio2); return (p&&f)?Math.round(p/(f>1?f/100:f)):null; }
 /* texto de cada sistema, para a folha impressa */
 /* "RCR 2T, BNF, sem sopros." — minúscula depois do primeiro item, exceto siglas */
-function evoTgTxt(tg){ tg=tg||[]; if(!tg.length) return ""; return tg.map((t,i)=>i&&/^[A-ZÀ-Ú][a-zà-ú]/.test(t)?t.charAt(0).toLowerCase()+t.slice(1):t).join(", ")+"."; }
+function evoTgTxt(tg,o){ tg=(tg||[]).map(t=>t==="Edema"&&o&&o.edX?`Edema (${o.edX}+/4+)`:t); if(!tg.length) return ""; return tg.map((t,i)=>i&&/^[A-ZÀ-Ú][a-zà-ú]/.test(t)?t.charAt(0).toLowerCase()+t.slice(1):t).join(", ")+"."; }
 function evoExTexto(ex,fem){
   const L=[], j=(...a)=>a.filter(Boolean).join(" ");
   const sup=(o,lbl)=>o&&o.on&&(o.itens||[]).length?lbl+": "+o.itens.map(evoDrogaTxt).filter(Boolean).join(" · "):"";
@@ -4530,7 +4662,7 @@ function evoExTexto(ex,fem){
   const supHem=[h.tev&&"TEV: "+(h.tev==="sim"?(h.tevTxt||"sim"):"não"+(h.tevTxt?" — "+h.tevTxt:"")),h.transf&&"Hemotransfusão: "+(h.transfTxt||"sim")].filter(Boolean).join(" · ");
   L.push([supAbd?"Abdome · nutrição":"Abdome",j(evoTgTxt(a.tg),a.livre),supAbd]);
   L.push(["Renal · metabólico",rn.livre||"",supRen]);
-  L.push([supHem?"Hemato · membros":"Membros",j(evoTgTxt(ex.memb.tg),ex.memb.livre),supHem]);
+  L.push([supHem?"Hemato · membros":"Membros",j(evoTgTxt(ex.memb.tg,ex.memb),ex.memb.livre),supHem]);
   return L.filter(x=>x[1]||x[2]);
 }
 function evoExFaltam(ex,add){
@@ -4644,7 +4776,9 @@ function evoExForm(ex,ctx){
       item("Profilaxia LAMG",ex.abd,"lamg",[["sim","Sim"],["nao","Não"]],"lamgTxt","Qual (opcional)")):null));
   wrap.append(row("Renal · metabólico",false,livre(ex.renal),ev?caixa(chk("Diálise",ex.renal,"dial","dialTxt","Ex.: HD intermitente 17/11, UF 2.000 mL"),chk("Insulina",ex.renal,"ins","insTxt","Ex.: regular conforme HGT")):null));
   ex.hema=ex.hema||{};
-  wrap.append(row(ev?"Hemato · membros":"Membros",true,tgs(ex.memb,EVO_TG.memb),livre(ex.memb),
+  const czM=()=>{ const m=ex.memb, i=el("input",{class:"txt",style:"width:56px;text-align:center;font-weight:700",value:m.edX||"",inputmode:"numeric",maxlength:"1",placeholder:"1–4"}); i.addEventListener("input",()=>{ i.value=i.value.replace(/[^1-4]/g,""); m.edX=i.value; onCh(); }); i.addEventListener("change",onRe);
+    return el("div",{style:"display:flex;gap:4px;align-items:center;margin-top:6px;font-weight:700"},"Edema",i,"/4+"); };
+  wrap.append(row(ev?"Hemato · membros":"Membros",true,tgs(ex.memb,EVO_TG.memb),(ex.memb.tg||[]).includes("Edema")?czM():null,livre(ex.memb),
     ev?caixa(item("Profilaxia TEV",ex.hema,"tev",[["sim","Sim"],["nao","Não"]],"tevTxt","Qual / motivo"),chk("Hemotransfusão",ex.hema,"transf","transfTxt","Ex.: 2 CH em 17/11")):null));
   return wrap;
 }
@@ -4981,13 +5115,31 @@ function evoAdmExames(id,b,onRe){
     el("button",{class:"btn small",type:"button",onclick:()=>{ b.imagem.push({nome:"",data:todayISO(),achado:""}); onRe(); }},"+ Exame de imagem"),
     el("div",{style:"margin-top:12px"},lab("Exames laboratoriais especiais"),evoLabEditor(b,onRe)));
 }
+/* lista de problemas da evolução: Enter inclui; clique duplo (ou toque duplo) no item corrige o texto; vazio remove */
+function evoProbChips(probs,onRe){
+  const box=el("div",{class:"picker"});
+  probs.forEach((x,i)=>{
+    const chip=el("span",{class:"chip",title:"Duplo clique para editar"},x,el("button",{type:"button","aria-label":"Remover "+x,onclick:e=>{ e.stopPropagation(); probs.splice(i,1); onRe(); }},"×"));
+    let t0=0;
+    chip.addEventListener("click",e=>{ const t=Date.now(); if(t-t0>=450){ t0=t; return; } t0=0; e.preventDefault();
+      let done=false; const ed=el("input",{type:"text",class:"chip-ed",value:x,size:Math.max(12,x.length+2),"aria-label":"Editar "+x});
+      const fim=ok=>{ if(done) return; done=true;
+        if(ok){ const v=ed.value.replace(/\s+/g," ").trim();
+          if(v!==x){ if(!v||probs.some((y,k)=>k!==i&&norm(y)===norm(v))) probs.splice(i,1); else probs[i]=v; } }
+        onRe(); };
+      ed.addEventListener("keydown",ev=>{ ev.stopPropagation(); if(ev.key==="Enter"){ ev.preventDefault(); fim(true); } else if(ev.key==="Escape"){ ev.preventDefault(); fim(false); } });
+      ed.addEventListener("blur",()=>fim(true));
+      chip.replaceWith(ed); ed.focus(); ed.select(); });
+    box.append(chip); });
+  const add=el("input",{list:"evoProbList",placeholder:probs.length?"Digite e tecle Enter · duplo clique no item para editar":"Digite e tecle Enter"});
+  add.addEventListener("keydown",e=>{ if(e.key==="Enter"&&add.value.trim()){ e.preventDefault(); const v=add.value.replace(/\s+/g," ").trim(); if(!probs.some(y=>norm(y)===norm(v))) probs.push(v); onRe(); } });
+  box.append(add);
+  return box;
+}
 function evoAdmDiag(id,d,p,onRe){
   const lab=(t,req)=>el("label",{class:"lbl"+(req?" ev-req":"")},t);
   const probs=p.problemas||(p.problemas=[]);
-  const chips=el("div",{class:"picker"},probs.map((x,i)=>el("span",{class:"chip"},x,el("button",{type:"button","aria-label":"Remover",onclick:()=>{ probs.splice(i,1); onRe(); }},"×"))));
-  const add=el("input",{list:"evoProbList",placeholder:"Digite e tecle Enter"});
-  add.addEventListener("keydown",e=>{ if(e.key==="Enter"&&add.value.trim()){ e.preventDefault(); probs.push(add.value.trim()); onRe(); } });
-  chips.append(add);
+  const chips=evoProbChips(probs,onRe);
   const po=evoPOTxt(d.cir);
   /* CID */
   const q=el("input",{class:"txt",placeholder:"Buscar por código ou descrição (ex.: septicemia, J18)"}), res=el("div");
@@ -5029,9 +5181,9 @@ function evoAdmConduta(id,d,b,onRe,onCh){
   /* protocolos */
   const P=evoData("cfgevo:protocolos").lista.filter(x=>x.ativo!==false);
   const protos=el("div",{},
-    el("div",{class:"ev-togs",style:"margin-bottom:8px"},P.map(pr=>{ const on=(k.protos||[]).some(x=>x.id===pr.id); return el("button",{type:"button",class:"btn small"+(on?" primary":""),onclick:()=>{ if(on) k.protos=k.protos.filter(x=>x.id!==pr.id); else { k.protos=(k.protos||[]).concat([{id:pr.id,nome:pr.nome,texto:pr.texto,exames:pr.exames||[]}]); if(EVO.sel&&evoProtoPedido(EVO.sel,pr)){ onRe(); renderEvo(); return; } } onRe(); }},(on?"✓ ":"+ ")+pr.nome); })),
+    el("div",{class:"ev-togs",style:"margin-bottom:8px"},P.map(pr=>{ const on=(k.protos||[]).some(x=>x.id===pr.id); return el("button",{type:"button",class:"btn small"+(on?" primary":""),onclick:()=>{ if(on) k.protos=k.protos.filter(x=>x.id!==pr.id); else { k.protos=(k.protos||[]).concat([{id:pr.id,nome:pr.nome,texto:pr.texto,exames:pr.exames||[]}]); } onRe(); }},(on?"✓ ":"+ ")+pr.nome); })),
     (k.protos||[]).map(pr=>{ const t=el("textarea",{class:"par-ta",style:"min-height:56px"}); t.value=pr.texto; t.addEventListener("input",()=>{ pr.texto=t.value; onCh(); });
-      return el("div",{style:"margin-bottom:8px"},el("div",{class:"hint",style:"margin:0 0 2px"},"Protocolo · ",el("b",{},pr.nome)," (editável só para este paciente)",pr.exames&&pr.exames.length?" · exames: "+pr.exames.join(", "):""),t); }));
+      return el("div",{style:"margin-bottom:8px"},el("div",{class:"hint",style:"margin:0 0 2px"},"Protocolo · ",el("b",{},pr.nome)," (editável só para este paciente)",evoProtoExBtn(pr)),t); }));
   const fx=[["adm","Faço admissão em UTI"],["exames","Solicito exames admissionais"],["vig","Vigilância e cuidados intensivos"]];
   const livre=el("textarea",{class:"par-ta",style:"min-height:70px",placeholder:"Texto livre (opcional)"}); livre.value=k.livre||""; livre.addEventListener("input",()=>{ k.livre=livre.value; onCh(); });
   return el("div",{class:"card",style:"border-color:#e9b48c"},el("h3",{},"Conduta da admissão"),
@@ -5198,8 +5350,7 @@ function evoDiaEditor(id){
       el("div",{},lab("Hora",true),evoHoraInput(hh,(h,fin)=>{ d.dataHora=(d.dataHora||d.data).slice(0,10)+"T"+h; if(fin) onRe(); else evoDocSave(d); })))));
   /* problemas, antibióticos, culturas */
   const probs=p.problemas||(p.problemas=[]);
-  const chipsP=el("div",{class:"picker"},probs.map((x,i)=>el("span",{class:"chip"},x,el("button",{type:"button","aria-label":"Remover",onclick:()=>{ probs.splice(i,1); onRe(); }},"×"))));
-  const addP=el("input",{list:"evoProbList",placeholder:"Digite e tecle Enter"}); addP.addEventListener("keydown",e=>{ if(e.key==="Enter"&&addP.value.trim()){ e.preventDefault(); probs.push(addP.value.trim()); onRe(); } }); chipsP.append(addP);
+  const chipsP=evoProbChips(probs,onRe);
   const cp=evoCulturasPos(b);
   corpo.append(card("Lista de problemas, antibióticos e culturas",el("span",{class:"hint"},"(mesmo registro do passômetro médico)"),
     el("div",{style:"margin-top:6px"},lab("Lista de problemas"),chipsP,el("datalist",{id:"evoProbList"},(SHARED.lists.problemas||[]).map(x=>el("option",{value:x})))),
@@ -5209,7 +5360,7 @@ function evoDiaEditor(id){
   const sv=d.sv, horas=d.turno==="D"?24:12;
   const pamOut=el("div",{class:"ev-calc"}), dOut=el("div",{class:"ev-calc"});
   const calc=()=>{ pamOut.textContent=evoPAMtxt(sv.pamin,sv.pamax);
-    const di=evoNum(sv.diu); dOut.textContent=di&&kg?evoFmt(di/kg/horas)+" mL/kg/h":"—"; };
+    const di=evoNum(sv.diu); dOut.textContent=di&&kg?evoFmt(di/kg/horas)+" mL/kg/h":(di?"falta o peso":"—"); };
   calc();
   const tx2=(k,ph)=>{ const i=txt(sv,k,ph); i.addEventListener("input",calc); return i; };
   corpo.append(evoAlerReanimCard(id,d,onCh,onRe));
@@ -5218,7 +5369,7 @@ function evoDiaEditor(id){
       el("div",{},lab("PA mínima",true),tx2("pamin","90 × 50")),el("div",{},lab("PA máxima",true),tx2("pamax","150 × 80")),el("div",{},lab("PAM (mín–máx)"),pamOut),
       el("div",{},lab("FC mín–máx",true),txt(sv,"fc","82 – 112")),el("div",{},lab("FR mín–máx",true),txt(sv,"fr","14 – 22")),el("div",{},lab("SatO2 mín–máx (%)",true),txt(sv,"sat","91 – 100"))),
     el("div",{style:"display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-top:10px"},
-      el("div",{},lab("Diurese (mL)"),tx2("diu","1850")),el("div",{},lab("mL/kg/h"),dOut),el("div",{},lab("BH (mL)"),txt(sv,"bh","+640")),
+      el("div",{},lab(`Diurese ${horas}h (mL)`),tx2("diu",horas===24?"1850":"900")),el("div",{},lab(`mL/kg/h (÷ ${horas}h)`),dOut),el("div",{},lab("BH (mL)"),txt(sv,"bh","+640")),
       el("div",{},lab("Febre > 38 °C"),seg(sv,"feb",[["nao","Não"],["sim","Sim"]]),sv.feb==="sim"?el("div",{style:"margin-top:6px"},txt(sv,"tmax","Tmáx (ex.: 38,9)")):null),
       el("div",{},lab("HGT > 150"),seg(sv,"hgt",[["nao","Não"],["sim","Sim"]]),sv.hgt==="sim"?el("div",{style:"margin-top:6px"},txt(sv,"hgtX","Vezes (ex.: 3)")):null)),
     (()=>{ const drs=evoDrenos(b,sv); sv.drenos=sv.drenos||{};
@@ -5259,9 +5410,9 @@ function evoDiaEditor(id){
     el("div",{class:"ev-togs",style:"margin-bottom:8px"},
       [["presc","Faço prescrição"],["exames","Solicito exames"],["vig","Vigilância e cuidados intensivos"]].map(([kk,l])=>el("button",{type:"button",class:"tog"+(k.fixos[kk]?" on":""),onclick:()=>{ k.fixos[kk]=!k.fixos[kk]; onRe(); }},l)),
       el("button",{type:"button",class:"tog"+(alta?" on":""),title:"Marca também a previsão de alta 24h no passômetro",onclick:()=>{ const q=pacOf(id); q.pf=fixPf(q.pf); q.pf.alta=alta?"":"24"; save(); onRe(); }},"Programo alta para amanhã")),
-    el("div",{class:"ev-togs",style:"margin-bottom:8px"},P.map(pr=>{ const on=(k.protos||[]).some(x=>x.id===pr.id); return el("button",{type:"button",class:"btn small"+(on?" primary":""),onclick:()=>{ if(on) k.protos=k.protos.filter(x=>x.id!==pr.id); else { k.protos=(k.protos||[]).concat([{id:pr.id,nome:pr.nome,texto:pr.texto,exames:pr.exames||[]}]); if(EVO.sel&&evoProtoPedido(EVO.sel,pr)){ onRe(); renderEvo(); return; } } onRe(); }},(on?"✓ ":"+ ")+pr.nome); })),
+    el("div",{class:"ev-togs",style:"margin-bottom:8px"},P.map(pr=>{ const on=(k.protos||[]).some(x=>x.id===pr.id); return el("button",{type:"button",class:"btn small"+(on?" primary":""),onclick:()=>{ if(on) k.protos=k.protos.filter(x=>x.id!==pr.id); else { k.protos=(k.protos||[]).concat([{id:pr.id,nome:pr.nome,texto:pr.texto,exames:pr.exames||[]}]); } onRe(); }},(on?"✓ ":"+ ")+pr.nome); })),
     (k.protos||[]).map(pr=>{ const tt=el("textarea",{class:"par-ta",style:"min-height:50px"}); tt.value=pr.texto; tt.addEventListener("input",()=>{ pr.texto=tt.value; onCh(); });
-      return el("div",{style:"margin-bottom:8px"},el("div",{class:"hint",style:"margin:0 0 2px"},"Protocolo · ",el("b",{},pr.nome)," (editável só para este paciente)"),tt); }),
+      return el("div",{style:"margin-bottom:8px"},el("div",{class:"hint",style:"margin:0 0 2px"},"Protocolo · ",el("b",{},pr.nome)," (editável só para este paciente)",evoProtoExBtn(pr)),tt); }),
     livre,el("p",{class:"hint",style:"margin:6px 0 0"},"Basta um item. Na folha saem só os itens marcados. “Programo alta para amanhã” marca também a previsão de alta 24h no passômetro.")));
   /* assinaturas */
   const per=evoData("usr:perfis").perfis, diars=Object.keys(per).filter(e=>per[e].diarista).map(e=>evoAssinatura(per[e]));
@@ -5340,7 +5491,7 @@ function evoDiaHtml(id,n,nDatas){
   const culs=evoCulturasPos(b).map(x=>`<li>${e(x.sitio||"Cultura")} ${x.data?fmtDate(x.data):""}: <b>${e(culGermeTxt(x))}</b>${culPerfilRel(x).length?" · "+e(culPerfilRel(x).join(", ")):""}${pData&&x.data&&x.data>pData?" "+NOVO:""}</li>`).join("");
   /* últimas 24h/12h */
   const sv=d.sv||{}, kg=evoNum(c.peso), horas=diur?24:12, di=evoNum(sv.diu), pa=evoPAM(sv.pamin), pz=evoPAM(sv.pamax);
-  const svRow=`<table class="svt"><tr><th>PA mín</th><th>PA máx</th><th>PAM mín–máx</th><th>FC mín–máx</th><th>FR mín–máx</th><th>SatO2 mín–máx</th><th>Febre &gt; 38 °C</th><th>HGT &gt; 150</th><th>Diurese</th><th>BH</th></tr>
+  const svRow=`<table class="svt"><tr><th>PA mín</th><th>PA máx</th><th>PAM mín–máx</th><th>FC mín–máx</th><th>FR mín–máx</th><th>SatO2 mín–máx</th><th>Febre &gt; 38 °C</th><th>HGT &gt; 150</th><th>Diurese ${horas}h</th><th>BH</th></tr>
   <tr><td>${e(sv.pamin||"—")}</td><td>${e(sv.pamax||"—")}</td><td>${evoPAMtxt(sv.pamin,sv.pamax)}</td><td>${e(sv.fc||"—")}</td><td>${e(sv.fr||"—")}</td><td>${e(sv.sat?sv.sat.replace(/%?$/,"%"):"—")}</td>
   <td>${sv.feb==="sim"?"Sim"+(sv.tmax?" · "+e(sv.tmax)+" °C":""):sv.feb==="nao"?"Não":"—"}</td><td>${sv.hgt==="sim"?"Sim"+(sv.hgtX?" · "+e(sv.hgtX)+"×":""):sv.hgt==="nao"?"Não":"—"}</td>
   <td>${di?e(sv.diu)+" mL"+(kg?" · "+evoFmt(di/kg/horas)+" mL/kg/h":""):"—"}</td><td>${e(sv.bh||"—")}</td></tr></table>`
@@ -5856,7 +6007,7 @@ function evoCfgProt(body,pode){
         el("div",{style:"flex:1;min-width:220px"},el("label",{class:"lbl"},"Protocolo"),evoInp(pr.nome,v=>{ if(!v||v===pr.nome) return; evoHist(n,`Protocolo “${pr.nome}” renomeado para “${v}”`); pr.nome=v; re(); },dis)),
         el("label",{style:"display:flex;gap:6px;align-items:center;padding-bottom:8px"},ck,"ativo")),
       el("label",{class:"lbl"},"Texto que entra na conduta"),ta,
-      el("label",{class:"lbl",style:"margin-top:8px"},"Exames marcados no pedido ao clicar (separe por vírgula; deixe vazio se nenhum)"),
+      el("label",{class:"lbl",style:"margin-top:8px"},"Exames sugeridos (não são pedidos automaticamente: aparece o botão “Marcar no pedido”; separe por vírgula)"),
       evoInp((pr.exames||[]).join(", "),v=>{ const arr=v?v.split(",").map(x=>x.trim()).filter(Boolean):[]; if(arr.join("|")===(pr.exames||[]).join("|")) return; pr.exames=arr; evoHist(n,`${pr.nome}: exames do pedido = ${arr.join(", ")||"nenhum"}`); re(); },dis)));
   });
   if(pode) body.append(el("button",{class:"btn",type:"button",onclick:()=>{
@@ -6243,7 +6394,12 @@ function evoBuscaBate(b,q){
   if(/^(leito\s*)?\d{1,2}$/.test(nq)&&bedLabel(b).replace(/\D/g,"").replace(/^0/,"")===dig.replace(/^0/,"")) return true;
   return false;
 }
-/* protocolo marcado na conduta: os exames dele já entram marcados no pedido da gaveta */
+/* exames sugeridos do protocolo: só vão para o pedido se o médico clicar (nada é pedido automaticamente) */
+function evoProtoExBtn(pr){
+  const ex=(pr.exames||[]).filter(Boolean); if(!ex.length||!EVO.sel) return null;
+  return el("span",{}," · exames sugeridos: "+ex.join(", ")+" ",el("button",{type:"button",class:"btn small",style:"padding:0 8px;margin-left:4px",onclick:()=>{ if(evoProtoPedido(EVO.sel,pr)) renderEvo(); }},"Marcar no pedido"));
+}
+/* protocolo: ao clicar em "Marcar no pedido", os exames dele entram marcados no pedido da gaveta */
 function evoProtoPedido(id,pr){
   const ex=(pr.exames||[]).filter(Boolean); if(!ex.length) return false;
   const b=SV.med.beds.find(x=>x.id===id); if(!b) return false;
