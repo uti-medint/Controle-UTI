@@ -5437,8 +5437,8 @@ function evoDiaResumo(id,d){
 
 /* ---- folha da evolução (1 página A4; a fonte diminui até 7,5 pt e o laboratório passa de 5 para 3 datas se precisar) ---- */
 const EVO_DIA_CSS=`@page evdia{size:A4 portrait;margin:7mm 8mm}
-@page evfr{size:A4 portrait;margin:4mm 4.5mm}
-.evfr{page:evfr;box-sizing:border-box;width:201mm;min-height:287mm;border:1.2pt solid #000;padding:2.58mm 3.08mm}.evfr>.evd{page:auto}
+@page evfr{size:A4 portrait;margin:4mm 6.1mm}
+.evfr{page:evfr;box-sizing:border-box;width:197.45mm;min-height:287mm;border:1.2pt solid #000;padding:2.58mm 1.3mm}.evfr>.evd{page:auto}
 .evd{page:evdia;width:194mm;overflow-wrap:anywhere;font-family:Arial,Helvetica,sans-serif;color:#000;font-size:8.6pt;line-height:1.28;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .evd *{box-sizing:border-box}.evd .hd{display:grid;grid-template-columns:32mm 1fr 52mm;align-items:center;border-bottom:1.6pt solid #000;padding-bottom:1.5mm;margin-bottom:1.6mm}
 .evd .hd img{max-height:13mm;max-width:32mm}.evd .tt{text-align:center}.evd .tt .u{font-size:11.5pt;font-weight:900;letter-spacing:.04em}.evd .tt .d{font-size:10.5pt;font-weight:700;margin-top:.6mm}
@@ -5637,7 +5637,7 @@ function evoDiaImprimir(id,n,previa){
     const fr=el("iframe",{style:"width:100%;height:75vh;border:1px solid var(--line);border-radius:8px;background:#fff"});
     openModal("Pré-visualização da evolução",el("div",{},r.ok?null:el("p",{class:"ev-warn"},"Mesmo com a fonte mínima (7,5 pt) a folha passa de uma página. Encurte algum texto longo (conduta, intercorrências ou registro livre)."),fr),
       [el("button",{class:"btn primary",type:"button",onclick:()=>evoDiaImprimir(id,n,false)},"Imprimir")]);
-    setTimeout(()=>{ const dc=fr.contentDocument; dc.open(); dc.write(`<!doctype html><meta charset="utf-8"><body style="margin:0;padding:4mm 4.5mm;background:#fff"><style>${EVO_DIA_CSS}</style>${r.html}</body>`); dc.close(); evoFitIframe(fr); },30);
+    setTimeout(()=>{ const dc=fr.contentDocument; dc.open(); dc.write(`<!doctype html><meta charset="utf-8"><body style="margin:0;padding:4mm 6.1mm;background:#fff"><style>${EVO_DIA_CSS}</style>${r.html}</body>`); dc.close(); evoFitIframe(fr); },30);
     return;
   }
   if(!r.ok&&!confirm("Mesmo com a fonte mínima a folha passa de uma página. Imprimir assim mesmo?")) return;
@@ -5751,7 +5751,7 @@ const EVO_PRINT_CSS=`@page evport{size:A4 portrait;margin:7mm 8mm}
 .evp .hpp{display:grid;grid-template-columns:repeat(5,1fr);gap:.6mm 2mm}.evp .ck{display:inline-block;width:2.5mm;height:2.5mm;border:.6pt solid #000;vertical-align:-.3mm;margin-right:.6mm}.evp .ck.x{background:#000}
 .evp .sig{display:grid;grid-template-columns:1fr 1fr;gap:6mm;margin-top:8mm;break-inside:avoid}.evp .sig.um{grid-template-columns:1fr}.evp .sig.tres{grid-template-columns:1fr 1fr 1fr;gap:4mm}.evp .sig.um .ln{width:95mm;margin-left:auto}
 .evp .pb{break-before:page;height:0}
-@page evfr{size:A4 portrait;margin:4mm 4.5mm}.evp.evadm{page:evfr}.evp .afr{box-sizing:border-box;min-height:287mm;border:1.2pt solid #000;padding:2.58mm 3.08mm;break-after:page}.evp .afr:last-child{break-after:auto}.evp .afr.f2e{display:flex;flex-direction:column}
+@page evfr{size:A4 portrait;margin:4mm 6.1mm}.evp.evadm{page:evfr}.evp .afr{box-sizing:border-box;width:197.45mm;min-height:287mm;border:1.2pt solid #000;padding:2.58mm 1.3mm;break-after:page}.evp .afr:last-child{break-after:auto}.evp .afr.f2e{display:flex;flex-direction:column}
 .evp .ce{margin-top:auto;font-family:Calibri,Carlito,Arial,sans-serif}.evp .ce+.foot{margin-top:1mm}.evp .ce table{width:100%;border-collapse:collapse;table-layout:fixed}
 .evp .ce td,.evp .ce th{border:.9pt solid #000;font-size:7pt;padding:0 1mm;text-align:center;font-weight:400;line-height:1.1}.evp .ce th{font-weight:700}
 .evp .ce .v{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;font-weight:700;font-size:6.6pt;display:inline-block}
@@ -5858,7 +5858,7 @@ const EVO_CE_HTML=(()=>{
 })();
 function evoAdmEnf(id){
   const html=evoAdmHtml(id,true); if(!html) return {html:"",ok:false};
-  const box=el("div",{style:"position:absolute;left:-10000px;top:0;width:201mm;visibility:hidden"}); document.body.append(box); box.innerHTML=html;
+  const box=el("div",{style:"position:absolute;left:-10000px;top:0;width:197.8mm;visibility:hidden"}); document.body.append(box); box.innerHTML=html;
   try{
     const fs=evoAdmMoldura(box.querySelector(".evp")); if(!fs) return {html,ok:false};
     const [f1,f2]=fs; f2.classList.add("f2e"); const c1=el("div"), c2=el("div"), k2=[...f2.children], sig=f2.querySelector(":scope>.sig");
@@ -5891,7 +5891,7 @@ function evoAdmEnfImprimir(id,previa){
     const fr=el("iframe",{style:"width:100%;height:75vh;border:1px solid var(--line);border-radius:8px;background:#fff"});
     openModal("Pré-visualização do adendo com controle laboratorial",el("div",{},r.ok?null:el("p",{class:"ev-warn"},"Mesmo com a letra mínima o adendo passa de duas páginas. Encurte algum texto longo (HDA, exame físico ou conduta)."),fr),
       [el("button",{class:"btn primary",type:"button",onclick:()=>{ if(evoAdmFaltam(id,evoAdmDoc(id,false)).length){ alert("Ainda há campos obrigatórios. Veja a barra no fim do adendo."); return; } evoAdmEnfImprimir(id,false); }},"Imprimir")]);
-    setTimeout(()=>{ const dc=fr.contentDocument; dc.open(); dc.write(`<!doctype html><meta charset="utf-8"><body style="margin:0;padding:4mm 4.5mm;background:#fff">${r.html}</body>`); dc.close(); evoFitIframe(fr); },30);
+    setTimeout(()=>{ const dc=fr.contentDocument; dc.open(); dc.write(`<!doctype html><meta charset="utf-8"><body style="margin:0;padding:4mm 6.1mm;background:#fff">${r.html}</body>`); dc.close(); evoFitIframe(fr); },30);
     return;
   }
   if(!r.ok&&!confirm("Mesmo com a letra mínima o adendo passa de duas páginas. Imprimir assim mesmo?")) return;
@@ -5906,7 +5906,7 @@ function evoAdmImprimir(id,previa,modo){
   if(previa){
     const fr=el("iframe",{style:"width:100%;height:75vh;border:1px solid var(--line);border-radius:8px;background:#fff"});
     openModal("Pré-visualização do adendo",el("div",{},fr),[el("button",{class:"btn primary",type:"button",onclick:()=>{ if(evoAdmFaltam(id,evoAdmDoc(id,false)).length){ alert("Ainda há campos obrigatórios. Veja a barra no fim do adendo."); return; } evoAdmImprimir(id,false,"comum"); }},"Imprimir")]);
-    setTimeout(()=>{ const dc=fr.contentDocument; dc.open(); dc.write(`<!doctype html><meta charset="utf-8"><body style="margin:0;padding:4mm 4.5mm;background:#fff">${h}</body>`); dc.close(); },30);
+    setTimeout(()=>{ const dc=fr.contentDocument; dc.open(); dc.write(`<!doctype html><meta charset="utf-8"><body style="margin:0;padding:4mm 6.1mm;background:#fff">${h}</body>`); dc.close(); },30);
     return;
   }
   $("#printArea").innerHTML=h; window.print();
@@ -6712,7 +6712,7 @@ function evoTlIncluir(temAdm,acoes){
 function evoPrevia(titulo,css,html){
   const fr=el("iframe",{style:"width:100%;height:75vh;border:1px solid var(--line);border-radius:8px;background:#fff"});
   const fecha=openModal(titulo,el("div",{},fr),[el("button",{class:"btn primary",type:"button",onclick:()=>{ fecha(); $("#printArea").innerHTML=(css?`<style>${css}</style>`:"")+html; window.print(); }},"Imprimir")]);
-  setTimeout(()=>{ const dc=fr.contentDocument; dc.open(); dc.write(`<!doctype html><meta charset="utf-8"><body style="margin:0;padding:4mm 4.5mm;background:#fff">${css?`<style>${css}</style>`:""}${html}</body>`); dc.close(); evoFitIframe(fr); },30);
+  setTimeout(()=>{ const dc=fr.contentDocument; dc.open(); dc.write(`<!doctype html><meta charset="utf-8"><body style="margin:0;padding:4mm 6.1mm;background:#fff">${css?`<style>${css}</style>`:""}${html}</body>`); dc.close(); evoFitIframe(fr); },30);
 }
 function evoArqImprimir(int,k){
   const d=int.docs[k]; if(!d) return;
