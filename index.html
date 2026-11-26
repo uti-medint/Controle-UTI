@@ -12,6 +12,8 @@
 <link rel="icon" type="image/png" href="icons/favicon-64.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Passômetro – UTI IOG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&display=swap">
 <style>
 :root{
   --bg:#f2f5f4; --panel:#ffffff; --ink:#1b2a29; --muted:#5f716f; --line:#d4dcda;
@@ -472,6 +474,35 @@ textarea.par-ta:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2
 .hub-sm small{display:block;font-weight:600;font-size:12px;color:var(--muted)}.hub-sm small.al{color:var(--warn)}
 .hub-sm.soon{border-style:dashed;opacity:.65}
 .hub-big.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+/* visual refinado: faixa verde em degradê com desenho de traço fino; caixas brancas com sombra suave por cima */
+.hub-band{position:relative;overflow:hidden;border-radius:20px;padding:28px 30px 84px;color:#fff;background:linear-gradient(135deg,#0b4f46 0%,#0f6b5e 55%,#1a8270 100%)}
+.hub-band .art{position:absolute;right:18px;top:10px;width:400px;max-width:44%;height:calc(100% - 20px);color:#fff;opacity:.2;pointer-events:none}
+.hub-band .art svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.hub-band h2{position:relative;margin:0 0 4px;font-family:Manrope,"Segoe UI",Roboto,sans-serif;font-size:26px;font-weight:800;letter-spacing:-.015em;color:#fff}
+.hub-band p{position:relative;margin:0;font-size:14.5px;color:rgba(255,255,255,.85)}
+.hub-band+.hub-big,.hub-band+.hub-grid{position:relative;margin-top:-58px;padding:0 14px}
+.hub-band~.hub-sec,.hub-band~.hub-small{padding-left:14px;padding-right:14px}
+.hub-big .hub-card,.hub-sm{border-color:#e1e9e6;box-shadow:0 1px 2px rgba(10,40,35,.05),0 8px 24px rgba(10,40,35,.07)}
+.hub-big .hub-card:hover,.hub-sm:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(10,40,35,.06),0 14px 32px rgba(10,40,35,.12)}
+.hub-sm{transition:border-color .15s,box-shadow .15s,transform .15s;box-shadow:0 1px 2px rgba(10,40,35,.04)}
+.hub-big .hub-ic,.hub-sm .hub-ic{background:transparent;border:1.5px solid #bcd6cf}
+.hub-big .hub-t{font-family:Manrope,"Segoe UI",Roboto,sans-serif;font-weight:800;letter-spacing:-.01em}
+.hub-sec{padding-top:4px}
+@media (max-width:700px){.hub-band{padding:22px 20px 76px;border-radius:16px}.hub-band h2{font-size:21px}.hub-band .art{max-width:46%;opacity:.16}.hub-band .art .xtra{display:none}
+  .hub-band+.hub-big,.hub-band+.hub-grid{padding:0 8px}.hub-band~.hub-sec,.hub-band~.hub-small{padding-left:0;padding-right:0}}
+@media (prefers-reduced-motion:reduce){.hub-big .hub-card:hover,.hub-sm:hover{transform:none}}
+/* login: mesmo degradê e desenho da tela inicial */
+.lg-bg{position:fixed;inset:0;background:linear-gradient(150deg,#0b4f46 0%,#0f6b5e 55%,#1a8270 100%)}
+.lg-bg .art{position:absolute;right:4%;bottom:6%;width:min(560px,70vw);color:#fff;opacity:.14}
+.lg-bg .art svg{width:100%;height:auto;fill:none;stroke:currentColor;stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round}
+#loginOv .modal{position:relative;box-shadow:0 24px 70px rgba(5,30,26,.35);border-radius:18px}
+#loginOv h2{font-family:Manrope,"Segoe UI",Roboto,sans-serif;font-weight:800;letter-spacing:-.015em}
+/* modo noturno (00h–05h): escurece todas as telas invertendo as cores; fotos, logo e a faixa verde voltam à cor original. A impressão sai sempre clara. */
+html.noite{filter:invert(1) hue-rotate(180deg) contrast(.88);background:#fff}
+html.noite img,html.noite video,html.noite canvas,html.noite .no-inv{filter:invert(1) hue-rotate(180deg)}
+html.noite .no-inv img{filter:none}
+html.noite .hub-card,html.noite .hub-sm,html.noite .modal,html.noite .bv-card,html.noite .toast{box-shadow:0 0 0 1px rgba(0,0,0,.10)!important}   /* sombra invertida viraria brilho */
+@media print{html.noite{filter:none!important}html.noite img,html.noite .no-inv{filter:none!important}}
 @media (max-width:860px){.hub-big,.hub-big.two{grid-template-columns:1fr}}
 .ev-badge{font-size:11px;font-weight:700;background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:2px 8px;text-transform:uppercase;letter-spacing:.04em}
 .ev-user{font-size:13.5px;color:var(--muted);text-align:right;line-height:1.25}.ev-user b{color:var(--ink);display:block;font-size:14px}
@@ -2467,6 +2498,7 @@ function showLogin(){
     catch(e){ err.textContent=authMsg(e); }
   }},"Esqueci a senha");
   const ov=el("div",{class:"overlay",id:"loginOv",style:"background:var(--bg)"},
+    el("div",{class:"lg-bg no-inv"},el("div",{class:"art",html:HUB_ART.med})),
     el("div",{class:"modal",style:"width:min(400px,100%)"},el("div",{class:"body"},
       el("h2",{style:"margin:0 0 4px"},"Passômetro"),el("p",{class:"hint"},"UTI IOG – acesso restrito à equipe"),
       email,el("div",{style:"height:10px"}),pass,err,go,el("div",{style:"margin-top:10px;text-align:center"},reset))));
@@ -2559,6 +2591,38 @@ function hubPassCard(card,svc,t,d){
   return c;
 }
 function hubOutros(g,itens){ const o=el("div",{class:"hub-small",id:"hubSmall"},itens.filter(Boolean)); g.after(el("div",{class:"hub-sec",id:"hubSec"},"Outros"),o); }
+/* desenhos de traço fino da faixa: médicos (monitor, estetoscópio, folha de evolução) e enfermagem (prancheta, seringa, soro) */
+const HUB_ART={
+  med:'<svg viewBox="0 0 440 200"><rect x="200" y="22" width="176" height="112" rx="12"/><path d="M212 86 h36 l7 -13 l9 30 l10 -44 l9 27 h70"/><path d="M288 134 v20 M262 154 h52"/>'+
+    '<path d="M70 36 c0 54 19 80 46 80 s46 -26 46 -80"/><circle cx="70" cy="30" r="6"/><circle cx="162" cy="30" r="6"/><path d="M116 116 v32 c0 32 52 32 52 0 v-11"/><circle cx="168" cy="128" r="9"/>'+
+    '<g class="xtra"><rect x="388" y="66" width="44" height="62" rx="5"/><path d="M396 82 h28 M396 94 h28 M396 106 h18"/></g></svg>',
+  enf:'<svg viewBox="0 0 440 200"><rect x="214" y="30" width="118" height="150" rx="10"/><rect x="246" y="20" width="54" height="20" rx="6"/><path d="M234 70 h12 l5 6 l9 -12 M270 70 h44 M234 100 h12 l5 6 l9 -12 M270 100 h44 M234 130 h12 l5 6 l9 -12 M270 130 h34"/>'+
+    '<path d="M96 24 h52 v14 c0 6 4 10 4 18 v70 c0 8 -6 14 -14 14 h-32 c-8 0 -14 -6 -14 -14 v-70 c0 -8 4 -12 4 -18 z"/><path d="M104 74 h36 M104 92 h36 M104 110 h24"/><path d="M122 140 v26 c0 14 12 18 22 14"/><path d="M122 24 v-10"/>'+
+    '<g class="xtra"><path d="M352 168 l60 -60 M362 178 l60 -60 M352 168 l10 10 M404 116 l14 -14 l10 10 l-14 14 M418 102 l10 -10 M424 96 l8 8"/></g></svg>'};
+function hubSaud(){
+  const h=new Date().getHours(), p=EVO.perfil, mad=h<5;
+  const nome=!p?"":p.generico?(p.grupo==="enf"?"equipe de enfermagem":String(p.trat||"").toLowerCase()):evoTratamento(p);
+  const tit=mad?(p&&!p.generico?(p.sexo==="F"?"Bem-vinda":"Bem-vindo"):"Boas-vindas")+", colega da madrugada"
+    :(h<12?"Bom dia":h<18?"Boa tarde":"Boa noite")+(nome?", "+nome:"");
+  const t=evoTurno(), n=SV.med.beds.filter(b=>b.nome).length;
+  const dia=new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"});
+  const sub=[mad&&nome&&!p.generico?nome:"","Plantão "+(t.tipo==="D"?"diurno":"noturno"),dia,n?(n+(n>1?" pacientes internados":" paciente internado")):"nenhum paciente internado"].filter(Boolean).join(" · ");
+  return {tit,sub,mad};
+}
+function hubBand(g,arte){
+  const S2=hubSaud(), b=el("div",{class:"hub-band no-inv",id:"hubBand"},el("div",{class:"art",html:HUB_ART[arte]}),el("h2",{},S2.tit),el("p",{},S2.sub));
+  g.before(b); const h=document.querySelector(".hub-wrap>h2"); if(h) h.hidden=true;
+  if(S2.mad){ const k="madrug_"+todayISO(); try{ if(!localStorage.getItem(k)){ localStorage.setItem(k,"1"); setTimeout(()=>toast("Modo noturno ligado até as 05h. Bom plantão!"),400); } }catch(e){} }
+}
+/* modo noturno automático das 00h às 05h */
+function modoNoite(){
+  const on=new Date().getHours()<5, H=document.documentElement;
+  if(H.classList.contains("noite")===on) return;
+  H.classList.toggle("noite",on);
+  const m=document.querySelector('meta[name="theme-color"]'); if(m) m.content=on?"#1d2422":"#0f6b5e";
+  if(typeof view!=="undefined"&&view==="hub"&&typeof SV!=="undefined"&&SV.med) renderHub();
+}
+modoNoite(); setInterval(modoNoite,60000);
 function renderHubMed(g,card){
   const R=hubResumo(), turno=R.t.tipo==="D"?"diurnas":"noturnas", falta=R.n-R.feitas;
   const hora=ts=>{ const d=new Date(ts); return (d.toDateString()===new Date().toDateString()?"":fmtDate(new Date(ts-d.getTimezoneOffset()*60000).toISOString().slice(0,10))+" ")+d.toTimeString().slice(0,5); };
@@ -2568,7 +2632,7 @@ function renderHubMed(g,card){
     R.n?hubNum("Feitas neste plantão",`${R.feitas} de ${R.n}`,R.feitas,R.n):null].filter(Boolean));
   const ex=card(ICONS.lab,"Solicitação de exames","Laboratório e imagem, com guias dos convênios",()=>showView("exames"),false,true);
   ex.append(...[R.aberto?hubSt("warn","Pedido em andamento · "+bl(R.aberto)):hubSt("ok","✓ Nenhum pedido aberto"),R.ult?hubNum("Último pedido",`${bl(R.ult.leito)} · ${hora(R.ult.ts)}`):null].filter(Boolean));
-  g.className="hub-big";
+  g.className="hub-big"; hubBand(g,"med");
   g.append(evo,hubPassCard(card,"med","Passômetro médico","Passagem de plantão médica dos leitos"),ex);
   hubOutros(g,[
     hubSm(ICONS.bol,"Boletim médico",()=>{ EVO.mode="bol"; EVO.bolData=""; showView("evo"); }),
@@ -2582,7 +2646,7 @@ function renderHubMed(g,card){
 /* tela inicial da enfermagem: os dois passômetros em destaque, com o resumo do plantão */
 function renderHubEnf(g,card){
   const parPend=SHARED.par.filter(r=>!parRespondido(r)).length;
-  g.className="hub-big two";
+  g.className="hub-big two"; hubBand(g,"enf");
   g.append(hubPassCard(card,"enf","Passômetro enfermagem","Passagem de plantão da enfermagem: dispositivos, pendências e exames de imagem"),
     hubPassCard(card,"med","Passômetro médico","Passagem de plantão médica dos leitos"));
   hubOutros(g,[
@@ -2595,7 +2659,7 @@ function renderHubEnf(g,card){
 function renderHub(){
   const lg=$("#hubLogo"); if(SHARED.logo){ lg.src=SHARED.logo; lg.hidden=false; } else { lg.hidden=true; lg.removeAttribute("src"); }
   $("#hubTitle").textContent=(SV.med&&SV.med.unit)||"UTI IOG";
-  const g=$("#hubGrid"); g.innerHTML=""; g.className="hub-grid"; ["#hubSec","#hubSmall"].forEach(q=>{ const x=$(q); if(x) x.remove(); });
+  const g=$("#hubGrid"); g.innerHTML=""; g.className="hub-grid"; ["#hubSec","#hubSmall","#hubBand"].forEach(q=>{ const x=$(q); if(x) x.remove(); }); { const h=document.querySelector(".hub-wrap>h2"); if(h) h.hidden=false; }
   const card=(ic,t,d,fn,soon,nm)=>el("button",{class:"hub-card"+(soon?" soon":"")+(nm?" no-mobile":""),type:"button",onclick:fn},
     el("div",{class:"hub-ic",html:ic}),
     el("div",{class:"hub-t"},t,soon?el("span",{class:"badge"},"Em breve"):null),
