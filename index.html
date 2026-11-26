@@ -501,6 +501,8 @@ textarea.par-ta:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2
 html.noite{filter:invert(1) hue-rotate(180deg) contrast(.88);background:#fff}
 html.noite img,html.noite video,html.noite canvas,html.noite .no-inv{filter:invert(1) hue-rotate(180deg)}
 html.noite .no-inv img{filter:none}
+html.noite .overlay{background:rgba(255,255,255,.6)}   /* depois da inversão vira um véu escuro */
+html.noite .bv-ov{background:radial-gradient(1000px 600px at 85% 0%,#a9c3df 0%,rgba(169,195,223,0) 60%),radial-gradient(900px 700px at 0% 100%,#a6e6dc 0%,rgba(166,230,220,0) 55%),#e6eef4}
 html.noite .hub-card,html.noite .hub-sm,html.noite .modal,html.noite .bv-card,html.noite .toast{box-shadow:0 0 0 1px rgba(0,0,0,.10)!important}   /* sombra invertida viraria brilho */
 @media print{html.noite{filter:none!important}html.noite img,html.noite .no-inv{filter:none!important}}
 @media (max-width:860px){.hub-big,.hub-big.two{grid-template-columns:1fr}}
