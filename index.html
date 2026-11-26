@@ -5886,11 +5886,22 @@ function evoAdmEnf(id){
   }catch(e){ return {html,ok:false}; } finally{ box.remove(); }
 }
 /* login da coordenação: pergunta qual impressão */
-function evoAdmEscolhe(id,previa){
-  const fecha=openModal(previa?"Pré-visualizar adendo":"Imprimir adendo",el("div",{style:"display:flex;flex-direction:column;gap:10px;min-width:280px"},
+function evoAdmEscolhe(id,previa){ evoAdmPergunta(previa?"Pré-visualizar adendo":"Imprimir adendo",modo=>evoAdmImprimir(id,previa,modo)); }
+function evoAdmPergunta(titulo,fn){
+  const fecha=openModal(titulo,el("div",{style:"display:flex;flex-direction:column;gap:10px;min-width:280px"},
     el("p",{class:"hint",style:"margin:0"},"Qual impressão?"),
-    el("button",{class:"btn",type:"button",onclick:()=>{ fecha(); evoAdmImprimir(id,previa,"comum"); }},"Adendo comum"),
-    el("button",{class:"btn primary",type:"button",onclick:()=>{ fecha(); evoAdmImprimir(id,previa,"enf"); }},"Adendo com controle laboratorial (enfermagem)")));
+    el("button",{class:"btn",type:"button",onclick:()=>{ fecha(); fn("comum"); }},"Adendo comum"),
+    el("button",{class:"btn primary",type:"button",onclick:()=>{ fecha(); fn("enf"); }},"Adendo com controle laboratorial (enfermagem)")));
+}
+/* adendo de internação encerrada (paciente de alta ou internação anterior): no login da coordenação também pergunta qual impressão */
+function evoAdmArqPrevia(int,titulo){
+  const vai=modo=>{
+    let ok=true;
+    const html=evoComInt(int,vid=>{ if(modo!=="enf") return evoAdmAjusta(evoAdmHtml(vid)); const r=evoAdmEnf(vid); ok=r.ok; return r.html; });
+    if(!ok) alert("Mesmo com a letra mínima o adendo passa de duas páginas.");
+    evoPrevia(titulo,null,html);   /* cópia: não altera o registro de impressão */
+  };
+  if(EVO.email===EVO_ENF_LOGIN) evoAdmPergunta("Imprimir adendo",vai); else vai("comum");
 }
 function evoAdmEnfImprimir(id,previa){
   const r=evoAdmEnf(id); if(!r.html) return;
@@ -6723,6 +6734,7 @@ function evoPrevia(titulo,css,html){
 }
 function evoArqImprimir(int,k){
   const d=int.docs[k]; if(!d) return;
+  if(d.tipo==="adm"){ evoAdmArqPrevia(int,"Folha da internação encerrada"); return; }
   const r=evoComInt(int,vid=>{
     if(d.tipo==="adm") return {css:"",html:evoAdmAjusta(evoAdmHtml(vid))};
     if(d.tipo==="interc") return {css:EVO_DIA_CSS,html:evoIqHtml(vid,d)};
@@ -6980,7 +6992,7 @@ async function evoReadmJanela(id,x){
 /* adendo anterior, só para leitura (a folha como foi impressa) */
 function evoReadmVerAdendo(int){
   if(!int.docs["evo:"+int.pid+":adm"]){ alert("A internação anterior não tem adendo de internação."); return; }
-  evoPrevia("Adendo da internação anterior",null,evoComInt(int,vid=>evoAdmAjusta(evoAdmHtml(vid))));
+  evoAdmArqPrevia(int,"Adendo da internação anterior");
 }
 /* quadro de reinternação no topo do adendo */
 function evoReadmQuadro(id){
