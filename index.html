@@ -471,7 +471,8 @@ textarea.par-ta:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2
 .hub-sm .hub-ic{width:32px;height:32px;border-radius:9px;margin:0;flex:none}.hub-sm .hub-ic svg{width:19px;height:19px}
 .hub-sm small{display:block;font-weight:600;font-size:12px;color:var(--muted)}.hub-sm small.al{color:var(--warn)}
 .hub-sm.soon{border-style:dashed;opacity:.65}
-@media (max-width:860px){.hub-big{grid-template-columns:1fr}}
+.hub-big.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:860px){.hub-big,.hub-big.two{grid-template-columns:1fr}}
 .ev-badge{font-size:11px;font-weight:700;background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:2px 8px;text-transform:uppercase;letter-spacing:.04em}
 .ev-user{font-size:13.5px;color:var(--muted);text-align:right;line-height:1.25}.ev-user b{color:var(--ink);display:block;font-size:14px}
 .bol-t{border-collapse:collapse;width:100%;font-size:13px}
@@ -2538,44 +2539,58 @@ const ICONS={
 };
 /* tela inicial dos médicos (médico, residente, login geral): Evolução, Passômetro médico e Solicitação de exames em destaque,
    cada um com o resumo do plantão atual da UTI inteira; os outros menus ficam menores embaixo. Ao clicar, abre a lista de leitos de sempre. */
+function hubIni(t){ return new Date(t.data+"T"+(t.tipo==="D"?"07:00":"19:00")).getTime(); }
+/* passômetro (médico ou enfermagem): leitos ocupados e quantos foram alterados desde o início do plantão (07h ou 19h) */
+function hubPass(svc){ const t=evoTurno(), ini=hubIni(t), beds=(SV[svc].beds||[]).filter(b=>b.nome); return {n:beds.length,ok:beds.filter(b=>(b.upd||0)>=ini).length}; }
 function hubResumo(){
   const t=evoTurno(), beds=SV.med.beds.filter(b=>b.nome);
-  const ini=new Date(t.data+"T"+(t.tipo==="D"?"07:00":"19:00")).getTime();
   const st=beds.map(b=>evoStatus(b.id,evoDiaPart(b.id,t)).k), feitas=st.filter(k=>k==="imp"||k==="pronta").length;
-  const passOk=beds.filter(b=>(b.upd||0)>=ini).length;
   const aberto=xd&&xd.leito&&(xd.lab.sel.length||xd.lab.gaso||(xd.lab.livres||[]).length||xd.img.length||xd.livre.length)?xd.leito:"";
-  const ult=SHARED.ped[0]||null;
-  return {t,n:beds.length,feitas,passOk,aberto,ult,parPend:SHARED.par.filter(r=>!parRespondido(r)).length};
+  return {t,n:beds.length,feitas,passOk:hubPass("med").ok,aberto,ult:SHARED.ped[0]||null,parPend:SHARED.par.filter(r=>!parRespondido(r)).length};
 }
+/* peças comuns das telas iniciais */
+function hubSt(cls,txt){ return el("span",{class:"hub-st"+(cls?" "+cls:"")},txt); }
+function hubNum(rot,val,a,b){ const pct=b?Math.round(a/b*100):0; return el("div",{class:"hub-num"},el("div",{},el("span",{},rot),el("b",{},val)),b!=null?el("div",{class:"hub-bar"},el("i",{style:`width:${pct}%`})):null); }
+function hubSm(ic,t,fn,nota,al,soon,nm){ return el("button",{class:"hub-sm"+(soon?" soon":"")+(nm?" no-mobile":""),type:"button",onclick:fn},el("div",{class:"hub-ic",html:ic}),el("div",{},t,nota?el("small",{class:al?"al":""},nota):null)); }
+function hubPassCard(card,svc,t,d){
+  const P=hubPass(svc), falta=P.n-P.ok, c=card(ICONS[svc],t,d,()=>showView(svc));
+  c.append(...[!P.n?hubSt("","Nenhum paciente internado"):falta?hubSt("warn",`${falta} ${falta>1?"leitos sem atualizar":"leito sem atualizar"}`):hubSt("ok","✓ Todos atualizados"),
+    P.n?hubNum("Atualizados neste plantão",`${P.ok} de ${P.n}`,P.ok,P.n):null].filter(Boolean));
+  return c;
+}
+function hubOutros(g,itens){ const o=el("div",{class:"hub-small",id:"hubSmall"},itens.filter(Boolean)); g.after(el("div",{class:"hub-sec",id:"hubSec"},"Outros"),o); }
 function renderHubMed(g,card){
-  const R=hubResumo(), turno=R.t.tipo==="D"?"diurnas":"noturnas", falta=R.n-R.feitas, semPass=R.n-R.passOk;
-  const pct=(a,b)=>b?Math.round(a/b*100):0;
-  const num=(rot,val,a,b)=>el("div",{class:"hub-num"},el("div",{},el("span",{},rot),el("b",{},val)),b!=null?el("div",{class:"hub-bar"},el("i",{style:`width:${pct(a,b)}%`})):null);
-  const st=(cls,txt)=>el("span",{class:"hub-st"+(cls?" "+cls:"")},txt);
-  const big=(ic,t,d,fn,extra,nm)=>{ const c=card(ic,t,d,fn,false,nm); c.append(...extra.filter(Boolean)); return c; };
-  const hojeTs=ts=>{ const d=new Date(ts), h=new Date(); return d.toDateString()===h.toDateString()?d.toTimeString().slice(0,5):fmtDate(new Date(ts-d.getTimezoneOffset()*60000).toISOString().slice(0,10))+" "+d.toTimeString().slice(0,5); };
+  const R=hubResumo(), turno=R.t.tipo==="D"?"diurnas":"noturnas", falta=R.n-R.feitas;
+  const hora=ts=>{ const d=new Date(ts); return (d.toDateString()===new Date().toDateString()?"":fmtDate(new Date(ts-d.getTimezoneOffset()*60000).toISOString().slice(0,10))+" ")+d.toTimeString().slice(0,5); };
   const bl=id=>{ const b=SV.med.beds.find(x=>x.id===id); return b?bedLabel(b):id; };
+  const evo=card(ICONS.evo,"Evolução médica","Adendo, evoluções, intercorrências e relatório de alta",()=>showView("evo"));
+  evo.append(...[!R.n?hubSt("","Nenhum paciente internado"):falta?hubSt("warn",`${falta} ${falta>1?turno+" pendentes":turno.slice(0,-1)+" pendente"}`):hubSt("ok",`✓ Todas as ${turno} feitas`),
+    R.n?hubNum("Feitas neste plantão",`${R.feitas} de ${R.n}`,R.feitas,R.n):null].filter(Boolean));
+  const ex=card(ICONS.lab,"Solicitação de exames","Laboratório e imagem, com guias dos convênios",()=>showView("exames"),false,true);
+  ex.append(...[R.aberto?hubSt("warn","Pedido em andamento · "+bl(R.aberto)):hubSt("ok","✓ Nenhum pedido aberto"),R.ult?hubNum("Último pedido",`${bl(R.ult.leito)} · ${hora(R.ult.ts)}`):null].filter(Boolean));
   g.className="hub-big";
-  g.append(
-    big(ICONS.evo,"Evolução médica","Adendo, evoluções, intercorrências e relatório de alta",()=>showView("evo"),[
-      !R.n?st("","Nenhum paciente internado"):falta?st("warn",`${falta} ${falta>1?turno+" pendentes":turno.slice(0,-1)+" pendente"}`):st("ok",`✓ Todas as ${turno} feitas`),
-      R.n?num("Feitas neste plantão",`${R.feitas} de ${R.n}`,R.feitas,R.n):null]),
-    big(ICONS.med,"Passômetro médico","Passagem de plantão médica dos leitos",()=>showView("med"),[
-      !R.n?st("","Nenhum paciente internado"):semPass?st("warn",`${semPass} ${semPass>1?"leitos sem atualizar":"leito sem atualizar"}`):st("ok","✓ Todos atualizados"),
-      R.n?num("Atualizados neste plantão",`${R.passOk} de ${R.n}`,R.passOk,R.n):null]),
-    big(ICONS.lab,"Solicitação de exames","Laboratório e imagem, com guias dos convênios",()=>showView("exames"),[
-      R.aberto?st("warn","Pedido em andamento · "+bl(R.aberto)):st("ok","✓ Nenhum pedido aberto"),
-      R.ult?num("Último pedido",`${bl(R.ult.leito)} · ${hojeTs(R.ult.ts)}`):null],true));
-  const sm=(ic,t,fn,nota,al,soon)=>el("button",{class:"hub-sm"+(soon?" soon":""),type:"button",onclick:fn},el("div",{class:"hub-ic",html:ic}),el("div",{},t,nota?el("small",{class:al?"al":""},nota):null));
-  const outros=el("div",{class:"hub-small"},
-    sm(ICONS.bol,"Boletim médico",()=>{ EVO.mode="bol"; EVO.bolData=""; showView("evo"); }),
-    sm(ICONS.cult,"Controle de culturas",()=>showView("cult")),
-    sm(ICONS.par,"Parecer médico",()=>showView("par"),R.parPend?`${R.parPend} aguardando resposta`:"",!!R.parPend),
-    sm(ICONS.pocus,"POCUS",()=>showView("pocus")),
-    sm(ICONS.enf,"Passômetro enfermagem",()=>showView("enf")),
-    sm(ICONS.arq,"Prontuários anteriores",()=>{ EVO.mode="arq"; EVO.sel=null; EVO.arq=null; showView("evo"); evoIdxCarrega(); }),
-    sm(ICONS.visita,"Visita multidisciplinar",()=>toast("Visita multidisciplinar: em construção. Será montada em breve."),"em breve",false,true));
-  g.after(el("div",{class:"hub-sec",id:"hubSec"},"Outros"),outros); outros.id="hubSmall";
+  g.append(evo,hubPassCard(card,"med","Passômetro médico","Passagem de plantão médica dos leitos"),ex);
+  hubOutros(g,[
+    hubSm(ICONS.bol,"Boletim médico",()=>{ EVO.mode="bol"; EVO.bolData=""; showView("evo"); }),
+    hubSm(ICONS.cult,"Controle de culturas",()=>showView("cult")),
+    hubSm(ICONS.par,"Parecer médico",()=>showView("par"),R.parPend?`${R.parPend} aguardando resposta`:"",!!R.parPend),
+    hubSm(ICONS.pocus,"POCUS",()=>showView("pocus")),
+    hubSm(ICONS.enf,"Passômetro enfermagem",()=>showView("enf")),
+    hubSm(ICONS.arq,"Prontuários anteriores",()=>{ EVO.mode="arq"; EVO.sel=null; EVO.arq=null; showView("evo"); evoIdxCarrega(); }),
+    hubSm(ICONS.visita,"Visita multidisciplinar",()=>toast("Visita multidisciplinar: em construção. Será montada em breve."),"em breve",false,true)]);
+}
+/* tela inicial da enfermagem: os dois passômetros em destaque, com o resumo do plantão */
+function renderHubEnf(g,card){
+  const parPend=SHARED.par.filter(r=>!parRespondido(r)).length;
+  g.className="hub-big two";
+  g.append(hubPassCard(card,"enf","Passômetro enfermagem","Passagem de plantão da enfermagem: dispositivos, pendências e exames de imagem"),
+    hubPassCard(card,"med","Passômetro médico","Passagem de plantão médica dos leitos"));
+  hubOutros(g,[
+    hubSm(ICONS.cult,"Controle de culturas",()=>showView("cult")),
+    hubSm(ICONS.pocus,"POCUS",()=>showView("pocus")),
+    hubSm(ICONS.lab,"Solicitação de exames",()=>showView("exames"),"","",false,true),
+    hubSm(ICONS.par,"Parecer médico",()=>showView("par"),parPend?`${parPend} aguardando resposta`:"",!!parPend),
+    hubSm(ICONS.visita,"Visita multidisciplinar",()=>toast("Visita multidisciplinar: em construção. Será montada em breve."),"em breve",false,true)]);
 }
 function renderHub(){
   const lg=$("#hubLogo"); if(SHARED.logo){ lg.src=SHARED.logo; lg.hidden=false; } else { lg.hidden=true; lg.removeAttribute("src"); }
@@ -2585,15 +2600,7 @@ function renderHub(){
     el("div",{class:"hub-ic",html:ic}),
     el("div",{class:"hub-t"},t,soon?el("span",{class:"badge"},"Em breve"):null),
     el("div",{class:"hub-d"},d));
-  if(EVO.on&&!EVO.oculto) return renderHubMed(g,card);
-  if(EVO.on&&!EVO.oculto){   /* Evolução médica: logins médicos (enfermagem não vê) */
-    const c=card(ICONS.evo,"Evolução médica","Cadastro do paciente, adendo de internação, evoluções, intercorrências e relatório de alta",()=>showView("evo"));
-    c.classList.add("evo-new"); g.append(c);
-    const cb=card(ICONS.bol,"Boletim médico","Boletim do dia para as famílias: vem da evolução noturna, o médico do plantão confere e imprime",()=>{ EVO.mode="bol"; EVO.bolData=""; showView("evo"); });
-    cb.classList.add("bol-card"); g.append(cb);
-    const cp=card(ICONS.arq,"Prontuários anteriores","Pacientes que já tiveram alta (1 ano): linha do tempo, folhas impressas e relatório de alta",()=>{ EVO.mode="arq"; EVO.sel=null; EVO.arq=null; showView("evo"); evoIdxCarrega(); });
-    cp.classList.add("arq-card"); g.append(cp);
-  }
+  if(EVO.on) return EVO.oculto?renderHubEnf(g,card):renderHubMed(g,card);
   g.append(
     card(ICONS.med,"Passômetro médico","Passagem de plantão médica dos leitos da UTI",()=>showView("med")),
     card(ICONS.enf,"Passômetro enfermagem","Passagem de plantão da enfermagem: dispositivos, pendências e exames de imagem",()=>showView("enf")),
