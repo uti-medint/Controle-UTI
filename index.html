@@ -455,6 +455,23 @@ textarea.par-ta:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2
 /* ===== Evolução médica ===== */
 #evoApp{display:flex;flex-direction:column;height:100vh}#evoApp[hidden]{display:none}
 .hub-card.evo-new{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+/* tela inicial dos médicos: 3 menus grandes com o resumo do plantão + outros menores */
+.hub-big{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.hub-big .hub-card{min-height:0;gap:8px}
+.hub-st{display:inline-flex;align-self:flex-start;align-items:center;gap:4px;border-radius:999px;padding:3px 11px;font-size:13px;font-weight:700;background:#eceff0;color:#5f716f}
+.hub-st.warn{background:var(--warn-soft);color:var(--warn)}.hub-st.ok{background:#e3f2e5;color:#2f7d3a}
+.hub-num{border-top:1px dashed var(--line);padding-top:8px;margin-top:2px;display:grid;gap:5px;font-size:13.5px;color:var(--muted)}
+.hub-num>div:first-child{display:flex;justify-content:space-between;gap:8px}
+.hub-num b{color:var(--ink);font-variant-numeric:tabular-nums}
+.hub-bar{height:7px;border-radius:4px;background:#eceff0;overflow:hidden}.hub-bar i{display:block;height:100%;background:var(--accent)}
+.hub-sec{margin:26px 0 10px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.hub-small{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.hub-sm{display:flex;align-items:center;gap:10px;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:10px 12px;min-height:52px;font-weight:700;font-size:14.5px;transition:border-color .15s}
+.hub-sm:hover{border-color:var(--accent)}
+.hub-sm .hub-ic{width:32px;height:32px;border-radius:9px;margin:0;flex:none}.hub-sm .hub-ic svg{width:19px;height:19px}
+.hub-sm small{display:block;font-weight:600;font-size:12px;color:var(--muted)}.hub-sm small.al{color:var(--warn)}
+.hub-sm.soon{border-style:dashed;opacity:.65}
+@media (max-width:860px){.hub-big{grid-template-columns:1fr}}
 .ev-badge{font-size:11px;font-weight:700;background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:2px 8px;text-transform:uppercase;letter-spacing:.04em}
 .ev-user{font-size:13.5px;color:var(--muted);text-align:right;line-height:1.25}.ev-user b{color:var(--ink);display:block;font-size:14px}
 .bol-t{border-collapse:collapse;width:100%;font-size:13px}
@@ -2519,14 +2536,56 @@ const ICONS={
   bol:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M9 10v9M15 10v9"/></svg>',
   visita:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.5 3-6 6-6s6 2.5 6 6"/><path d="M15.5 14.5c3 0 5.5 2 5.5 5.5"/></svg>'
 };
+/* tela inicial dos médicos (médico, residente, login geral): Evolução, Passômetro médico e Solicitação de exames em destaque,
+   cada um com o resumo do plantão atual da UTI inteira; os outros menus ficam menores embaixo. Ao clicar, abre a lista de leitos de sempre. */
+function hubResumo(){
+  const t=evoTurno(), beds=SV.med.beds.filter(b=>b.nome);
+  const ini=new Date(t.data+"T"+(t.tipo==="D"?"07:00":"19:00")).getTime();
+  const st=beds.map(b=>evoStatus(b.id,evoDiaPart(b.id,t)).k), feitas=st.filter(k=>k==="imp"||k==="pronta").length;
+  const passOk=beds.filter(b=>(b.upd||0)>=ini).length;
+  const aberto=xd&&xd.leito&&(xd.lab.sel.length||xd.lab.gaso||(xd.lab.livres||[]).length||xd.img.length||xd.livre.length)?xd.leito:"";
+  const ult=SHARED.ped[0]||null;
+  return {t,n:beds.length,feitas,passOk,aberto,ult,parPend:SHARED.par.filter(r=>!parRespondido(r)).length};
+}
+function renderHubMed(g,card){
+  const R=hubResumo(), turno=R.t.tipo==="D"?"diurnas":"noturnas", falta=R.n-R.feitas, semPass=R.n-R.passOk;
+  const pct=(a,b)=>b?Math.round(a/b*100):0;
+  const num=(rot,val,a,b)=>el("div",{class:"hub-num"},el("div",{},el("span",{},rot),el("b",{},val)),b!=null?el("div",{class:"hub-bar"},el("i",{style:`width:${pct(a,b)}%`})):null);
+  const st=(cls,txt)=>el("span",{class:"hub-st"+(cls?" "+cls:"")},txt);
+  const big=(ic,t,d,fn,extra,nm)=>{ const c=card(ic,t,d,fn,false,nm); c.append(...extra.filter(Boolean)); return c; };
+  const hojeTs=ts=>{ const d=new Date(ts), h=new Date(); return d.toDateString()===h.toDateString()?d.toTimeString().slice(0,5):fmtDate(new Date(ts-d.getTimezoneOffset()*60000).toISOString().slice(0,10))+" "+d.toTimeString().slice(0,5); };
+  const bl=id=>{ const b=SV.med.beds.find(x=>x.id===id); return b?bedLabel(b):id; };
+  g.className="hub-big";
+  g.append(
+    big(ICONS.evo,"Evolução médica","Adendo, evoluções, intercorrências e relatório de alta",()=>showView("evo"),[
+      !R.n?st("","Nenhum paciente internado"):falta?st("warn",`${falta} ${falta>1?turno+" pendentes":turno.slice(0,-1)+" pendente"}`):st("ok",`✓ Todas as ${turno} feitas`),
+      R.n?num("Feitas neste plantão",`${R.feitas} de ${R.n}`,R.feitas,R.n):null]),
+    big(ICONS.med,"Passômetro médico","Passagem de plantão médica dos leitos",()=>showView("med"),[
+      !R.n?st("","Nenhum paciente internado"):semPass?st("warn",`${semPass} ${semPass>1?"leitos sem atualizar":"leito sem atualizar"}`):st("ok","✓ Todos atualizados"),
+      R.n?num("Atualizados neste plantão",`${R.passOk} de ${R.n}`,R.passOk,R.n):null]),
+    big(ICONS.lab,"Solicitação de exames","Laboratório e imagem, com guias dos convênios",()=>showView("exames"),[
+      R.aberto?st("warn","Pedido em andamento · "+bl(R.aberto)):st("ok","✓ Nenhum pedido aberto"),
+      R.ult?num("Último pedido",`${bl(R.ult.leito)} · ${hojeTs(R.ult.ts)}`):null],true));
+  const sm=(ic,t,fn,nota,al,soon)=>el("button",{class:"hub-sm"+(soon?" soon":""),type:"button",onclick:fn},el("div",{class:"hub-ic",html:ic}),el("div",{},t,nota?el("small",{class:al?"al":""},nota):null));
+  const outros=el("div",{class:"hub-small"},
+    sm(ICONS.bol,"Boletim médico",()=>{ EVO.mode="bol"; EVO.bolData=""; showView("evo"); }),
+    sm(ICONS.cult,"Controle de culturas",()=>showView("cult")),
+    sm(ICONS.par,"Parecer médico",()=>showView("par"),R.parPend?`${R.parPend} aguardando resposta`:"",!!R.parPend),
+    sm(ICONS.pocus,"POCUS",()=>showView("pocus")),
+    sm(ICONS.enf,"Passômetro enfermagem",()=>showView("enf")),
+    sm(ICONS.arq,"Prontuários anteriores",()=>{ EVO.mode="arq"; EVO.sel=null; EVO.arq=null; showView("evo"); evoIdxCarrega(); }),
+    sm(ICONS.visita,"Visita multidisciplinar",()=>toast("Visita multidisciplinar: em construção. Será montada em breve."),"em breve",false,true));
+  g.after(el("div",{class:"hub-sec",id:"hubSec"},"Outros"),outros); outros.id="hubSmall";
+}
 function renderHub(){
   const lg=$("#hubLogo"); if(SHARED.logo){ lg.src=SHARED.logo; lg.hidden=false; } else { lg.hidden=true; lg.removeAttribute("src"); }
   $("#hubTitle").textContent=(SV.med&&SV.med.unit)||"UTI IOG";
-  const g=$("#hubGrid"); g.innerHTML="";
+  const g=$("#hubGrid"); g.innerHTML=""; g.className="hub-grid"; ["#hubSec","#hubSmall"].forEach(q=>{ const x=$(q); if(x) x.remove(); });
   const card=(ic,t,d,fn,soon,nm)=>el("button",{class:"hub-card"+(soon?" soon":"")+(nm?" no-mobile":""),type:"button",onclick:fn},
     el("div",{class:"hub-ic",html:ic}),
     el("div",{class:"hub-t"},t,soon?el("span",{class:"badge"},"Em breve"):null),
     el("div",{class:"hub-d"},d));
+  if(EVO.on&&!EVO.oculto) return renderHubMed(g,card);
   if(EVO.on&&!EVO.oculto){   /* Evolução médica: logins médicos (enfermagem não vê) */
     const c=card(ICONS.evo,"Evolução médica","Cadastro do paciente, adendo de internação, evoluções, intercorrências e relatório de alta",()=>showView("evo"));
     c.classList.add("evo-new"); g.append(c);
